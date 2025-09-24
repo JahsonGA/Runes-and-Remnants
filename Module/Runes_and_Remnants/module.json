@@ -1,0 +1,43 @@
+{
+  "id": "Rune-and-Remnants",
+  "title": "Rune and Remnants",
+  "description": "Crafting, Enchanting, and Hunting system.",
+  "version": "1.0.0",
+  "author": [
+    {
+        "name": "JahsonGA",
+        "url": "https://github.com/JahsonGA"
+  }
+],
+  "scripts": ["data/havestData.json", "scripts/fill.js"],
+  "compatibility": {
+    "minimum": "10",
+    "verified": "11"
+  },
+  "relationships": {
+    "requires": [
+        {
+            "id": "socketlib", "type": "module" 
+        },
+        {
+            "id": "midi-qol", "type": "module"
+        }
+    ],
+    "recommends": [
+        { 
+            "id": "item-piles", "type": "module" 
+        }
+    ]
+  },
+  "packs": [
+    {
+      "name": "harvest-items",
+      "label": "Harvest Items",
+      "path": "packs/harvest-items.db",
+      "type": "Item",
+      "system": "dnd5e"
+    }
+  ],
+  "url": "https://github.com/JahsonGA/runes-and-remnants",
+  "license": "MIT"
+}
