@@ -38,6 +38,8 @@
       "system": "dnd5e"
     }
   ],
+  "manifest": "https://raw.githubusercontent.com/JahsonGA/runes-and-remnants/main/module.json",
+  "download": "https://github.com/JahsonGA/runes-and-remnants/releases/download/v1.0.0/runes-and-remnants.zip",
   "url": "https://github.com/JahsonGA/runes-and-remnants",
   "license": "MIT"
 }
