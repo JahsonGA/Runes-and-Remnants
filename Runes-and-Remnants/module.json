@@ -21,7 +21,7 @@
     }
   ],
   "manifest": "https://raw.githubusercontent.com/JahsonGA/Runes-and-Remnants/main/module.json",
-  "download": "https://github.com/JahsonGA/Runes-and-Remnants/releases/download/v1.0.1/runes-and-remnants.zip",
+  "download": "https://github.com/JahsonGA/Runes-and-Remnants/releases/download/v1.0.0/runes-and-remnants.zip",
   "url": "https://github.com/JahsonGA/Runes-and-Remnants",
   "license": "MIT",
   "relationships": {
