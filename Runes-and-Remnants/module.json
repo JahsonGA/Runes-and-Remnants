@@ -1,34 +1,16 @@
 {
-  "id": "rune-and-remnants",
-  "title": "Rune and Remnants",
+  "id": "runes-and-remnants",
+  "title": "Runes and Remnants",
   "description": "Crafting, Enchanting, and Hunting system.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "authors": [
     {
-        "name": "JahsonGA",
-        "url": "https://github.com/JahsonGA"
-  }
-],
-  "scripts": ["data/havestData.json", "scripts/fill.js"],
-  "compatibility": {
-    "minimum": "10",
-    "verified": "11"
-  },
-  "relationships": {
-    "requires": [
-        {
-            "id": "socketlib", "type": "module" 
-        },
-        {
-            "id": "midi-qol", "type": "module"
-        }
-    ],
-    "recommends": [
-        { 
-            "id": "item-piles", "type": "module" 
-        }
-    ]
-  },
+      "name": "JahsonGA",
+      "url": "https://github.com/JahsonGA"
+    }
+  ],
+  "esmodules": ["index.js"],
+  "styles": ["styles/module.css"],
   "packs": [
     {
       "name": "harvest-items",
@@ -38,8 +20,21 @@
       "system": "dnd5e"
     }
   ],
-  "manifest": "https://github.com/JahsonGA/Runes-and-Remnants/raw/refs/heads/main/Runes-and-Remnants/module.json",
-  "download": "https://github.com/JahsonGA/Runes-and-Remnants/releases/download/v1.0.0/Runes-and-Remnants.zip",
-  "url": "https://github.com/JahsonGA/runes-and-remnants",
-  "license": "MIT"
+  "manifest": "https://raw.githubusercontent.com/JahsonGA/Runes-and-Remnants/main/module.json",
+  "download": "https://github.com/JahsonGA/Runes-and-Remnants/releases/download/v1.0.1/runes-and-remnants.zip",
+  "url": "https://github.com/JahsonGA/Runes-and-Remnants",
+  "license": "MIT",
+  "relationships": {
+    "requires": [
+      { "id": "socketlib", "type": "module" },
+      { "id": "midi-qol", "type": "module" }
+    ],
+    "recommends": [
+      { "id": "item-piles", "type": "module" }
+    ]
+  },
+  "compatibility": {
+    "minimum": "11",
+    "verified": "12"
+  }
 }
