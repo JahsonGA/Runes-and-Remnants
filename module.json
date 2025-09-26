@@ -1,0 +1,41 @@
+{
+  "id": "runes-and-remnants",
+  "title": "Runes and Remnants",
+  "version": "1.0.0",
+  "compatibility": {
+    "minimum": "11.315",
+    "verified": "11.315"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "dnd5e",
+        "type": "system",
+        "compatibility": {}
+      }
+    ]
+  },
+  "authors": [
+    {
+      "name": "JahsonGA",
+      "flags": {}
+    }
+  ],
+  "packs": [
+    {
+      "name": "harvast-items",
+      "label": "Harvast Items",
+      "path": "packs/harvast-items",
+      "type": "Item",
+      "ownership": {
+        "PLAYER": "OBSERVER",
+        "ASSISTANT": "OWNER"
+      },
+      "system": "dnd5e",
+      "flags": {}
+    }
+  ],
+  "url": "https://github.com/JahsonGA/Runes-and-Remnants",
+  "download": "https://github.com/JahsonGA/Runes-and-Remnants/releases/download/v1.0.0.zip",
+  "manifest": "https://github.com/JahsonGA/Runes-and-Remnants/releases/download/v1.0.0/module.json"
+}
