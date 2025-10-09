@@ -9,16 +9,24 @@
   },
   "relationships": {
     "systems": [
-      { "id": "dnd5e", "type": "system" }
+      {
+        "id": "dnd5e",
+        "type": "system"
+      }
     ]
   },
   "authors": [
-    { "name": "JahsonGA", "url": "https://github.com/JahsonGA" }
+    {
+      "name": "JahsonGA",
+      "url": "https://github.com/JahsonGA"
+    }
   ],
-
-  "esmodules": ["index.js"],
-  "styles": ["styles/module.css"],
-
+  "esmodules": [
+    "index.js"
+  ],
+  "styles": [
+    "styles/module.css"
+  ],
   "packs": [
     {
       "name": "harvest-items",
@@ -28,8 +36,7 @@
       "system": "dnd5e"
     }
   ],
-
   "url": "https://github.com/JahsonGA/Runes-and-Remnants",
   "manifest": "https://raw.githubusercontent.com/JahsonGA/Runes-and-Remnants/main/module.json",
-  "download": "https://github.com/JahsonGA/Runes-and-Remnants/releases/download/v1.0.1/Runes-and-Remnants-v1.0.1.zip"
+  "download": "https://github.com/JahsonGA/Runes-and-Remnants/releases/download/v1.0.2/Runes-and-Remnants-v1.0.2.zip"
 }
