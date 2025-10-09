@@ -1,0 +1,28 @@
+name: Lint
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+    paths:
+      - "**/*.js"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/lint.yml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps (if any)
+        run: |
+          if [ -f package.json ]; then npm ci; fi
+
+      - name: ESLint
+        run: |
+          if [ -f node_modules/.bin/eslint ]; then npx eslint .; else echo "No ESLint configured, skipping."; fi

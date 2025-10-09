@@ -36,6 +36,6 @@
     }
   ],
   "url": "https://github.com/JahsonGA/Runes-and-Remnants",
-  "download": "https://github.com/JahsonGA/Runes-and-Remnants/releases/download/v1.0.1/Runes-and-Remnants.zip",
+  "download": "https://github.com/JahsonGA/Runes-and-Remnants/releases/download/v{{version}}/Runes-and-Remnants-v{{version}}.zip",
   "manifest": "https://github.com/JahsonGA/Runes-and-Remnants/releases/download/v1.0.1/module.json"
 }

@@ -1,0 +1,13 @@
+{
+  "name": "runes-and-remnants",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check:assets": "node scripts/check-assets.mjs",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^2.0.0",
+    "glob": "^11.0.0"
+  }
+}
