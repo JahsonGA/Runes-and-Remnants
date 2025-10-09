@@ -12,7 +12,10 @@ permissions:
 
 jobs:
   release:
+    # Prevent infinite loops when the bot pushes the auto-commit
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,33 +33,6 @@ jobs:
           echo "download=$DOWNLOAD" >> $GITHUB_OUTPUT
           echo "manifest=$MANIFEST" >> $GITHUB_OUTPUT
 
-      - name: Validate manifest & download match version
-        run: |
-          set -e
-          VERSION="${{ steps.read.outputs.version }}"
-          DOWNLOAD="${{ steps.read.outputs.download }}"
-          MANIFEST="${{ steps.read.outputs.manifest }}"
-
-          # Basic sanity
-          [ -n "$VERSION" ] || { echo "❌ version missing"; exit 1; }
-          [ -n "$DOWNLOAD" ] || { echo "❌ download missing"; exit 1; }
-          [ -n "$MANIFEST" ] || { echo "❌ manifest missing"; exit 1; }
-
-          # Require raw manifest URL (helps Foundry see latest)
-          echo "$MANIFEST" | grep -q "raw.githubusercontent.com" || {
-            echo "❌ manifest should be a raw.githubusercontent.com URL"; exit 1;
-          }
-
-          # Require download to include the tag vX.Y.Z and a zip
-          echo "$DOWNLOAD" | grep -q "/releases/download/v$VERSION/" || {
-            echo "❌ download URL must contain /releases/download/v$VERSION/"; exit 1;
-          }
-          echo "$DOWNLOAD" | grep -qE "\.zip$" || {
-            echo "❌ download URL must end with .zip"; exit 1;
-          }
-
-          echo "✅ manifest/download look consistent for v$VERSION"
-
       - name: Determine if new tag is needed
         id: changed
         run: |
@@ -69,6 +45,44 @@ jobs:
             echo "should_release=true" >> $GITHUB_OUTPUT
             echo "🚀 New version: $TAG"
           fi
+
+      # 🔧 Auto-update the download URL so you don't have to
+      - name: Update module.json download URL
+        if: steps.changed.outputs.should_release == 'true'
+        run: |
+          VERSION="${{ steps.read.outputs.version }}"
+          URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Runes-and-Remnants-v${VERSION}.zip"
+          jq --arg url "$URL" '.download = $url' module.json > module.tmp && mv module.tmp module.json
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add module.json
+          git commit -m "[skip ci] Auto-update download URL for v${VERSION}" || true
+          git push || true
+
+      # Validate AFTER we potentially re-wrote module.json
+      - name: Validate manifest & download match version
+        run: |
+          set -e
+          VERSION=$(jq -r '.version' module.json)
+          DOWNLOAD=$(jq -r '.download' module.json)
+          MANIFEST=$(jq -r '.manifest' module.json)
+
+          [ -n "$VERSION" ] || { echo "❌ version missing"; exit 1; }
+          [ -n "$DOWNLOAD" ] || { echo "❌ download missing"; exit 1; }
+          [ -n "$MANIFEST" ] || { echo "❌ manifest missing"; exit 1; }
+
+          echo "$MANIFEST" | grep -q "raw.githubusercontent.com" || {
+            echo "❌ manifest should be a raw.githubusercontent.com URL"; exit 1;
+          }
+
+          echo "$DOWNLOAD" | grep -q "/releases/download/v$VERSION/" || {
+            echo "❌ download URL must contain /releases/download/v$VERSION/"; exit 1;
+          }
+          echo "$DOWNLOAD" | grep -qE "\.zip$" || {
+            echo "❌ download URL must end with .zip"; exit 1;
+          }
+
+          echo "✅ manifest/download look consistent for v$VERSION"
 
       - name: Stop if no new version
         if: steps.changed.outputs.should_release == 'false'
