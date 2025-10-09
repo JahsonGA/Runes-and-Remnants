@@ -1,14 +1,9 @@
 name: Lint
 
 on:
-  pull_request:
   push:
     branches: [ main ]
-    paths:
-      - "**/*.js"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/lint.yml"
+  pull_request:
 
 jobs:
   lint:
@@ -19,10 +14,22 @@ jobs:
         with:
           node-version: 20
 
+      # Only install if a lockfile exists (npm ci requires it)
       - name: Install deps (if any)
         run: |
-          if [ -f package.json ]; then npm ci; fi
+          if [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f package.json ]; then
+            echo "No package-lock.json found; skipping npm install."
+          else
+            echo "No package.json; skipping install."
+          fi
 
-      - name: ESLint
+      # Run ESLint only if it's present
+      - name: ESLint (if configured)
         run: |
-          if [ -f node_modules/.bin/eslint ]; then npx eslint .; else echo "No ESLint configured, skipping."; fi
+          if [ -f node_modules/.bin/eslint ]; then
+            npx eslint .
+          else
+            echo "No ESLint configured, skipping."
+          fi
