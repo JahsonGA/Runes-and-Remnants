@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeHarvestDC, rollOutcome } from "../src/harvest/logic.js";
+import { computeHarvestDC, rollOutcome } from "../src/logic.js";
 
 describe("computeHarvestDC", () => {
   it("scales with CR", () => {
