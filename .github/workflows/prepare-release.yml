@@ -1,0 +1,68 @@
+name: Prepare release (PR)
+
+on:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - "module.json"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read module.json
+        id: read
+        run: |
+          VERSION=$(jq -r '.version' module.json)
+          MANIFEST=$(jq -r '.manifest' module.json)
+          echo "version=$VERSION"   >> $GITHUB_OUTPUT
+          echo "manifest=$MANIFEST" >> $GITHUB_OUTPUT
+
+      - name: Sanity checks
+        run: |
+          set -e
+          VERSION="${{ steps.read.outputs.version }}"
+          MANIFEST="${{ steps.read.outputs.manifest }}"
+          [ -n "$VERSION" ] || { echo "❌ version missing"; exit 1; }
+          [ -n "$MANIFEST" ] || { echo "❌ manifest missing"; exit 1; }
+          echo "$MANIFEST" | grep -q "raw.githubusercontent.com" || {
+            echo "❌ manifest should be a raw.githubusercontent.com URL"; exit 1;
+          }
+
+      - name: Update download URL
+        id: rewrite
+        run: |
+          VERSION="${{ steps.read.outputs.version }}"
+          URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Runes-and-Remnants-v${VERSION}.zip"
+          BEFORE=$(jq -r '.download' module.json)
+          jq --arg url "$URL" '.download = $url' module.json > module.tmp && mv module.tmp module.json
+          AFTER=$(jq -r '.download' module.json)
+          echo "changed=$([ "$BEFORE" = "$AFTER" ] && echo false || echo true)" >> $GITHUB_OUTPUT
+          echo "new_url=$AFTER" >> $GITHUB_OUTPUT
+          echo "Set download to: $AFTER"
+
+      - name: Create PR to main
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore: update download URL for v${{ steps.read.outputs.version }}"
+          title: "Release v${{ steps.read.outputs.version }}"
+          body: |
+            This PR prepares the release for **v${{ steps.read.outputs.version }}**.
+
+            - Ensures `module.json.download` matches the version.
+            - After merge, the Release workflow will tag, zip, and publish.
+          branch: "release/v${{ steps.read.outputs.version }}"
+          labels: "release"
+          base: "main"
+          signoff: false

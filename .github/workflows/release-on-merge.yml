@@ -1,0 +1,99 @@
+name: Release on merge to main
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "module.json"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read module.json
+        id: read
+        run: |
+          VERSION=$(jq -r '.version' module.json)
+          DOWNLOAD=$(jq -r '.download' module.json)
+          MANIFEST=$(jq -r '.manifest' module.json)
+          echo "version=$VERSION"   >> $GITHUB_OUTPUT
+          echo "download=$DOWNLOAD" >> $GITHUB_OUTPUT
+          echo "manifest=$MANIFEST" >> $GITHUB_OUTPUT
+
+      - name: Validate manifest & download
+        run: |
+          set -e
+          VERSION="${{ steps.read.outputs.version }}"
+          DOWNLOAD="${{ steps.read.outputs.download }}"
+          MANIFEST="${{ steps.read.outputs.manifest }}"
+
+          [ -n "$VERSION" ] || { echo "❌ version missing"; exit 1; }
+          [ -n "$DOWNLOAD" ] || { echo "❌ download missing"; exit 1; }
+          [ -n "$MANIFEST" ] || { echo "❌ manifest missing"; exit 1; }
+
+          echo "$MANIFEST" | grep -q "raw.githubusercontent.com" || {
+            echo "❌ manifest should be a raw.githubusercontent.com URL"; exit 1;
+          }
+
+          echo "$DOWNLOAD" | grep -q "/releases/download/v$VERSION/" || {
+            echo "❌ download must contain /releases/download/v$VERSION/"; exit 1;
+          }
+          echo "$DOWNLOAD" | grep -qE "\.zip$" || {
+            echo "❌ download must end with .zip"; exit 1;
+          }
+
+      - name: Determine if new tag is needed
+        id: tagcheck
+        run: |
+          TAG="v${{ steps.read.outputs.version }}"
+          git fetch --tags
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "should_release=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ Tag $TAG exists; skipping."
+          else
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "🚀 New tag: $TAG"
+          fi
+
+      - name: Stop if no new version
+        if: steps.tagcheck.outputs.should_release == 'false'
+        run: echo "No release needed."
+
+      - name: Create tag
+        if: steps.tagcheck.outputs.should_release == 'true'
+        run: |
+          TAG="v${{ steps.read.outputs.version }}"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Build module zip
+        id: build
+        if: steps.tagcheck.outputs.should_release == 'true'
+        run: |
+          NAME="Runes-and-Remnants-v${{ steps.read.outputs.version }}.zip"
+          zip -r "$NAME" . \
+            -x ".git/*" ".github/*" "node_modules/*" \
+               "*.psd" "*.ai" "*.blend" \
+               ".DS_Store" "README*.md" \
+               "tests/*" "scripts/*"
+          echo "zip_name=$NAME" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        if: steps.tagcheck.outputs.should_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.read.outputs.version }}
+          name: Runes and Remnants v${{ steps.read.outputs.version }}
+          generate_release_notes: true
+          files: |
+            ${{ steps.build.outputs.zip_name }}
+            module.json
