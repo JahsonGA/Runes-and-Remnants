@@ -1,0 +1,16 @@
+name: Block merges not from beta
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ensure PR source branch is beta
+        if: github.head_ref != 'beta'
+        run: |
+          echo "❌ Only PRs from 'beta' can be merged into 'main'."
+          exit 1
