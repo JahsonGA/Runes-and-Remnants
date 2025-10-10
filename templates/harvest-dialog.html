@@ -1,0 +1,59 @@
+<!-- templates/harvest-dialog.html -->
+<section class="rnr-container">
+  <header class="rnr-header">
+    <h2>Harvest</h2>
+    <div class="rnr-target">
+      <div class="rnr-dropzone {{#unless hasTarget}}empty{{/unless}}" data-dropzone="target">
+        {{#if hasTarget}}
+          <div class="rnr-target-info">
+            <div class="name">{{targetName}}</div>
+            <div class="meta">Type: {{type}} • CR: {{cr}}</div>
+          </div>
+        {{else}}
+          <div class="hint">Drop a slain creature token here</div>
+        {{/if}}
+      </div>
+    </div>
+  </header>
+
+  <div class="rnr-grid">
+    <div class="rnr-panel">
+      <h3>Materials</h3>
+      {{#if loot.length}}
+        <ul class="rnr-list">
+          {{#each loot}}
+            <li>
+              <label>
+                <input type="checkbox" name="lootChoice" value="{{_id}}">
+                {{name}}
+              </label>
+            </li>
+          {{/each}}
+        </ul>
+      {{else}}
+        <p class="muted">Loading compendium (Harvest Items)…</p>
+      {{/if}}
+    </div>
+
+    <div class="rnr-panel">
+      <h3>Harvesters & Order</h3>
+      <ul class="rnr-order">
+        {{#each harvesters}}
+          <li data-index="{{@index}}">
+            <span class="who">{{name}}</span>
+            <div class="controls">
+              <button type="button" data-action="move-up" title="Move up">▲</button>
+              <button type="button" data-action="move-down" title="Move down">▼</button>
+              <button type="button" data-action="remove-harvester" title="Remove">✖</button>
+            </div>
+          </li>
+        {{/each}}
+      </ul>
+      <button type="button" class="add" data-action="add-harvester">+ Add Harvester</button>
+    </div>
+  </div>
+
+  <footer class="rnr-footer">
+    <button type="button" data-action="start-harvest" class="primary">Start Harvest</button>
+  </footer>
+</section>
