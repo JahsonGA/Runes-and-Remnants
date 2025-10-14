@@ -9,8 +9,15 @@
 
 /* HUD button */
 .control-icon.harvest-menu {
+  padding: 0; /* let the image fill the tile */
   background: radial-gradient(circle, var(--rnr-wood) 0%, #000 95%);
   border: 1px solid var(--rnr-brown);
+}
+.control-icon.harvest-menu .rnr-cleaver {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* fill the whole button */
+  display: block;
 }
 .control-icon.harvest-menu:hover {
   border-color: var(--rnr-red);
