@@ -9,11 +9,9 @@ const MODULE_ID = "runes-and-remnants";
  * - false => GM-only can open
  */
 Hooks.once("init", () => {
-  console.log("Runes & Remnants | init");
-
   game.settings.register(MODULE_ID, "playersCanOpenHarvest", {
     name: "Allow Players to Open Harvest Menu",
-    hint: "If enabled, players can open the Harvest Menu (and it will appear to all active users). If disabled, only GMs can open it.",
+    hint: "If enabled, players can open the Harvest Menu (it will appear to all active users). If disabled, only GMs can open it.",
     scope: "world",
     config: true,
     type: Boolean,
@@ -26,58 +24,37 @@ Hooks.once("init", () => {
  * all active users get the same window (pointing at the same token).
  */
 Hooks.once("ready", () => {
-  if (!game.socket) return;
-  game.socket.on(`module.${MODULE_ID}`, async (payload) => {
+  game.socket?.on(`module.${MODULE_ID}`, async (payload) => {
     if (!payload || payload.action !== "openHarvest") return;
-    try {
-      const doc = payload.tokenUuid ? await fromUuid(payload.tokenUuid) : null;
-      // Accept TokenDocument or Token; normalize
-      const tokenDoc = doc?.document ?? doc;
-      new HarvestMenu(tokenDoc).render(true);
-    } catch (err) {
-      console.error(`${MODULE_ID} | Failed to open Harvest Menu via socket`, err);
-    }
+    // Optional pre-target
+    const token = payload.tokenUuid ? await fromUuid(payload.tokenUuid) : null;
+    const tokenDoc = token?.document ?? token ?? null;
+    new HarvestMenu(tokenDoc).render(true);
   });
 });
 
 /**
- * Add skull button to the Token HUD.
+ * Add cleaver button to the Token HUD.
  * Who sees the button depends on the world setting above.
  */
 Hooks.on("renderTokenHUD", (hud, html) => {
   const allowPlayers = game.settings.get(MODULE_ID, "playersCanOpenHarvest");
+  const canOpen = game.user.isGM || (allowPlayers && (hud.object?.actor?.isOwner || !!game.user?.character));
+  if (!canOpen) return;
 
-  // Who can open?
-  const userCanOpen =
-    game.user.isGM ||
-    (allowPlayers && (hud.object?.actor?.isOwner || !!game.user?.character));
+  const title = allowPlayers ? "Open Harvest (shows to all)" : "Open Harvest (GM-only opener)";
 
-  if (!userCanOpen) return;
-
-  const title = allowPlayers
-    ? "Open Harvest (shows to all)"
-    : "Open Harvest (GM-only opener)";
-
-  const $btn = $(`<div class="control-icon harvest-menu" title="${title}">
-    <i class="fas fa-skull-crossbones"></i>
-  </div>`);
+  // Use your cleaver image as the icon
+  const $btn = $(`
+    <div class="control-icon harvest-menu" title="${title}">
+      <img src="icons/tools/cooking/knife-cleaver-steel-grey.webp" style="width:24px;height:24px;object-fit:contain;" />
+    </div>
+  `);
 
   $btn.on("click", async () => {
     const tokenDoc = hud.object?.document ?? null;
-
-    // Always open locally for the clicker…
     new HarvestMenu(tokenDoc).render(true);
-
-    // …and broadcast to all active users so they see the same window.
-    try {
-      const tokenUuid = tokenDoc?.uuid ?? null;
-      game.socket?.emit(`module.${MODULE_ID}`, {
-        action: "openHarvest",
-        tokenUuid
-      });
-    } catch (err) {
-      console.error(`${MODULE_ID} | broadcast failed`, err);
-    }
+    game.socket?.emit(`module.${MODULE_ID}`, { action: "openHarvest", tokenUuid: tokenDoc?.uuid ?? null });
   });
 
   html.find(".col.right").append($btn);
