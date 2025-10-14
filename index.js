@@ -47,7 +47,7 @@ Hooks.on("renderTokenHUD", (hud, html) => {
   // Use your cleaver image as the icon
   const $btn = $(`
     <div class="control-icon harvest-menu" title="${title}">
-      <img src="icons/tools/cooking/knife-cleaver-steel-grey.webp" style="width:24px;height:24px;object-fit:contain;" />
+      <img src="icons/tools/cooking/knife-cleaver-steel-grey.webp"/>
     </div>
   `);
 

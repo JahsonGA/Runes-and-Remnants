@@ -43,5 +43,5 @@ The module includes a world setting:
 When opened, the menu automatically appears for **all active users** in the scene.
 
 ## 📝 License
-This project is licensed under the MIT License.
+Licensed under the Mozilla Public License 2.0 (MPL-2.0).
 If you want to make your own customize features, use this content for live streaming or your own content please reach out.
