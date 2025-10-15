@@ -3,7 +3,7 @@ import { MODULE_ID, computeHarvestDC, outcome, bestSkillFor, rollSkillCheck, gra
 export class HarvestMenu extends Application {
   constructor(initialTokenDoc = null, options = {}) {
     super(options);
-    this.targetToken = initialTokenDoc ?? null;     // TokenDocument of the slain creature
+    this.targetToken = initialTokenDoc ?? null;     // TokenDocument (or shim if dropped from Actors dir)
     this.targetActor = this.targetToken?.actor ?? null;
 
     this.harvesters = []; // [{actorId, name, img}]
@@ -14,18 +14,18 @@ export class HarvestMenu extends Application {
 
   static get defaultOptions() {
     return foundry.utils.mergeObject(super.defaultOptions, {
-    id: "rnr-harvest-menu",
-    title: "Harvest Materials",
-    template: "modules/runes-and-remnants/templates/harvest-dialog.html",
-    width: 640,
-    height: "auto",
-    classes: ["rnr-harvest", "grimdark"],
-    dragDrop: [
-      { dropSelector: "[data-dropzone='target']" },
-      { dropSelector: "[data-dropzone='harvesters']" }
-    ]
-  });
-}
+      id: "rnr-harvest-menu",
+      title: "Harvest Materials",
+      template: "modules/runes-and-remnants/templates/harvest-dialog.html",
+      width: 640,
+      height: "auto",
+      classes: ["rnr-harvest", "grimdark"],
+      dragDrop: [
+        { dropSelector: "[data-dropzone='target']" },
+        { dropSelector: "[data-dropzone='harvesters']" }
+      ]
+    });
+  }
 
   /* ---------- Data ---------- */
 
@@ -48,10 +48,13 @@ export class HarvestMenu extends Application {
     await this._ensureLootIndex();
 
     const targetName = this.targetActor?.name ?? "Drop a creature token…";
-    const targetImg = this.targetToken?.texture?.src ??
-                        this.targetActor?.prototypeToken?.texture?.src ??
-                        this.targetActor?.img ??
-                        "icons/svg/skull.svg";
+    // Prefer the actual token texture; fall back to prototype/actor image
+    const targetImg =
+      this.targetToken?.texture?.src ??
+      this.targetActor?.prototypeToken?.texture?.src ??
+      this.targetActor?.img ??
+      "icons/svg/skull.svg";
+
     const { type, cr } = this._actorSummary(this.targetActor);
 
     return {
@@ -63,56 +66,59 @@ export class HarvestMenu extends Application {
     };
   }
 
+  /* ---------- Drag & Drop ---------- */
+
   async _onDrop(event) {
-  event.preventDefault();
-  const dz = event.currentTarget?.dataset?.dropzone; // "target" | "harvesters"
-  if (!dz) return;
+    event.preventDefault();
+    const dz = event.currentTarget?.dataset?.dropzone; // "target" | "harvesters"
+    if (!dz) return;
 
-  // Foundry may set multiple MIME types; prefer text/plain JSON
-  let data;
-  try {
-    data = JSON.parse(event.dataTransfer.getData("text/plain"));
-  } catch {
-    return ui.notifications.warn("Unsupported drop payload.");
-  }
-
-  // Resolve any UUID to a document
-  const uuid = data?.uuid ?? data?.data?.uuid;
-  let tokenDoc = null;
-
-  if (data?.type === "Token" || (uuid && uuid.includes(".Token."))) {
-    const doc = uuid ? await fromUuid(uuid) : null;
-    tokenDoc = doc?.document ?? doc ?? null;
-  } else if (data?.type === "Actor") {
-    // Allow dropping from the Actors Directory too (for harvesters)
-    const actor = uuid ? await fromUuid(uuid) : (data?.actorId && game.actors.get(data.actorId));
-    if (actor) tokenDoc = { actor, id: actor.id, object: null }; // shim with actor only
-  }
-
-  if (!tokenDoc?.actor) return ui.notifications.warn("Drop a token from the canvas (or an Actor for harvesters).");
-
-  if (dz === "target") {
-    // Set the harvested creature; do NOT auto-add to harvesters
-    this.targetToken = tokenDoc.id ? tokenDoc : this.targetToken; // keep real token if we have one
-    this.targetActor = tokenDoc.actor;
-    this.render(false);
-    return;
-  }
-
-  if (dz === "harvesters") {
-    // Ignore if it’s the same as the current target creature
-    const a = tokenDoc.actor;
-    if (!a) return;
-    if (this.targetActor && a.id === this.targetActor.id) {
-      return ui.notifications.info("Target creature cannot be a harvester.");
+    let data;
+    try {
+      data = JSON.parse(event.dataTransfer.getData("text/plain"));
+    } catch {
+      return ui.notifications.warn("Unsupported drop payload.");
     }
-    if (this.harvesters.some(h => h.actorId === a.id)) return; // no duplicates
-    this.harvesters.push({ actorId: a.id, name: a.name, img: a.img });
-    this.render(false);
-    return;
-  }
-}
 
+    // Resolve to a TokenDocument when possible; allow Actor as a fallback
+    const uuid = data?.uuid ?? data?.data?.uuid;
+    let tokenDoc = null;
+
+    if (data?.type === "Token" || (uuid && uuid.includes(".Token."))) {
+      const doc = uuid ? await fromUuid(uuid) : null;
+      tokenDoc = doc?.document ?? doc ?? null;
+    } else if (data?.type === "Actor" || (uuid && uuid.includes(".Actor."))) {
+      const actor = uuid ? await fromUuid(uuid) : (data?.actorId && game.actors.get(data.actorId));
+      if (actor) tokenDoc = { actor, id: null, object: null, texture: null }; // shim
+    }
+
+    if (!tokenDoc?.actor) return ui.notifications.warn("Drop a token from the canvas (or an Actor for harvesters).");
+
+    if (dz === "target") {
+      // Set harvested creature; DO NOT auto-add to harvesters
+      this.targetToken = tokenDoc;           // keep even if it's a shim; image fallback handles it
+      this.targetActor = tokenDoc.actor;
+      this.render(false);
+      return;
+    }
+
+    if (dz === "harvesters") {
+      const a = tokenDoc.actor;
+      if (!a) return;
+
+      // Prevent adding the same actor as both target and harvester
+      if (this.targetActor && a.id === this.targetActor.id) {
+        return ui.notifications.info("Target creature cannot be a harvester.");
+      }
+
+      // Ignore duplicates
+      if (this.harvesters.some(h => h.actorId === a.id)) return;
+
+      this.harvesters.push({ actorId: a.id, name: a.name, img: a.img });
+      this.render(false);
+      return;
+    }
+  }
 
   /* ---------- Listeners ---------- */
 
@@ -210,9 +216,6 @@ export class HarvestMenu extends Application {
       `;
       ChatMessage.create({ speaker: { alias: "Runes & Remnants" }, content });
     });
-
-    // ✅ Initialize both dropzones
-    //this._activateDropzones(html[0]);
   }
 
   _lootNames(ids) {
@@ -220,50 +223,10 @@ export class HarvestMenu extends Application {
     return ids.map(id => byId.get(id)?.name ?? "(Unknown)");
   }
 
-  /*_activateDropzones(root) {
-    const makeDZ = (el, onDrop) => {
-      if (!el) return;
-      el.addEventListener("dragover", ev => { ev.preventDefault(); el.classList.add("hover"); });
-      el.addEventListener("dragleave", () => el.classList.remove("hover"));
-      el.addEventListener("drop", async ev => {
-        ev.preventDefault();
-        el.classList.remove("hover");
-        try {
-          const data = JSON.parse(ev.dataTransfer.getData("text/plain"));
-          const uuid = data?.uuid ?? data?.data?.uuid;
-          if (!uuid) return ui.notifications.warn("Drop a token from the canvas.");
-          const doc = await fromUuid(uuid);
-          const tokenDoc = doc?.document ?? doc;
-          if (!(tokenDoc?.actor)) return ui.notifications.warn("Drop a token, not a sheet link.");
-          await onDrop(tokenDoc);
-          this.render(false);
-        } catch (e) {
-          console.error(e);
-          ui.notifications.error("Could not parse dropped data.");
-        }
-      });
-    };
-
-    // Target creature (single)
-    makeDZ(root.querySelector("[data-dropzone='target']"), async (tokenDoc) => {
-      this.targetToken = tokenDoc;
-      this.targetActor = tokenDoc.actor;
-    });
-
-    // Harvesters (multiple)
-    makeDZ(root.querySelector("[data-dropzone='harvesters']"), async (tokenDoc) => {
-      const a = tokenDoc.actor;
-      if (!a) return;
-      if (this.harvesters.some(h => h.actorId === a.id)) return; // ignore duplicates
-      this.harvesters.push({ actorId: a.id, name: a.name, img: a.img });
-    });
-  }*/
-
-  // ✅ Needed by grantMaterial() when dropping Item Piles at the corpse
+  // Needed by grantMaterial() when dropping Item Piles at the corpse
   _tokenCenter(tokenDoc) {
     const obj = tokenDoc.object;
     if (obj?.center) return { x: obj.center.x, y: obj.center.y, scene: tokenDoc.parent?.id };
-    // fallback if object not on canvas (e.g., from UUID only)
     const grid = canvas?.grid?.size ?? 100;
     const x = tokenDoc.x + (tokenDoc.width * grid) / 2;
     const y = tokenDoc.y + (tokenDoc.height * grid) / 2;
