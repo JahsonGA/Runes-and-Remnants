@@ -1,67 +1,57 @@
-<!-- templates/harvest-dialog.html -->
-<section class="rnr-container">
-  <header class="rnr-header">
-    <h2>Harvest</h2>
-  </header>
-
-  <div class="rnr-columns">
-    <!-- LEFT: target creature -->
-    <div class="rnr-card">
-      <h3>Target Creature</h3>
-      <div class="rnr-drop rnr-target {{#unless hasTarget}}empty{{/unless}}" data-dropzone="target">
-        {{#if hasTarget}}
-          <img class="portrait" src="{{targetImg}}" alt="{{targetName}}"/>
-          <div class="meta">
-            <div class="name">{{targetName}}</div>
-            <div class="sub">Type: {{type}} • CR: {{cr}}</div>
-          </div>
-        {{else}}
-          <div class="hint">Drag & drop a slain creature token here</div>
-        {{/if}}
+<div class="rnr-columns">
+  <!-- Target -->
+  <div class="rnr-card">
+    <h3>Target Creature</h3>
+    {{#if hasTarget}}
+    <div class="rnr-target">
+      <img src="{{targetImg}}" class="portrait">
+      <div class="meta">
+        <div class="name">{{targetName}}</div>
+        <div class="sub">Type: {{type}} • CR: {{cr}}</div>
       </div>
+    </div>
+    {{else}}
+    <p>No target selected.</p>
+    {{/if}}
 
-      <h3 class="space-top">Materials</h3>
-      {{#if loot.length}}
-        <ul class="rnr-list">
-          {{#each loot}}
-            <li>
-              <label>
-                <input type="checkbox" name="lootChoice" value="{{_id}}"> {{name}}
-              </label>
-            </li>
-          {{/each}}
-        </ul>
-      {{else}}
-        <p class="muted">Loading compendium (Harvest Items)…</p>
-      {{/if}}
+    <h3>Materials</h3>
+    <p>Loading compendium (Harvest Items)…</p>
+  </div>
+
+  <!-- Harvesters -->
+  <div class="rnr-card">
+    <h3>Select Harvesters — first entry is the leader</h3>
+    <div class="rnr-dropdown">
+      {{#each availableHarvesters}}
+      <div class="rnr-dropdown-entry" data-action="add-harvester"
+           data-actor-id="{{id}}" data-actor-name="{{name}}" data-actor-img="{{img}}" data-actor-owners="{{owners}}">
+        <img src="{{img}}" class="portrait">
+        <span class="label">{{name}} <small>({{owners}})</small></span>
+      </div>
+      {{/each}}
     </div>
 
-    <!-- RIGHT: harvesters -->
-    <div class="rnr-card">
-      <h3>Harvesters</h3>
-      <div class="rnr-drop rnr-harvesters" data-dropzone="harvesters">
-        <div class="hint">Drag & drop player tokens here</div>
-      </div>
+    <hr>
 
-      <ul class="rnr-order">
-        {{#each harvesters}}
-          <li data-index="{{@index}}">
-            <div class="row">
-              <img class="mini" src="{{img}}" alt="{{name}}">
-              <span class="who">{{name}}</span>
-            </div>
-            <div class="controls">
-              <button type="button" data-action="move-up" title="Move up">▲</button>
-              <button type="button" data-action="move-down" title="Move down">▼</button>
-              <button type="button" data-action="remove-harvester" title="Remove">✖</button>
-            </div>
-          </li>
-        {{/each}}
-      </ul>
+    <ul class="rnr-order">
+      {{#each harvesters as |h i|}}
+      <li data-index="{{i}}">
+        <div class="row">
+          <img src="{{h.img}}" class="portrait">
+          <span class="who">{{h.name}}</span>
+          <span class="owner">({{h.owner}})</span>
+        </div>
+        <div class="controls-inline">
+          <button data-action="move-up">↑</button>
+          <button data-action="move-down">↓</button>
+          <button data-action="remove-harvester">✕</button>
+        </div>
+      </li>
+      {{/each}}
+    </ul>
 
-      <div class="actions">
-        <button type="button" class="primary" data-action="start-harvest">Start Harvest</button>
-      </div>
+    <div class="actions">
+      <button class="primary" data-action="start-harvest">Start Harvest</button>
     </div>
   </div>
-</section>
+</div>
