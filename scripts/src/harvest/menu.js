@@ -1,12 +1,19 @@
-import { MODULE_ID, computeHarvestDC, outcome, bestSkillFor, rollSkillCheck, grantMaterial } from "./logic.js";
+import {
+  MODULE_ID,
+  computeHarvestDC,
+  outcome,
+  bestSkillFor,
+  rollSkillCheck,
+  grantMaterial
+} from "./logic.js";
 
 export class HarvestMenu extends Application {
   constructor(initialTokenDoc = null, options = {}) {
     super(options);
-    this.targetToken = initialTokenDoc ?? null;     // TokenDocument (or shim if dropped from Actors dir)
+    this.targetToken = initialTokenDoc ?? null; // TokenDocument of the slain creature
     this.targetActor = this.targetToken?.actor ?? null;
 
-    this.harvesters = []; // [{actorId, name, img}]
+    this.harvesters = []; // [{ actorId, name, img, owner }]
     this.loot = [];
     this._lootLoaded = false;
     this.selectedLoot = new Set();
@@ -17,13 +24,9 @@ export class HarvestMenu extends Application {
       id: "rnr-harvest-menu",
       title: "Harvest Materials",
       template: "modules/runes-and-remnants/templates/harvest-dialog.html",
-      width: 640,
+      width: 700,
       height: "auto",
-      classes: ["rnr-harvest", "grimdark"],
-      dragDrop: [
-        { dropSelector: "[data-dropzone='target']" },
-        { dropSelector: "[data-dropzone='harvesters']" }
-      ]
+      classes: ["rnr-harvest", "grimdark"]
     });
   }
 
@@ -39,85 +42,87 @@ export class HarvestMenu extends Application {
   }
 
   _actorSummary(actor) {
-    const type = actor?.system?.details?.type?.value ?? actor?.system?.details?.type ?? "Unknown";
+    const type =
+      actor?.system?.details?.type?.value ??
+      actor?.system?.details?.type ??
+      "Unknown";
     const cr = actor?.system?.details?.cr ?? actor?.system?.details?.challenge ?? "—";
     return { type, cr };
+  }
+
+  _getPortrait(actor) {
+    return (
+      actor?.prototypeToken?.texture?.src ??
+      actor?.img ??
+      "icons/svg/mystery-man.svg"
+    );
+  }
+
+  _getTargetPortrait() {
+    return (
+      this.targetToken?.texture?.src ??
+      this.targetActor?.prototypeToken?.texture?.src ??
+      this.targetActor?.img ??
+      "icons/svg/skull.svg"
+    );
   }
 
   async getData() {
     await this._ensureLootIndex();
 
-    const targetName = this.targetActor?.name ?? "Drop a creature token…";
-    // Prefer the actual token texture; fall back to prototype/actor image
-    const targetImg =
-      this.targetToken?.texture?.src ??
-      this.targetActor?.prototypeToken?.texture?.src ??
-      this.targetActor?.img ??
-      "icons/svg/skull.svg";
-
+    const targetName = this.targetActor?.name ?? "Unknown Target";
+    const targetImg = this._getTargetPortrait();
     const { type, cr } = this._actorSummary(this.targetActor);
+
+    const availableHarvesters = this._getAvailableHarvesters();
 
     return {
       hasTarget: !!this.targetActor,
-      targetName, targetImg, type, cr,
+      targetName,
+      targetImg,
+      type,
+      cr,
       loot: this.loot,
       selectedLoot: Array.from(this.selectedLoot),
-      harvesters: this.harvesters
+      harvesters: this.harvesters,
+      availableHarvesters
     };
   }
 
-  /* ---------- Drag & Drop ---------- */
+  /* ---------- Build harvester dropdown ---------- */
+  _getAvailableHarvesters() {
+    // Build sorted list: active PC > inactive PC > NPC on scene > all others
+    const activeUserIds = game.users.filter(u => u.active).map(u => u.id);
+    const sceneTokenIds = canvas.tokens.placeables.map(t => t.actor?.id);
 
-  async _onDrop(event) {
-    event.preventDefault();
-    const dz = event.currentTarget?.dataset?.dropzone; // "target" | "harvesters"
-    if (!dz) return;
+    const allActors = Array.from(game.actors.values());
 
-    let data;
-    try {
-      data = JSON.parse(event.dataTransfer.getData("text/plain"));
-    } catch {
-      return ui.notifications.warn("Unsupported drop payload.");
-    }
+    // Tag for sorting
+    const weighted = allActors.map(a => {
+      const isPC = a.type === "character";
+      const owners = game.users.filter(u => a.testUserPermission(u, "OWNER"));
+      const activeOwners = owners.filter(u => activeUserIds.includes(u.id));
+      let weight = 99;
 
-    // Resolve to a TokenDocument when possible; allow Actor as a fallback
-    const uuid = data?.uuid ?? data?.data?.uuid;
-    let tokenDoc = null;
+      if (isPC && activeOwners.length) weight = 1;
+      else if (isPC && owners.length) weight = 2;
+      else if (sceneTokenIds.includes(a.id)) weight = 3;
+      else weight = 4;
 
-    if (data?.type === "Token" || (uuid && uuid.includes(".Token."))) {
-      const doc = uuid ? await fromUuid(uuid) : null;
-      tokenDoc = doc?.document ?? doc ?? null;
-    } else if (data?.type === "Actor" || (uuid && uuid.includes(".Actor."))) {
-      const actor = uuid ? await fromUuid(uuid) : (data?.actorId && game.actors.get(data.actorId));
-      if (actor) tokenDoc = { actor, id: null, object: null, texture: null }; // shim
-    }
+      return {
+        actor: a,
+        ownerNames: owners.map(u => u.name).join(", ") || "—",
+        weight
+      };
+    });
 
-    if (!tokenDoc?.actor) return ui.notifications.warn("Drop a token from the canvas (or an Actor for harvesters).");
-
-    if (dz === "target") {
-      // Set harvested creature; DO NOT auto-add to harvesters
-      this.targetToken = tokenDoc;           // keep even if it's a shim; image fallback handles it
-      this.targetActor = tokenDoc.actor;
-      this.render(false);
-      return;
-    }
-
-    if (dz === "harvesters") {
-      const a = tokenDoc.actor;
-      if (!a) return;
-
-      // Prevent adding the same actor as both target and harvester
-      if (this.targetActor && a.id === this.targetActor.id) {
-        return ui.notifications.info("Target creature cannot be a harvester.");
-      }
-
-      // Ignore duplicates
-      if (this.harvesters.some(h => h.actorId === a.id)) return;
-
-      this.harvesters.push({ actorId: a.id, name: a.name, img: a.img });
-      this.render(false);
-      return;
-    }
+    weighted.sort((a, b) => a.weight - b.weight || a.actor.name.localeCompare(b.actor.name));
+    return weighted.map(w => ({
+      id: w.actor.id,
+      name: w.actor.name,
+      img: this._getPortrait(w.actor),
+      owners: w.ownerNames
+    }));
   }
 
   /* ---------- Listeners ---------- */
@@ -125,34 +130,40 @@ export class HarvestMenu extends Application {
   activateListeners(html) {
     super.activateListeners(html);
 
-    // Loot selection
-    html.on("change", "input[name='lootChoice']", (ev) => {
-      const id = ev.currentTarget.value;
-      ev.currentTarget.checked ? this.selectedLoot.add(id) : this.selectedLoot.delete(id);
-    });
+    // Add new harvester from dropdown panel
+    html.on("click", "[data-action='add-harvester']", ev => {
+      const id = ev.currentTarget.dataset.actorId;
+      const name = ev.currentTarget.dataset.actorName;
+      const img = ev.currentTarget.dataset.actorImg;
+      const owners = ev.currentTarget.dataset.actorOwners;
 
-    // Order controls
-    html.on("click", "[data-action='move-up'], [data-action='move-down']", (ev) => {
-      const li = ev.currentTarget.closest("li[data-index]");
-      const i = Number(li.dataset.index);
-      const j = i + (ev.currentTarget.dataset.action === "move-up" ? -1 : 1);
-      if (j < 0 || j >= this.harvesters.length) return;
-      [this.harvesters[i], this.harvesters[j]] = [this.harvesters[j], this.harvesters[i]];
+      if (this.harvesters.some(h => h.actorId === id)) return;
+      this.harvesters.push({ actorId: id, name, img, owner: owners });
       this.render(false);
     });
 
-    // Remove harvester
-    html.on("click", "[data-action='remove-harvester']", (ev) => {
-      const i = Number(ev.currentTarget.closest("li[data-index]")?.dataset.index);
+    // Move Up/Down/Remove — keep old logic but horizontal
+    html.on("click", "[data-action='move-up'], [data-action='move-down'], [data-action='remove-harvester']", ev => {
+      const li = ev.currentTarget.closest("li[data-index]");
+      const i = Number(li.dataset.index);
       if (!Number.isInteger(i)) return;
-      this.harvesters.splice(i, 1);
+
+      const action = ev.currentTarget.dataset.action;
+      if (action === "remove-harvester") {
+        this.harvesters.splice(i, 1);
+      } else {
+        const j = i + (action === "move-up" ? -1 : 1);
+        if (j >= 0 && j < this.harvesters.length) {
+          [this.harvesters[i], this.harvesters[j]] = [this.harvesters[j], this.harvesters[i]];
+        }
+      }
       this.render(false);
     });
 
     // Start harvest
     html.on("click", "[data-action='start-harvest']", async () => {
-      if (!this.targetActor) return ui.notifications.warn("Drop a target creature first.");
-      if (!this.harvesters.length) return ui.notifications.warn("Add at least one harvester.");
+      if (!this.targetActor) return ui.notifications.warn("No target creature selected.");
+      if (!this.harvesters.length) return ui.notifications.warn("Select at least one harvester.");
       if (!this.selectedLoot.size) return ui.notifications.warn("Select at least one material.");
 
       const pack = game.packs.get("runes-and-remnants.harvest-items");
@@ -161,25 +172,32 @@ export class HarvestMenu extends Application {
       const { type, cr } = this._actorSummary(this.targetActor);
       const selectedIds = Array.from(this.selectedLoot);
 
-      // Assign materials round-robin to harvesters (players set order in UI)
-      const assignments = selectedIds.map((id, i) => ({ id, harvester: this.harvesters[i % this.harvesters.length] }));
+      // Assign materials round-robin
+      const assignments = selectedIds.map((id, i) => ({
+        id,
+        harvester: this.harvesters[i % this.harvesters.length]
+      }));
 
       const lines = [];
       for (const job of assignments) {
         const item = await pack.getDocument(job.id);
-        if (!item) { lines.push(`<li>⚠️ Unknown item (id: ${job.id})</li>`); continue; }
+        if (!item) {
+          lines.push(`<li>⚠️ Unknown item (id: ${job.id})</li>`);
+          continue;
+        }
 
-        // Flags drive per-material config (skills, rarity, baseDC, qty)
         const hflag = item.getFlag(MODULE_ID, "harvest") || {};
-        const skills = hflag.skills || ["sur"];             // e.g., ["sur","med","nat","arc","inv"]
-        const rarity = hflag.rarity || "common";            // common/uncommon/rare/very-rare/legendary
+        const skills = hflag.skills || ["sur"];
+        const rarity = hflag.rarity || "common";
         const baseDC = Number(hflag.baseDC ?? 10);
-        const qty = hflag.qty || "1";                       // number or roll formula like "1d2"
+        const qty = hflag.qty || "1";
 
         const actor = game.actors.get(job.harvester.actorId);
-        if (!actor) { lines.push(`<li>⚠️ Harvester not found for ${item.name}</li>`); continue; }
+        if (!actor) {
+          lines.push(`<li>⚠️ Harvester not found for ${item.name}</li>`);
+          continue;
+        }
 
-        // Pick best skill the actor has from allowed list
         const best = bestSkillFor(actor, skills);
         const dc = computeHarvestDC({ cr, type, rarity, baseDC });
 
@@ -191,7 +209,7 @@ export class HarvestMenu extends Application {
             item,
             qty: typeof qty === "string" ? `(${qty})*2` : (Number(qty) * 2) || 2,
             toActor: actor,
-            dropAt: this.targetToken ? this._tokenCenter(this.targetToken) : null
+            dropAt: this._tokenCenter(this.targetToken)
           });
           lines.push(`<li><b>${actor.name}</b> crit success: gained <b>${item.name}</b> ×2</li>`);
         } else if (res === "success") {
@@ -199,7 +217,7 @@ export class HarvestMenu extends Application {
             item,
             qty,
             toActor: actor,
-            dropAt: this.targetToken ? this._tokenCenter(this.targetToken) : null
+            dropAt: this._tokenCenter(this.targetToken)
           });
           lines.push(`<li><b>${actor.name}</b> success: gained <b>${item.name}</b></li>`);
         } else if (res === "failure") {
@@ -212,20 +230,14 @@ export class HarvestMenu extends Application {
       const content = `
         <p><b>Target:</b> ${this.targetActor.name} (Type: ${type}, CR: ${cr})</p>
         <ul>${lines.join("")}</ul>
-        <p class="muted">Item Piles drop is used if available; otherwise items are added to the harvester's inventory.</p>
+        <p class="muted">Results broadcast by Runes & Remnants.</p>
       `;
       ChatMessage.create({ speaker: { alias: "Runes & Remnants" }, content });
     });
   }
 
-  _lootNames(ids) {
-    const byId = new Map(this.loot.map(i => [i._id ?? i.id, i]));
-    return ids.map(id => byId.get(id)?.name ?? "(Unknown)");
-  }
-
-  // Needed by grantMaterial() when dropping Item Piles at the corpse
   _tokenCenter(tokenDoc) {
-    const obj = tokenDoc.object;
+    const obj = tokenDoc?.object;
     if (obj?.center) return { x: obj.center.x, y: obj.center.y, scene: tokenDoc.parent?.id };
     const grid = canvas?.grid?.size ?? 100;
     const x = tokenDoc.x + (tokenDoc.width * grid) / 2;
