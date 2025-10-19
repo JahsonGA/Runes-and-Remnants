@@ -3,7 +3,7 @@
 
 ![FoundryVTT](https://img.shields.io/badge/FoundryVTT-Compatible-success?style=flat-square)
 ![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-green.svg?style=flat-square)
-![Auto Release](https://img.shields.io/github/actions/workflow/status/JahsonGA/Runes-and-Remnants/release-on-merge.yml?label=Auto%20Release&style=flat-square)
+![Auto Release](https://img.shields.io/github/actions/workflow/status/JahsonGA/Runes-and-Remnants/release-on-version-bump.yml?label=Auto%20Release&style=flat-square)
 ![Static Badge](https://img.shields.io/badge/Development_Stage-In_Progress-red?style=flat-square)
 
 ---
