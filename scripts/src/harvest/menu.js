@@ -1,4 +1,3 @@
-// ---------- Imports ----------
 import {
   MODULE_ID,
   computeHarvestDC,
@@ -8,12 +7,12 @@ import {
   grantMaterial
 } from "./logic.js";
 
-// ---------- Harvest Menu ----------
 export class HarvestMenu extends Application {
   constructor(initialTokenDoc = null, options = {}) {
     super(options);
-    this.targetToken = initialTokenDoc ?? null;
+    this.targetToken = initialTokenDoc ?? null; // TokenDocument of the slain creature
     this.targetActor = this.targetToken?.actor ?? null;
+
     this.harvesters = []; // [{ actorId, name, img, owner }]
     this.loot = [];
     this._lootLoaded = false;
@@ -31,17 +30,23 @@ export class HarvestMenu extends Application {
     });
   }
 
-  /* ---------- Helpers ---------- */
+  /* ---------- Data ---------- */
+
+  async _ensureLootIndex() {
+    if (this._lootLoaded) return;
+    const pack = game.packs.get("runes-and-remnants.harvest-items");
+    if (!pack) return;
+    const idx = await pack.getIndex();
+    this.loot = idx.contents ?? idx;
+    this._lootLoaded = true;
+  }
 
   _actorSummary(actor) {
     const type =
       actor?.system?.details?.type?.value ??
       actor?.system?.details?.type ??
       "Unknown";
-    const cr =
-      actor?.system?.details?.cr ??
-      actor?.system?.details?.challenge ??
-      "—";
+    const cr = actor?.system?.details?.cr ?? actor?.system?.details?.challenge ?? "—";
     return { type, cr };
   }
 
@@ -61,17 +66,6 @@ export class HarvestMenu extends Application {
       "icons/svg/skull.svg"
     );
   }
-
-  async _ensureLootIndex() {
-    if (this._lootLoaded) return;
-    const pack = game.packs.get("runes-and-remnants.harvest-items");
-    if (!pack) return;
-    const idx = await pack.getIndex();
-    this.loot = idx.contents ?? idx;
-    this._lootLoaded = true;
-  }
-
-  /* ---------- Data ---------- */
 
   async getData() {
     await this._ensureLootIndex();
@@ -96,22 +90,25 @@ export class HarvestMenu extends Application {
   }
 
   /* ---------- Build harvester dropdown ---------- */
-
   _getAvailableHarvesters() {
-    if (!game?.actors) return [];
-    const allActors = Array.from(game.actors.values());
+    // Build sorted list: active PC > inactive PC > NPC on scene > all others
     const activeUserIds = game.users.filter(u => u.active).map(u => u.id);
-    const sceneTokenIds = canvas?.tokens?.placeables?.map(t => t.actor?.id) ?? [];
+    const sceneTokenIds = canvas.tokens.placeables.map(t => t.actor?.id);
 
+    const allActors = Array.from(game.actors.values());
+
+    // Tag for sorting
     const weighted = allActors.map(a => {
       const isPC = a.type === "character";
       const owners = game.users.filter(u => a.testUserPermission(u, "OWNER"));
       const activeOwners = owners.filter(u => activeUserIds.includes(u.id));
       let weight = 99;
+
       if (isPC && activeOwners.length) weight = 1;
       else if (isPC && owners.length) weight = 2;
       else if (sceneTokenIds.includes(a.id)) weight = 3;
       else weight = 4;
+
       return {
         actor: a,
         ownerNames: owners.map(u => u.name).join(", ") || "—",
@@ -119,13 +116,8 @@ export class HarvestMenu extends Application {
       };
     });
 
-    // Exclude already added harvesters
-    const takenIds = new Set(this.harvesters.map(h => h.actorId));
-    const filtered = weighted.filter(w => !takenIds.has(w.actor.id));
-
-    filtered.sort((a, b) => a.weight - b.weight || a.actor.name.localeCompare(b.actor.name));
-
-    return filtered.map(w => ({
+    weighted.sort((a, b) => a.weight - b.weight || a.actor.name.localeCompare(b.actor.name));
+    return weighted.map(w => ({
       id: w.actor.id,
       name: w.actor.name,
       img: this._getPortrait(w.actor),
@@ -138,68 +130,49 @@ export class HarvestMenu extends Application {
   activateListeners(html) {
     super.activateListeners(html);
 
-    // Add new harvester from dropdown
-    html.find(".rnr-harvester-dropdown").on("change", ev => {
-      const id = ev.currentTarget.value;
-      if (!id) return;
-
-      const actor = game.actors.get(id);
-      if (!actor) return;
-
-      const img = this._getPortrait(actor);
-      const owners = game.users
-        .filter(u => actor.testUserPermission(u, "OWNER"))
-        .map(u => u.name)
-        .join(", ") || "—";
+    // Add new harvester from dropdown panel
+    html.on("click", "[data-action='add-harvester']", ev => {
+      const id = ev.currentTarget.dataset.actorId;
+      const name = ev.currentTarget.dataset.actorName;
+      const img = ev.currentTarget.dataset.actorImg;
+      const owners = ev.currentTarget.dataset.actorOwners;
 
       if (this.harvesters.some(h => h.actorId === id)) return;
-      this.harvesters.push({
-        actorId: id,
-        name: actor.name,
-        img,
-        owner: owners
-      });
-
+      this.harvesters.push({ actorId: id, name, img, owner: owners });
       this.render(false);
     });
 
-    // Move Up/Down/Remove
-    html.find("[data-action]").on("click", ev => {
-      const action = ev.currentTarget.dataset.action;
-      const i = Number(ev.currentTarget.closest("li[data-index]")?.dataset.index);
-      if (isNaN(i)) return;
+    // Move Up/Down/Remove — keep old logic but horizontal
+    html.on("click", "[data-action='move-up'], [data-action='move-down'], [data-action='remove-harvester']", ev => {
+      const li = ev.currentTarget.closest("li[data-index]");
+      const i = Number(li.dataset.index);
+      if (!Number.isInteger(i)) return;
 
+      const action = ev.currentTarget.dataset.action;
       if (action === "remove-harvester") {
         this.harvesters.splice(i, 1);
-      } else if (action === "move-up" || action === "move-down") {
+      } else {
         const j = i + (action === "move-up" ? -1 : 1);
         if (j >= 0 && j < this.harvesters.length) {
-          [this.harvesters[i], this.harvesters[j]] = [
-            this.harvesters[j],
-            this.harvesters[i]
-          ];
+          [this.harvesters[i], this.harvesters[j]] = [this.harvesters[j], this.harvesters[i]];
         }
       }
-
       this.render(false);
     });
 
-    // Start Harvest
-    html.find("[data-action='start-harvest']").on("click", async () => {
-      if (!this.targetActor)
-        return ui.notifications.warn("No target creature selected.");
-      if (!this.harvesters.length)
-        return ui.notifications.warn("Select at least one harvester.");
-      if (!this.selectedLoot.size)
-        return ui.notifications.warn("Select at least one material.");
+    // Start harvest
+    html.on("click", "[data-action='start-harvest']", async () => {
+      if (!this.targetActor) return ui.notifications.warn("No target creature selected.");
+      if (!this.harvesters.length) return ui.notifications.warn("Select at least one harvester.");
+      if (!this.selectedLoot.size) return ui.notifications.warn("Select at least one material.");
 
       const pack = game.packs.get("runes-and-remnants.harvest-items");
-      if (!pack)
-        return ui.notifications.error("Harvest Items compendium not found.");
+      if (!pack) return ui.notifications.error("Harvest Items compendium not found.");
 
       const { type, cr } = this._actorSummary(this.targetActor);
       const selectedIds = Array.from(this.selectedLoot);
 
+      // Assign materials round-robin
       const assignments = selectedIds.map((id, i) => ({
         id,
         harvester: this.harvesters[i % this.harvesters.length]
@@ -228,26 +201,17 @@ export class HarvestMenu extends Application {
         const best = bestSkillFor(actor, skills);
         const dc = computeHarvestDC({ cr, type, rarity, baseDC });
 
-        const { total } = await rollSkillCheck(
-          actor,
-          best.key,
-          `Harvest: ${item.name} (DC ${dc})`
-        );
+        const { total } = await rollSkillCheck(actor, best.key, `Harvest: ${item.name} (DC ${dc})`);
         const res = outcome(total, dc);
 
         if (res === "critical-success") {
           await grantMaterial({
             item,
-            qty:
-              typeof qty === "string"
-                ? `(${qty})*2`
-                : (Number(qty) * 2) || 2,
+            qty: typeof qty === "string" ? `(${qty})*2` : (Number(qty) * 2) || 2,
             toActor: actor,
             dropAt: this._tokenCenter(this.targetToken)
           });
-          lines.push(
-            `<li><b>${actor.name}</b> crit success: gained <b>${item.name}</b> ×2</li>`
-          );
+          lines.push(`<li><b>${actor.name}</b> crit success: gained <b>${item.name}</b> ×2</li>`);
         } else if (res === "success") {
           await grantMaterial({
             item,
@@ -255,17 +219,11 @@ export class HarvestMenu extends Application {
             toActor: actor,
             dropAt: this._tokenCenter(this.targetToken)
           });
-          lines.push(
-            `<li><b>${actor.name}</b> success: gained <b>${item.name}</b></li>`
-          );
+          lines.push(`<li><b>${actor.name}</b> success: gained <b>${item.name}</b></li>`);
         } else if (res === "failure") {
-          lines.push(
-            `<li><b>${actor.name}</b> failure: no <b>${item.name}</b></li>`
-          );
+          lines.push(`<li><b>${actor.name}</b> failure: no <b>${item.name}</b></li>`);
         } else {
-          lines.push(
-            `<li><b>${actor.name}</b> crit failure: ruined <b>${item.name}</b></li>`
-          );
+          lines.push(`<li><b>${actor.name}</b> crit failure: ruined <b>${item.name}</b></li>`);
         }
       }
 
@@ -277,8 +235,6 @@ export class HarvestMenu extends Application {
       ChatMessage.create({ speaker: { alias: "Runes & Remnants" }, content });
     });
   }
-
-  /* ---------- Helpers ---------- */
 
   _tokenCenter(tokenDoc) {
     const obj = tokenDoc?.object;
