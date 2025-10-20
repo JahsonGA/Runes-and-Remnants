@@ -2,7 +2,7 @@
   "id": "runes-and-remnants",
   "title": "Runes and Remnants",
   "description": "Monster Harvesting and Ancestral Weapons system.",
-  "version": "1.0.8a-beta",
+  "version": "1.0.8a1-beta",
   "compatibility": {
     "minimum": "11",
     "verified": "12"
@@ -38,5 +38,5 @@
   ],
   "url": "https://github.com/JahsonGA/Runes-and-Remnants",
   "manifest": "https://raw.githubusercontent.com/JahsonGA/Runes-and-Remnants/main/module.json",
-  "download": "https://github.com/JahsonGA/Runes-and-Remnants/releases/download/v1.0.8a-beta/Runes-and-Remnants-v1.0.8a-beta.zip"
+  "download": "https://github.com/JahsonGA/Runes-and-Remnants/releases/download/v1.0.8a1-beta/Runes-and-Remnants-v1.0.8a1-beta.zip"
 }

@@ -1,57 +1,93 @@
 <div class="rnr-columns">
-  <!-- Target -->
+
+  <!-- ====================== Target Panel ====================== -->
   <div class="rnr-card">
     <h3>Target Creature</h3>
+
     {{#if hasTarget}}
-    <div class="rnr-target">
-      <img src="{{targetImg}}" class="portrait">
-      <div class="meta">
-        <div class="name">{{targetName}}</div>
-        <div class="sub">Type: {{type}} • CR: {{cr}}</div>
+      <div class="rnr-target">
+        <img src="{{targetImg}}" class="portrait">
+        <div class="meta">
+          <div class="name">{{targetName}}</div>
+          <div class="sub">Type: {{type}} • CR: {{cr}}</div>
+        </div>
       </div>
-    </div>
     {{else}}
-    <p>No target selected.</p>
+      <p>No target selected.</p>
     {{/if}}
-
-    <h3>Materials</h3>
-    <p>Loading compendium (Harvest Items)…</p>
-  </div>
-
-  <!-- Harvesters -->
-  <div class="rnr-card">
-    <h3>Select Harvesters — first entry is the leader</h3>
-    <div class="rnr-dropdown">
-      {{#each availableHarvesters}}
-      <div class="rnr-dropdown-entry" data-action="add-harvester"
-           data-actor-id="{{id}}" data-actor-name="{{name}}" data-actor-img="{{img}}" data-actor-owners="{{owners}}">
-        <img src="{{img}}" class="portrait">
-        <span class="label">{{name}} <small>({{owners}})</small></span>
-      </div>
-      {{/each}}
-    </div>
 
     <hr>
 
-    <ul class="rnr-order">
-      {{#each harvesters as |h i|}}
-      <li data-index="{{i}}">
-        <div class="row">
-          <img src="{{h.img}}" class="portrait">
-          <span class="who">{{h.name}}</span>
-          <span class="owner">({{h.owner}})</span>
-        </div>
-        <div class="controls-inline">
-          <button data-action="move-up">↑</button>
-          <button data-action="move-down">↓</button>
-          <button data-action="remove-harvester">✕</button>
-        </div>
-      </li>
-      {{/each}}
-    </ul>
+    <h3>Materials</h3>
+    {{#if loot.length}}
+      <ul class="rnr-list">
+        {{#each loot}}
+          <li>
+            <label>
+              <input type="checkbox" name="lootChoice" value="{{this._id}}">
+              {{this.name}}
+            </label>
+          </li>
+        {{/each}}
+      </ul>
+    {{else}}
+      <p class="muted">Loading compendium (Harvest Items)…</p>
+    {{/if}}
+  </div>
+
+  <!-- ====================== Harvesters Panel ====================== -->
+  <div class="rnr-card">
+    <h3>Select Harvesters — first entry is the leader</h3>
+
+    {{#if availableHarvesters.length}}
+      <div class="rnr-dropdown">
+        {{#each availableHarvesters}}
+          <div class="rnr-dropdown-entry" 
+               data-action="add-harvester"
+               data-actor-id="{{id}}" 
+               data-actor-name="{{name}}" 
+               data-actor-img="{{img}}" 
+               data-actor-owners="{{owners}}">
+            <img src="{{img}}" class="portrait">
+            <span class="label">
+              {{name}} 
+              <small>({{owners}})</small>
+            </span>
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <p class="muted">No available harvesters to add.</p>
+    {{/if}}
+
+    <hr>
+
+    <!-- ====================== Active Harvester List ====================== -->
+    {{#if harvesters.length}}
+      <ul class="rnr-order">
+        {{#each harvesters as |h i|}}
+          <li data-index="{{i}}">
+            <div class="row">
+              <img src="{{h.img}}" class="portrait">
+              <span class="who">{{h.name}}</span>
+              <span class="owner">({{h.owner}})</span>
+              <div class="controls-inline">
+                <button data-action="move-up" title="Move Up">↑</button>
+                <button data-action="move-down" title="Move Down">↓</button>
+                <button data-action="remove-harvester" title="Remove">✕</button>
+              </div>
+            </div>
+          </li>
+        {{/each}}
+      </ul>
+    {{else}}
+      <p class="muted">No harvesters assigned yet.</p>
+    {{/if}}
 
     <div class="actions">
-      <button class="primary" data-action="start-harvest">Start Harvest</button>
+      <button class="primary" data-action="start-harvest">
+        Start Harvest
+      </button>
     </div>
   </div>
 </div>
