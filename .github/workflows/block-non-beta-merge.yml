@@ -13,4 +13,5 @@ jobs:
         if: github.head_ref != 'beta'
         run: |
           echo "❌ Only PRs from 'beta' can be merged into 'main'."
+          echo "You tried to merge from '${{ github.head_ref }}'."
           exit 1

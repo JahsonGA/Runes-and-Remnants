@@ -3,7 +3,7 @@ name: Validate module.json
 on:
   pull_request:
   push:
-    branches: [ dev ]
+    branches: [ beta ]
     paths:
       - "module.json"
       - ".github/workflows/validate-module-json.yml"
