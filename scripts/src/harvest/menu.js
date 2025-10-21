@@ -134,16 +134,20 @@ export class HarvestMenu extends Application {
       })
       .filter(Boolean);
 
-    weighted.sort(
-      (a, b) => a.weight - b.weight || a.actor.name.localeCompare(b.actor.name)
-    );
+    weighted.sort((a, b) => a.weight - b.weight || a.actor.name.localeCompare(b.actor.name));
 
-    return weighted.map(w => ({
-      id: w.actor.id,
-      name: w.actor.name,
-      img: this._getPortrait(w.actor),
-      owners: w.ownerNames
-    }));
+    // Exclude already-selected harvesters
+    const takenIds = new Set(this.harvesters.map(h => h.actorId));
+
+    return weighted
+      .filter(w => !takenIds.has(w.actor.id))
+      .map(w => ({
+        id: w.actor.id,
+        name: w.actor.name,
+        img: this._getPortrait(w.actor),
+        owners: w.ownerNames
+      }));
+
   }
 
   /* ------------------------------------------ */
