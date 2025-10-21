@@ -1,7 +1,7 @@
 // This Source Code Form is subject to the terms of the MPL, v. 2.0
 
 // index.js
-import { HarvestMenu } from "./src/harvest/menu.js";
+import { HarvestMenu } from ".scripts/src/harvest/menu.js";
 
 const MODULE_ID = "runes-and-remnants";
 
