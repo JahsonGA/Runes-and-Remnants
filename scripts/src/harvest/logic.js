@@ -11,11 +11,25 @@ export const RARITY_MOD = {
 };
 
 /** Compute DC from CR, type, rarity, and optional baseDC */
-export function computeHarvestDC({ cr = 0, type = "other", rarity = "common", baseDC = 10 }) {
+export function computeHarvestDC({
+  cr = 0,
+  type = "other",
+  rarity = "common",
+  rarityMultiplier = null,
+  baseDC = 10
+}) {
   const t = (String(type || "other").toLowerCase());
-  const r = (String(rarity || "common").toLowerCase());
   const typeMod = TYPE_MOD[t] ?? TYPE_MOD.other;
-  const rarityMod = RARITY_MOD[r] ?? 0;
+
+  // If rarityMultiplier provided, use it directly
+  let rarityMod;
+  if (rarityMultiplier !== null && !Number.isNaN(Number(rarityMultiplier))) {
+    rarityMod = Number(rarityMultiplier);
+  } else {
+    const r = (String(rarity || "common").toLowerCase());
+    rarityMod = RARITY_MOD[r] ?? 0;
+  }
+
   const crMod = Math.floor(Number(cr || 0) / 2);
   return Math.max(5, baseDC + crMod + typeMod + rarityMod);
 }
