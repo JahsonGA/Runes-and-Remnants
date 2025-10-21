@@ -26,7 +26,7 @@
     "scripts/src/harvest/menu.js"
   ],
   "esmodules": [
-    "scripts/index.js"
+    "index.js"
   ],
   "styles": [
     "styles/module.css"

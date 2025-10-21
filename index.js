@@ -5,6 +5,8 @@ import { HarvestMenu } from "./scripts/src/harvest/menu.js";
 
 const MODULE_ID = "runes-and-remnants";
 
+Hooks.once("ready", () => console.log("Runes & Remnants ready!"));
+
 /**
  * World setting: who can open the Harvest Menu
  * - true  => GM + Players can open
