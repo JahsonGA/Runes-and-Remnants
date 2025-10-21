@@ -45,22 +45,25 @@ export class HarvestMenu extends Application {
     return { type, cr };
   }
 
-  _getPortrait(actor) {
-    return (
-      actor?.prototypeToken?.texture?.src ??
-      actor?.img ??
-      "icons/svg/mystery-man.svg"
-    );
-  }
+ _getPortrait(actor) {
+  return (
+    actor?.prototypeToken?.texture?.src ||
+    actor?.img ||
+    actor?.system?.prototypeToken?.texture?.src ||
+    "icons/svg/mystery-man.svg"
+  );
+}
 
-  _getTargetPortrait() {
-    return (
-      this.targetToken?.texture?.src ??
-      this.targetActor?.prototypeToken?.texture?.src ??
-      this.targetActor?.img ??
-      "icons/svg/skull.svg"
-    );
-  }
+_getTargetPortrait() {
+  return (
+    this.targetToken?.texture?.src ||
+    this.targetActor?.prototypeToken?.texture?.src ||
+    this.targetActor?.img ||
+    this.targetActor?.system?.prototypeToken?.texture?.src ||
+    "icons/svg/skull.svg"
+  );
+}
+
 
   async _ensureLootIndex() {
     if (this._lootLoaded) return;
@@ -74,6 +77,8 @@ export class HarvestMenu extends Application {
   /* ---------- Data ---------- */
 
   async getData() {
+    if (!Array.isArray(this.harvesters)) this.harvesters = [];
+
     await this._ensureLootIndex();
 
     const targetName = this.targetActor?.name ?? "Unknown Target";
@@ -99,7 +104,11 @@ export class HarvestMenu extends Application {
 
   _getAvailableHarvesters() {
     if (!game?.actors) return [];
-    const allActors = Array.from(game.actors.values());
+    
+    const allActors = Array.from(game.actors.values()).filter(a => 
+  a.type === "character" || a.hasPlayerOwner || game.user.isGM
+);
+
     const activeUserIds = game.users.filter(u => u.active).map(u => u.id);
     const sceneTokenIds = canvas?.tokens?.placeables?.map(t => t.actor?.id) ?? [];
 
