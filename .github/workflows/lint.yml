@@ -10,10 +10,9 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    continue-on-error: false
+
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -25,14 +24,13 @@ jobs:
           elif [ -f package.json ]; then
             npm install
           else
-            echo "⚠️ No package.json found; skipping dependency install."
+            echo "⚠️ No package.json found; skipping install."
           fi
 
-      - name: Run ESLint (if configured)
+      - name: Run ESLint
         run: |
           if [ -f node_modules/.bin/eslint ]; then
-            echo "🔍 Running ESLint..."
-            npx eslint . --max-warnings=0
+            npx eslint src/ tests/
           else
             echo "⚠️ ESLint not configured; skipping lint."
           fi

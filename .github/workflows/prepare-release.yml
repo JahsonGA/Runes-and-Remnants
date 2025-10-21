@@ -1,41 +1,42 @@
-name: Prepare Beta Release
+name: Prepare Beta Release PR
+
 on:
   push:
     branches: [ beta ]
     paths:
       - "module.json"
-  workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
-  beta-release:
-    needs: [test]
+  prepare:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Read version
-        id: version
-        run: echo "VERSION=$(jq -r '.version' module.json)" >> $GITHUB_OUTPUT
-
-      - name: Build beta zip
+      - name: Read module.json
+        id: read
         run: |
-          NAME="Runes-and-Remnants-v${{ steps.version.outputs.VERSION }}.zip"
-          zip -r "$NAME" . \
-            -x ".git/*" ".github/*" "node_modules/*" "tests/*"
-          echo "ZIP=$NAME" >> $GITHUB_OUTPUT
+          VERSION=$(jq -r '.version' module.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create Beta Release
-        uses: softprops/action-gh-release@v2
+      - name: Update download URL
+        run: |
+          VERSION="${{ steps.read.outputs.version }}"
+          URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Runes-and-Remnants-v${VERSION}.zip"
+          jq --arg url "$URL" '.download = $url' module.json > module.tmp && mv module.tmp module.json
+
+      - name: Create PR to main
+        uses: peter-evans/create-pull-request@v6
         with:
-          tag_name: v${{ steps.version.outputs.VERSION }}
-          name: "Runes & Remnants v${{ steps.version.outputs.VERSION }} (Beta)"
-          prerelease: true
-          generate_release_notes: true
-          files: |
-            ${{ steps.version.outputs.ZIP }}
-            module.json
+          commit-message: "chore: prepare v${{ steps.read.outputs.version }} release"
+          title: "Release v${{ steps.read.outputs.version }}"
+          body: |
+            Automated beta release PR.
+          branch: "release/v${{ steps.read.outputs.version }}"
+          base: "main"

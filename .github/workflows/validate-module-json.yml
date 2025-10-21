@@ -1,22 +1,23 @@
 name: Validate module.json
 
 on:
-  pull_request:
   push:
     branches: [ beta ]
     paths:
       - "module.json"
       - ".github/workflows/validate-module-json.yml"
+  pull_request:
+    branches: [ beta, main ]
 
 jobs:
   validate:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Ensure valid JSON
-        run: |
-          jq . module.json >/dev/null
+        run: jq . module.json >/dev/null
 
       - name: Basic field checks
         run: |
@@ -26,4 +27,4 @@ jobs:
           if [ -z "$ID" ] || [ "$ID" = "null" ]; then echo "Missing id"; exit 1; fi
           if [ -z "$VER" ] || [ "$VER" = "null" ]; then echo "Missing version"; exit 1; fi
           if [ -z "$ES" ] || [ "$ES" = "null" ]; then echo "Missing esmodules[0]"; exit 1; fi
-          echo "module.json looks sane ✅"
+          echo "✅ module.json looks sane"
