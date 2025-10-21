@@ -139,8 +139,6 @@ export class HarvestMenu extends Application {
     // Exclude already-selected harvesters
     const takenIds = new Set(this.harvesters.map(h => h.actorId));
 
-    // Exclude already-selected harvesters
-    const takenIds = new Set(this.harvesters.map(h => h.actorId));
     return weighted
       .filter(w => !takenIds.has(w.actor.id))
       .map(w => ({
