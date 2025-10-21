@@ -21,10 +21,10 @@ export function computeHarvestDC({ cr = 0, type = "other", rarity = "common", ba
 }
 
 /** Outcome bands */
-export function rollOutcome(total, dc) {
-  if (total >= dc + 10) return "critical-success";
-  if (total >= dc) return "success";
-  if (total <= dc - 10) return "critical-failure";
+export function rollOutcome({ rollTotal, dc }) {
+  if (rollTotal >= dc + 10) return "critical-success";
+  if (rollTotal >= dc) return "success";
+  if (rollTotal <= dc - 10) return "critical-failure";
   return "failure";
 }
 
