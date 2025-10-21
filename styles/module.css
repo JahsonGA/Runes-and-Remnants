@@ -87,7 +87,12 @@
 .controls-inline {
   display: flex;
   gap: 4px;
+  margin-left: auto;
+  justify-content: flex-end;
+  align-items: center;
+  flex-shrink: 0;
 }
+
 .controls-inline button {
   width: 24px;
   height: 24px;
@@ -97,6 +102,7 @@
   border: 1px solid var(--rnr-brown);
   color: var(--rnr-text);
 }
+
 .controls-inline button:hover {
   background: #2b0d0d;
   border-color: var(--rnr-red);
