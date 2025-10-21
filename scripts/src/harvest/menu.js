@@ -105,7 +105,7 @@ export class HarvestMenu extends Application {
   _getAvailableHarvesters() {
     const allActors = Array.from(game.actors.values());
     const activeUserIds = game.users.filter(u => u.active).map(u => u.id);
-    const sceneTokenIds = canvas.tokens.placeables.map(t => t.actor?.id);
+    const sceneTokenIds = (canvas?.tokens?.placeables ?? []).map(t => t.actor?.id);
 
     const weighted = allActors
       .map(a => {
