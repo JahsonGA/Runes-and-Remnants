@@ -1,4 +1,4 @@
-name: Block merges not from dev
+name: Block merges not from beta
 
 on:
   pull_request:
@@ -9,9 +9,9 @@ jobs:
   check-source:
     runs-on: ubuntu-latest
     steps:
-      - name: Ensure PR source branch is dev
-        if: github.head_ref != 'dev'
+      - name: Ensure PR source branch is beta
+        if: github.head_ref != 'beta'
         run: |
-          echo "❌ Only PRs from 'dev' can be merged into 'main'."
+          echo "❌ Only PRs from 'beta' can be merged into 'main'."
           echo "You tried to merge from '${{ github.head_ref }}'."
           exit 1

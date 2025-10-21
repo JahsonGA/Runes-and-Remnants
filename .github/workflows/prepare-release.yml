@@ -1,7 +1,7 @@
 name: Prepare Beta Release
 on:
   push:
-    branches: [ dev ]
+    branches: [ beta ]
     paths:
       - "module.json"
   workflow_dispatch:
