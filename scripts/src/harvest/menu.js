@@ -60,12 +60,42 @@ export class HarvestMenu extends Application {
     return { type, cr };
   }
 
+  /**
+ * Resolve the correct portrait image for an actor or item.
+ * Handles tokens, actors, and missing data gracefully.
+ */
   _getPortrait(actor) {
-    if (!actor) return "icons/svg/mystery-man.svg";
-    const tokenSrc = actor.prototypeToken?.texture?.src;
-    const actorImg = actor.img;
-    return tokenSrc || actorImg || "icons/svg/mystery-man.svg";
+    try {
+      if (!actor) return "icons/svg/mystery-man.svg";
+
+      // Foundry v11: preferred image location
+      const actorData = actor.toObject?.() ?? actor;
+      const actorImg = actorData.img || actor.img;
+
+      // Prototype token (if it exists and has art)
+      const protoImg = actor.prototypeToken?.texture?.src;
+
+      // If actor has items that define token art, use first valid one
+      let itemImg = null;
+      if (actor.items?.size > 0) {
+        const firstItem = actor.items.find(i => i.img && i.img !== "icons/svg/mystery-man.svg");
+        if (firstItem) itemImg = firstItem.img;
+      }
+
+      // Resolve in order of specificity
+      const resolved =
+        protoImg && protoImg !== "icons/svg/mystery-man.svg" ? protoImg :
+        actorImg && actorImg !== "icons/svg/mystery-man.svg" ? actorImg :
+        itemImg && itemImg !== "icons/svg/mystery-man.svg" ? itemImg :
+        "icons/svg/mystery-man.svg";
+
+      return resolved;
+    } catch (err) {
+      console.warn(`[${MODULE_ID}] Portrait resolution failed:`, err);
+      return "icons/svg/mystery-man.svg";
+    }
   }
+
 
   _getTargetPortrait() {
     const tokenSrc = this.targetToken?.texture?.src;
