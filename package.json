@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check:assets": "node scripts/check-assets.mjs",
+    "check:assets": "node tests/check-assets.mjs",
     "test": "vitest run"
   },
   "devDependencies": {

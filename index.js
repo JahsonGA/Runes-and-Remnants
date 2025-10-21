@@ -1,9 +1,11 @@
 // This Source Code Form is subject to the terms of the MPL, v. 2.0
 
 // index.js
-import { HarvestMenu } from "./scripts/src/harvest/menu.js";
+import { HarvestMenu } from "./src/harvest/menu.js";
 
 const MODULE_ID = "runes-and-remnants";
+
+Hooks.once("ready", () => console.log("Runes & Remnants ready!"));
 
 /**
  * World setting: who can open the Harvest Menu
@@ -25,6 +27,7 @@ Hooks.once("init", () => {
  * Socket listener: when anyone opens the Harvest Menu, broadcast so
  * all active users get the same window (pointing at the same token).
  */
+//! likely cause of the contenst repopulating issue
 Hooks.once("ready", () => {
   game.socket?.on(`module.${MODULE_ID}`, async (payload) => {
     if (!payload || payload.action !== "openHarvest") return;
