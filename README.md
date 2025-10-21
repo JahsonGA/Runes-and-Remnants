@@ -77,6 +77,25 @@ The module includes a world setting:
 | Ancestral Weapons | Weapon evolution, socketing, crafting UI | ⏳ Planned |
 | Integrations | Item Piles, Token HUD enhancements | ⏳ Planned |
 
+## Reloading Development
+1. **Keep your dev module active** in Foundry:
+   - Open **Configuration → Manage Modules**
+   - Ensure **“Runes & Remnants”** is checked ON.
+
+2. **When you edit JS or HTML:**
+   - Save the file.
+   - Then in Foundry’s dev console (press **F12 → Console tab**), run:
+     ```js
+     game.modules.get("runes-and-remnants").api?.reload?.() ?? window.location.reload();
+     ```
+     or simply press **F5** to refresh Foundry.
+   - Foundry will reload the module fresh with your latest files.
+
+3. **To re-open the Harvest Menu instantly after reload:**
+   ```js
+   new game.modules.get("runes-and-remnants").api?.HarvestMenu?.();
+
+
 ---
 
 ## License
