@@ -1,4 +1,3 @@
-// modules/runes-and-remnants/src/harvest/menu.js
 import {
   MODULE_ID,
   computeHarvestDC,
@@ -8,17 +7,13 @@ import {
   grantMaterial
 } from "./logic.js";
 
-/**
- * HarvestMenu Application
- * Allows GM or players (if permitted) to select a slain creature and assign harvesters.
- */
 export class HarvestMenu extends Application {
   constructor(initialTokenDoc = null, options = {}) {
     super(options);
-    this.targetToken = initialTokenDoc ?? null; // TokenDocument of the slain creature
+    this.targetToken = initialTokenDoc ?? null;
     this.targetActor = this.targetToken?.actor ?? null;
 
-    this.harvesters = []; // [{ actorId, name, img, owner }]
+    this.harvesters = [];
     this.loot = [];
     this._lootLoaded = false;
     this.selectedLoot = new Set();
@@ -29,16 +24,13 @@ export class HarvestMenu extends Application {
       id: "rnr-harvest-menu",
       title: "Harvest Materials",
       template: "modules/runes-and-remnants/templates/harvest-dialog.html",
-      width: 720,
+      width: 700,
       height: "auto",
       classes: ["rnr-harvest", "grimdark"]
     });
   }
 
-  /* ------------------------------------------ */
-  /*                 DATA SETUP                 */
-  /* ------------------------------------------ */
-
+  /* ========================= DATA LOAD ========================= */
   async _ensureLootIndex() {
     if (this._lootLoaded) return;
     const pack = game.packs.get("runes-and-remnants.harvest-items");
@@ -53,36 +45,26 @@ export class HarvestMenu extends Application {
       actor?.system?.details?.type?.value ??
       actor?.system?.details?.type ??
       "Unknown";
-    const cr =
-      actor?.system?.details?.cr ??
-      actor?.system?.details?.challenge ??
-      "—";
+    const cr = actor?.system?.details?.cr ??
+      actor?.system?.details?.challenge ?? "—";
     return { type, cr };
   }
 
-  /**
- * Resolve the correct portrait image for an actor or item.
- * Handles tokens, actors, and missing data gracefully.
- */
+  /* ========================= PORTRAIT FIX ========================= */
   _getPortrait(actor) {
     try {
       if (!actor) return "icons/svg/mystery-man.svg";
-
-      // Foundry v11: preferred image location
       const actorData = actor.toObject?.() ?? actor;
       const actorImg = actorData.img || actor.img;
-
-      // Prototype token (if it exists and has art)
       const protoImg = actor.prototypeToken?.texture?.src;
 
-      // If actor has items that define token art, use first valid one
+      // Try fallback from item if both missing
       let itemImg = null;
       if (actor.items?.size > 0) {
         const firstItem = actor.items.find(i => i.img && i.img !== "icons/svg/mystery-man.svg");
         if (firstItem) itemImg = firstItem.img;
       }
 
-      // Resolve in order of specificity
       const resolved =
         protoImg && protoImg !== "icons/svg/mystery-man.svg" ? protoImg :
         actorImg && actorImg !== "icons/svg/mystery-man.svg" ? actorImg :
@@ -96,19 +78,13 @@ export class HarvestMenu extends Application {
     }
   }
 
-
   _getTargetPortrait() {
-    const tokenSrc = this.targetToken?.texture?.src;
-    const protoSrc = this.targetActor?.prototypeToken?.texture?.src;
-    const actorImg = this.targetActor?.img;
-    return tokenSrc || protoSrc || actorImg || "icons/svg/skull.svg";
+    return this._getPortrait(this.targetActor);
   }
 
+  /* ========================= DATA RENDER ========================= */
   async getData() {
     await this._ensureLootIndex();
-
-    if (!Array.isArray(this.harvesters)) this.harvesters = [];
-
     const targetName = this.targetActor?.name ?? "Unknown Target";
     const targetImg = this._getTargetPortrait();
     const { type, cr } = this._actorSummary(this.targetActor);
@@ -128,45 +104,32 @@ export class HarvestMenu extends Application {
     };
   }
 
-  /* ------------------------------------------ */
-  /*          HARVESTER DROPDOWN LOGIC          */
-  /* ------------------------------------------ */
-
+  /* ========================= HARVESTER DROPDOWN LOGIC ========================= */
   _getAvailableHarvesters() {
-    const allActors = Array.from(game.actors.values());
     const activeUserIds = game.users.filter(u => u.active).map(u => u.id);
     const sceneTokenIds = (canvas?.tokens?.placeables ?? []).map(t => t.actor?.id);
+    const allActors = Array.from(game.actors.values());
 
-    const weighted = allActors
-      .map(a => {
-        const isPC = a.type === "character";
-        const owners = game.users.filter(u => a.testUserPermission(u, "OWNER"));
-        const activeOwners = owners.filter(u => activeUserIds.includes(u.id));
-        let weight = 99;
+    const weighted = allActors.map(a => {
+      const isPC = a.type === "character";
+      const owners = game.users.filter(u => a.testUserPermission(u, "OWNER"));
+      const activeOwners = owners.filter(u => activeUserIds.includes(u.id));
+      let weight = 99;
 
-        if (game.user.isGM) {
-          // GM sees all
-          if (isPC && activeOwners.length) weight = 1;
-          else if (isPC) weight = 2;
-          else if (sceneTokenIds.includes(a.id)) weight = 3;
-          else weight = 4;
-        } else {
-          // Non-GM only sees owned PCs
-          if (a.isOwner && isPC) weight = 1;
-          else return null;
-        }
+      if (isPC && activeOwners.length) weight = 1;
+      else if (isPC && owners.length) weight = 2;
+      else if (sceneTokenIds.includes(a.id)) weight = 3;
+      else weight = 4;
 
-        return {
-          actor: a,
-          ownerNames: owners.map(u => u.name).join(", ") || "—",
-          weight
-        };
-      })
-      .filter(Boolean);
+      return {
+        actor: a,
+        ownerNames: owners.map(u => u.name).join(", ") || "—",
+        weight
+      };
+    });
 
     weighted.sort((a, b) => a.weight - b.weight || a.actor.name.localeCompare(b.actor.name));
 
-    // Exclude already-selected harvesters
     const takenIds = new Set(this.harvesters.map(h => h.actorId));
 
     return weighted
@@ -179,70 +142,62 @@ export class HarvestMenu extends Application {
       }));
   }
 
-  /* ------------------------------------------ */
-  /*               EVENT HANDLERS               */
-  /* ------------------------------------------ */
-
+  /* ========================= EVENT HANDLERS ========================= */
   activateListeners(html) {
     super.activateListeners(html);
 
-    // Add harvester from dropdown entry
-    html.on("click", "[data-action='add-harvester']", ev => this._onAddHarvester(ev));
+    // Add new harvester
+    html.on("click", "[data-action='add-harvester']", ev => {
+      const el = ev.currentTarget;
+      const id = el.dataset.actorId;
+      const name = el.dataset.actorName;
+      const img = el.dataset.actorImg;
+      const owners = el.dataset.actorOwners;
 
-    // Move/Remove handlers
-    html.on("click", "[data-action='move-up']", ev => this._onMoveHarvester(ev, -1));
-    html.on("click", "[data-action='move-down']", ev => this._onMoveHarvester(ev, 1));
-    html.on("click", "[data-action='remove-harvester']", ev => this._onRemoveHarvester(ev));
+      if (this.harvesters.some(h => h.actorId === id)) return;
+      this.harvesters.push({ actorId: id, name, img, owner: owners });
+      this.render(false);
+    });
 
-    // Start harvest
-    html.on("click", "[data-action='start-harvest']", () => this._onStartHarvest());
+    // Move Up / Down / Remove
+    html.on("click", "[data-action='move-up'], [data-action='move-down'], [data-action='remove-harvester']", ev => {
+      const li = ev.currentTarget.closest("li[data-index]");
+      const i = Number(li.dataset.index);
+      if (!Number.isInteger(i)) return;
+
+      const action = ev.currentTarget.dataset.action;
+      if (action === "remove-harvester") {
+        this.harvesters.splice(i, 1);
+      } else {
+        const j = i + (action === "move-up" ? -1 : 1);
+        if (j >= 0 && j < this.harvesters.length) {
+          [this.harvesters[i], this.harvesters[j]] = [this.harvesters[j], this.harvesters[i]];
+        }
+      }
+      this.render(false);
+    });
+
+    // Loot selection
+    html.on("change", "input[name='lootChoice']", ev => {
+      const id = ev.currentTarget.value;
+      ev.currentTarget.checked ? this.selectedLoot.add(id) : this.selectedLoot.delete(id);
+    });
+
+    // Start Harvest
+    html.on("click", "[data-action='start-harvest']", async () => this._startHarvest());
   }
 
-  _onAddHarvester(ev) {
-    const el = ev.currentTarget;
-    const id = el.dataset.actorId;
-    const name = el.dataset.actorName;
-    const img = el.dataset.actorImg;
-    const owners = el.dataset.actorOwners;
-
-    if (this.harvesters.some(h => h.actorId === id)) return;
-    this.harvesters.push({ actorId: id, name, img, owner: owners });
-    this.render(false);
-  }
-
-  _onMoveHarvester(ev, delta) {
-    const li = ev.currentTarget.closest("li[data-index]");
-    const i = Number(li.dataset.index);
-    const j = i + delta;
-    if (i < 0 || j < 0 || j >= this.harvesters.length) return;
-    [this.harvesters[i], this.harvesters[j]] = [this.harvesters[j], this.harvesters[i]];
-    this.render(false);
-  }
-
-  _onRemoveHarvester(ev) {
-    const li = ev.currentTarget.closest("li[data-index]");
-    const i = Number(li.dataset.index);
-    if (!Number.isInteger(i)) return;
-    this.harvesters.splice(i, 1);
-    this.render(false);
-  }
-
-  async _onStartHarvest() {
-    if (!this.targetActor)
-      return ui.notifications.warn("No target creature selected.");
-    if (!this.harvesters.length)
-      return ui.notifications.warn("Select at least one harvester.");
-    if (!this.selectedLoot.size)
-      return ui.notifications.warn("Select at least one material.");
+  /* ========================= HARVEST EXECUTION ========================= */
+  async _startHarvest() {
+    if (!this.targetActor) return ui.notifications.warn("No target creature selected.");
+    if (!this.harvesters.length) return ui.notifications.warn("Select at least one harvester.");
+    if (!this.selectedLoot.size) return ui.notifications.warn("Select at least one material to harvest.");
 
     const pack = game.packs.get("runes-and-remnants.harvest-items");
-    if (!pack)
-      return ui.notifications.error("Harvest Items compendium not found.");
+    if (!pack) return ui.notifications.error("Harvest Items compendium not found.");
 
     const { type, cr } = this._actorSummary(this.targetActor);
     const selectedIds = Array.from(this.selectedLoot);
-
-    // Assign materials round-robin
     const assignments = selectedIds.map((id, i) => ({
       id,
       harvester: this.harvesters[i % this.harvesters.length]
@@ -307,8 +262,7 @@ export class HarvestMenu extends Application {
 
   _tokenCenter(tokenDoc) {
     const obj = tokenDoc?.object;
-    if (obj?.center)
-      return { x: obj.center.x, y: obj.center.y, scene: tokenDoc.parent?.id };
+    if (obj?.center) return { x: obj.center.x, y: obj.center.y, scene: tokenDoc.parent?.id };
     const grid = canvas?.grid?.size ?? 100;
     const x = tokenDoc.x + (tokenDoc.width * grid) / 2;
     const y = tokenDoc.y + (tokenDoc.height * grid) / 2;

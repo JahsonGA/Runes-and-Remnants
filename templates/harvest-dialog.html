@@ -1,168 +1,100 @@
-/* ========================= THEME COLORS ========================= */
-:root {
-  --rnr-brown: #734A12;   /* main */
-  --rnr-red:   #B22222;   /* accent */
-  --rnr-wood:  #60402B;   /* panels */
-  --rnr-ink:   #0c0c0f;   /* bg */
-  --rnr-text:  #e6e0d6;   /* text */
-}
+<!-- ========================= Runes & Remnants Harvest Menu ========================= -->
+<!-- ========================= THEME COLORS ========================= -->
+<style>
+  :root {
+    --rnr-brown: #734A12;   /* main */
+    --rnr-red:   #B22222;   /* accent */
+    --rnr-wood:  #60402B;   /* panels */
+    --rnr-ink:   #0c0c0f;   /* bg */
+    --rnr-text:  #e6e0d6;   /* text */
+  }
+</style>
 
-/* ========================= HUD ICON ========================= */
-.control-icon.harvest-menu {
-  padding: 0;
-  background: radial-gradient(circle, var(--rnr-wood) 0%, #000 95%);
-  border: 1px solid var(--rnr-brown);
-}
+<section class="rnr-columns">
 
-.control-icon.harvest-menu .rnr-cleaver {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
+  <!-- ========================= TARGET PANEL ========================= -->
+  <div class="rnr-card">
+    <h3>Target Creature</h3>
 
-.control-icon.harvest-menu:hover {
-  border-color: var(--rnr-red);
-  box-shadow: 0 0 8px var(--rnr-red);
-}
+    {{#if hasTarget}}
+      <div class="rnr-target">
+        <img src="{{targetImg}}" alt="Target Image" class="portrait">
+        <div class="meta">
+          <div class="name">{{targetName}}</div>
+          <div class="sub">Type: {{type}} • CR: {{cr}}</div>
+        </div>
+      </div>
+    {{else}}
+      <p class="muted">No target selected.</p>
+    {{/if}}
 
-/* ========================= WINDOW CHROME ========================= */
-.rnr-harvest.grimdark .window-content {
-  background: var(--rnr-ink);
-  color: var(--rnr-text);
-  border: 2px solid var(--rnr-brown);
-}
+    <hr>
 
-/* ========================= LAYOUT ========================= */
-.rnr-header h2 {
-  margin: 0 0 .5rem 0;
-  color: var(--rnr-red);
-}
+    <h3>Materials</h3>
+    {{#if loot.length}}
+      <ul class="rnr-list">
+        {{#each loot}}
+          <li>
+            <label>
+              <input type="checkbox" name="lootChoice" value="{{this._id}}">
+              {{this.name}}
+            </label>
+          </li>
+        {{/each}}
+      </ul>
+    {{else}}
+      <p class="muted">Loading compendium (Harvest Items)…</p>
+    {{/if}}
+  </div>
 
-.rnr-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
+  <!-- ========================= HARVESTERS PANEL ========================= -->
+  <div class="rnr-card">
+    <h3>Select Harvesters — first entry is the leader</h3>
 
-.rnr-card {
-  background: #171315;
-  border: 1px solid var(--rnr-wood);
-  border-radius: 10px;
-  padding: 10px;
-}
+    {{#if availableHarvesters.length}}
+      <div class="rnr-dropdown">
+        {{#each availableHarvesters}}
+          <div class="rnr-dropdown-entry"
+               data-action="add-harvester"
+               data-actor-id="{{id}}"
+               data-actor-name="{{name}}"
+               data-actor-img="{{img}}"
+               data-actor-owners="{{owners}}">
+            <img src="{{img}}" alt="{{name}} Portrait" class="portrait">
+            <span class="label">{{name}} <small>({{owners}})</small></span>
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <p class="muted">No available harvesters to add.</p>
+    {{/if}}
 
-.rnr-card h3 {
-  margin-top: 0;
-  color: var(--rnr-brown);
-}
+    <hr>
 
-/* ========================= DROPDOWN ========================= */
-.rnr-dropdown {
-  border: 1px solid var(--rnr-wood);
-  border-radius: 8px;
-  max-height: 180px;
-  overflow-y: auto;
-  margin-bottom: 0.5rem;
-  background: #0f0d0e;
-}
+    {{#if harvesters.length}}
+      <ul class="rnr-order">
+        {{#each harvesters as |h i|}}
+          <li data-index="{{i}}">
+            <div class="row">
+              <img src="{{h.img}}" alt="{{h.name}} Portrait" class="portrait">
+              <span class="who">{{h.name}}</span>
+              <span class="owner">({{h.owner}})</span>
+            </div>
+            <div class="controls-inline">
+              <button data-action="move-up" title="Move Up">↑</button>
+              <button data-action="move-down" title="Move Down">↓</button>
+              <button data-action="remove-harvester" title="Remove">✕</button>
+            </div>
+          </li>
+        {{/each}}
+      </ul>
+    {{else}}
+      <p class="muted">No harvesters assigned yet.</p>
+    {{/if}}
 
-.rnr-dropdown-entry {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 8px;
-  border-bottom: 1px solid #1b1515;
-  cursor: pointer;
-}
+    <div class="actions">
+      <button class="primary" data-action="start-harvest">Start Harvest</button>
+    </div>
+  </div>
 
-.rnr-dropdown-entry:hover {
-  background: #241616;
-  border-left: 3px solid var(--rnr-red);
-}
-
-.rnr-dropdown-entry .portrait {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  object-fit: cover;
-  border: 1px solid var(--rnr-wood);
-}
-
-/* ========================= HARVESTER LIST ========================= */
-.rnr-order {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.rnr-order li {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid #231a1a;
-  padding: 4px 0;
-}
-
-/* Left side: portrait and name */
-.rnr-order .row {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  gap: 8px;
-}
-
-/* Image */
-.rnr-order .portrait {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  object-fit: cover;
-  border: 1px solid var(--rnr-wood);
-}
-
-/* Buttons aligned on right */
-.controls-inline {
-  display: flex;
-  justify-content: flex-end;
-  gap: 4px;
-  min-width: 75px; /* Keeps column width consistent across rows */
-}
-
-.controls-inline button {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  font-weight: bold;
-  border: 1px solid var(--rnr-brown);
-  background: #1a0e0e;
-  color: var(--rnr-text);
-}
-
-.controls-inline button:hover {
-  border-color: var(--rnr-red);
-  background: #2b0d0d;
-}
-
-/* ========================= BUTTONS & MISC ========================= */
-.actions {
-  margin-top: 10px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-button.primary {
-  background: #2a0d0d;
-  border: 1px solid var(--rnr-red);
-  color: var(--rnr-text);
-  padding: 4px 10px;
-  border-radius: 4px;
-}
-
-button.primary:hover {
-  background: #3a0f0f;
-}
-
-.muted {
-  opacity: .7;
-}
+</section>
