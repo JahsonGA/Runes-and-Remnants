@@ -1,18 +1,18 @@
-name: Assets check
+name: Assets Check
 
 on:
-  push:
-    branches: [ dev ]
   pull_request:
+    branches: [ dev, main ]
+  push:
     branches: [ dev ]
   workflow_dispatch:
 
 jobs:
   assets:
     runs-on: ubuntu-latest
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -20,10 +20,5 @@ jobs:
       - name: Install dependencies
         run: npm ci || npm i
 
-      - name: Run assets check
-        run: |
-          if [ -f "scripts/check-assets.mjs" ]; then
-            npm run check:assets
-          else
-            echo "✅ No check-assets.mjs found — skipping."
-          fi
+      - name: Run asset integrity check
+        run: npm run check:assets

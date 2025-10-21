@@ -4,32 +4,35 @@ on:
   push:
     branches: [ dev ]
   pull_request:
+    branches: [ dev, main ]
+  workflow_dispatch:
 
 jobs:
   lint:
     runs-on: ubuntu-latest
+    continue-on-error: false
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # Only install if a lockfile exists (npm ci requires it)
-      - name: Install deps (if any)
+      - name: Install dependencies
         run: |
           if [ -f package-lock.json ]; then
             npm ci
           elif [ -f package.json ]; then
-            echo "No package-lock.json found; skipping npm install."
+            npm install
           else
-            echo "No package.json; skipping install."
+            echo "⚠️ No package.json found; skipping dependency install."
           fi
 
-      # Run ESLint only if it's present
-      - name: ESLint (if configured)
+      - name: Run ESLint (if configured)
         run: |
           if [ -f node_modules/.bin/eslint ]; then
-            npx eslint .
+            echo "🔍 Running ESLint..."
+            npx eslint . --max-warnings=0
           else
-            echo "No ESLint configured, skipping."
+            echo "⚠️ ESLint not configured; skipping lint."
           fi
