@@ -32,25 +32,27 @@ jobs:
           git config user.email "github-actions@github.com"
           git fetch --tags
 
-      - name: Skip if tag exists
+      - name: Check for existing tag
         id: tagcheck
         run: |
           TAG="v${{ steps.read.outputs.version }}"
           if [[ ! "$TAG" =~ -beta$ ]]; then
             TAG="${TAG}-beta"
           fi
+
+          git fetch --tags
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "should_release=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ Tag $TAG exists; skipping."
+            echo "ℹ️ Tag $TAG already exists; skipping."
           else
             echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "🚀 Creating new beta tag: $TAG"
             echo "tag=$TAG" >> $GITHUB_OUTPUT
+            echo "🚀 New pre-release version: $TAG"
           fi
 
-      - name: Stop if tag exists
+      - name: Stop if tag already exists
         if: steps.tagcheck.outputs.should_release == 'false'
-        run: echo "No new beta pre-release needed."
+        run: echo "No new pre-release needed."
 
       - name: Create beta tag
         if: steps.tagcheck.outputs.should_release == 'true'
@@ -58,6 +60,11 @@ jobs:
           TAG="${{ steps.tagcheck.outputs.tag }}"
           git tag -a "$TAG" -m "Pre-release $TAG"
           git push origin "$TAG"
+
+      # 🕒 Wait a few seconds for the tag to be visible via GitHub API
+      - name: Wait for tag propagation
+        if: steps.tagcheck.outputs.should_release == 'true'
+        run: sleep 10
 
       - name: Build module ZIP
         id: build
@@ -73,6 +80,7 @@ jobs:
         if: steps.tagcheck.outputs.should_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ steps.tagcheck.outputs.tag }}
           name: "Runes & Remnants ${{ steps.tagcheck.outputs.tag }}"
           prerelease: true
