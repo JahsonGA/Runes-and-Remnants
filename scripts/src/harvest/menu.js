@@ -105,7 +105,7 @@ export class HarvestMenu extends Application {
   _getAvailableHarvesters() {
     const allActors = Array.from(game.actors.values());
     const activeUserIds = game.users.filter(u => u.active).map(u => u.id);
-    const sceneTokenIds = canvas.tokens.placeables.map(t => t.actor?.id);
+    const sceneTokenIds = (canvas?.tokens?.placeables ?? []).map(t => t.actor?.id);
 
     const weighted = allActors
       .map(a => {
@@ -139,6 +139,8 @@ export class HarvestMenu extends Application {
     // Exclude already-selected harvesters
     const takenIds = new Set(this.harvesters.map(h => h.actorId));
 
+    // Exclude already-selected harvesters
+    const takenIds = new Set(this.harvesters.map(h => h.actorId));
     return weighted
       .filter(w => !takenIds.has(w.actor.id))
       .map(w => ({
@@ -147,7 +149,6 @@ export class HarvestMenu extends Application {
         img: this._getPortrait(w.actor),
         owners: w.ownerNames
       }));
-
   }
 
   /* ------------------------------------------ */
