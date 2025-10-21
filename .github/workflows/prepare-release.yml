@@ -1,8 +1,8 @@
-name: Prepare Beta Release PR
+name: Prepare Stable Release PR
 
 on:
   push:
-    branches: [ beta ]
+    branches: [ main ]
     paths:
       - "module.json"
 
