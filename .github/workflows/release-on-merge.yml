@@ -1,4 +1,5 @@
 name: Release on merge to main
+
 on:
   push:
     branches: [ main ]
@@ -10,27 +11,31 @@ permissions:
 
 jobs:
   release:
-    needs: [validate, test]
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Read version
-        id: version
-        run: echo "VERSION=$(jq -r '.version' module.json)" >> $GITHUB_OUTPUT
-      - name: Build zip
+        id: read
+        run: echo "version=$(jq -r '.version' module.json)" >> $GITHUB_OUTPUT
+
+      - name: Create tag and zip
         run: |
-          NAME="Runes-and-Remnants-v${{ steps.version.outputs.VERSION }}.zip"
-          zip -r "$NAME" . \
-            -x ".git/*" ".github/*" "node_modules/*" "tests/*"
-          echo "ZIP=$NAME" >> $GITHUB_OUTPUT
-      - name: Publish Release
+          VERSION="${{ steps.read.outputs.version }}"
+          TAG="v${VERSION}"
+          zip -r "Runes-and-Remnants-${TAG}.zip" . \
+            -x ".git/*" ".github/*" "node_modules/*" "tests/*" "scripts/*" "*.psd" "*.ai" "*.blend"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.VERSION }}
-          name: "Runes & Remnants v${{ steps.version.outputs.VERSION }}"
-          generate_release_notes: true
+          tag_name: v${{ steps.read.outputs.version }}
+          name: "Runes & Remnants v${{ steps.read.outputs.version }}"
           files: |
-            ${{ steps.version.outputs.ZIP }}
+            Runes-and-Remnants-v${{ steps.read.outputs.version }}.zip
             module.json

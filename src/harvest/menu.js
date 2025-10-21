@@ -1,11 +1,11 @@
-/*import {
+import {
   MODULE_ID,
   computeHarvestDC,
   outcome,
   bestSkillFor,
   rollSkillCheck,
   grantMaterial
-} from "./logic.js";*/
+} from "./logic.js";
 
 export class HarvestMenu extends Application {
   constructor(initialTokenDoc = null, options = {}) {
@@ -26,7 +26,7 @@ export class HarvestMenu extends Application {
       template: "modules/runes-and-remnants/templates/harvest-dialog.html",
       width: 700,
       height: "auto",
-      classes: ["rnr-harvest", "grimdark"]
+      classes: ["rnr-harvest", "grimdark"]  
     });
   }
 
@@ -148,6 +148,14 @@ export class HarvestMenu extends Application {
   activateListeners(html) {
     super.activateListeners(html);
 
+    // enable drop region
+      this._dragDrop = [{
+        dragSelector: null,
+        dropSelector: "section.rnr-columns",
+        callbacks: { drop: this._onDrop.bind(this) }
+      }];
+      this._dragDrop.bind(html[0]);
+
     // Add new harvester
     html.on("click", "[data-action='add-harvester']", ev => {
       const el = ev.currentTarget;
@@ -160,6 +168,12 @@ export class HarvestMenu extends Application {
       this.harvesters.push({ actorId: id, name, img, owner: owners });
       this.render(true);
     });
+
+    // Drag and Drop logic
+    html.on("dragenter", "section.rnr-columns", ev => ev.currentTarget.classList.add("drag-hover"));
+    html.on("dragleave", "section.rnr-columns", ev => ev.currentTarget.classList.remove("drag-hover"));
+    html.on("drop", "section.rnr-columns", ev => ev.currentTarget.classList.remove("drag-hover"));
+
 
     // Move Up / Down / Remove
     html.on("click", "[data-action='move-up'], [data-action='move-down'], [data-action='remove-harvester']", ev => {
@@ -188,6 +202,40 @@ export class HarvestMenu extends Application {
     // Start Harvest
     html.on("click", "[data-action='start-harvest']", async () => this._startHarvest());
   }
+
+  /* ========================= DRAG & DROP ========================= */
+  async _onDrop(event) {
+    event.preventDefault();
+    const data = event.dataTransfer.getData("text/plain");
+    if (!data) return;
+
+    let dropped;
+    try {
+      dropped = JSON.parse(data);
+    } catch {
+      console.warn(`[${MODULE_ID}] Invalid drop data.`);
+      return;
+    }
+
+    // Handle compendium drops
+    if (dropped.pack && dropped.id) {
+      const pack = game.packs.get(dropped.pack);
+      if (!pack) return;
+      const item = await pack.getDocument(dropped.id);
+      if (item?.type !== "loot" && item?.type !== "material") return;
+      this.loot.push(item);
+    }
+
+    // Handle actor/item drops directly from sidebar or sheet
+    else if (dropped.type === "Item") {
+      const item = await Item.implementation.fromDropData(dropped);
+      this.loot.push(item);
+    }
+
+    // Re-render to show new loot entry
+    this.render(true);
+  }
+
 
   /* ========================= HARVEST EXECUTION ========================= */
   async _startHarvest() {
