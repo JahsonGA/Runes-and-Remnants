@@ -84,25 +84,27 @@ export class HarvestMenu extends Application {
 
   /* ========================= DATA RENDER ========================= */
   async getData() {
-    await this._ensureLootIndex();
-    const targetName = this.targetActor?.name ?? "Unknown Target";
-    const targetImg = this._getTargetPortrait();
-    const { type, cr } = this._actorSummary(this.targetActor);
+  await this._ensureLootIndex();
 
-    const availableHarvesters = this._getAvailableHarvesters();
+  const targetName = this.targetActor?.name ?? "Unknown Target";
+  const targetImg = this._getTargetPortrait();
+  const { type, cr } = this._actorSummary(this.targetActor);
 
-    return {
-      hasTarget: !!this.targetActor,
-      targetName,
-      targetImg,
-      type,
-      cr,
-      loot: this.loot,
-      selectedLoot: Array.from(this.selectedLoot),
-      harvesters: this.harvesters,
-      availableHarvesters
-    };
-  }
+  const availableHarvesters = this._getAvailableHarvesters();
+
+  return {
+    hasTarget: !!this.targetActor,
+    targetName,
+    targetImg,
+    type,
+    cr,
+    loot: this.loot,
+    selectedLoot: Array.from(this.selectedLoot),
+    harvesters: this.harvesters,
+    availableHarvesters
+  };
+}
+
 
   /* ========================= HARVESTER DROPDOWN LOGIC ========================= */
   _getAvailableHarvesters() {
@@ -156,7 +158,7 @@ export class HarvestMenu extends Application {
 
       if (this.harvesters.some(h => h.actorId === id)) return;
       this.harvesters.push({ actorId: id, name, img, owner: owners });
-      this.render(false);
+      this.render(true);
     });
 
     // Move Up / Down / Remove
@@ -174,7 +176,7 @@ export class HarvestMenu extends Application {
           [this.harvesters[i], this.harvesters[j]] = [this.harvesters[j], this.harvesters[i]];
         }
       }
-      this.render(false);
+      this.render(true);
     });
 
     // Loot selection
