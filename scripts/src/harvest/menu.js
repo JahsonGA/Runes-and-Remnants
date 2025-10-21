@@ -1,11 +1,11 @@
-/*import {
+import {
   MODULE_ID,
   computeHarvestDC,
   outcome,
   bestSkillFor,
   rollSkillCheck,
   grantMaterial
-} from "./logic.js";*/
+} from "./logic.js";
 
 export class HarvestMenu extends Application {
   constructor(initialTokenDoc = null, options = {}) {
