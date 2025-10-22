@@ -2,15 +2,11 @@ name: Lint
 
 on:
   push:
-    branches: [ beta ]
   pull_request:
-    branches: [ beta, main ]
-  workflow_dispatch:
 
 jobs:
   lint:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,19 +14,12 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci
-          elif [ -f package.json ]; then
-            npm install
-          else
-            echo "⚠️ No package.json found; skipping install."
-          fi
+        run: npm ci || npm i
 
       - name: Run ESLint
         run: |
           if [ -f node_modules/.bin/eslint ]; then
-            npx eslint src/ tests/
+            npx eslint .
           else
-            echo "⚠️ ESLint not configured; skipping lint."
+            echo "No ESLint found, skipping."
           fi

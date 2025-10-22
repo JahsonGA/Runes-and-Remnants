@@ -1,11 +1,8 @@
-name: Module Tests
+name: Tests
 
 on:
   push:
-    branches: [ beta ]
   pull_request:
-    branches: [ beta, main ]
-  workflow_dispatch:
 
 jobs:
   test:

@@ -2,16 +2,11 @@ name: Assets Check
 
 on:
   push:
-    branches: [ beta ]
   pull_request:
-    branches: [ beta, main ]
-  workflow_dispatch:
 
 jobs:
   assets:
     runs-on: ubuntu-latest
-    continue-on-error: false
-
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,5 +16,5 @@ jobs:
       - name: Install dependencies
         run: npm ci || npm i
 
-      - name: Run asset integrity check
+      - name: Verify required assets
         run: npm run check:assets

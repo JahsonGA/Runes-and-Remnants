@@ -1,0 +1,74 @@
+name: Beta Release
+
+on:
+  push:
+    branches: [ beta ]
+    paths:
+      - "module.json"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read Version
+        id: read
+        run: |
+          VERSION=$(jq -r '.version' module.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "🚀 Preparing beta release for v$VERSION"
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions@github.com"
+          git fetch --tags
+
+      - name: Tag & Push
+        id: tag
+        run: |
+          TAG="v${{ steps.read.outputs.version }}"
+          git fetch --tags
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG exists, skipping."
+            echo "should_release=false" >> $GITHUB_OUTPUT
+          else
+            echo "Creating new beta tag: $TAG"
+            git tag -a "$TAG" -m "Beta Release $TAG"
+            git push origin "$TAG"
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Stop if no new tag
+        if: steps.tag.outputs.should_release == 'false'
+        run: exit 0
+
+      - name: Build ZIP
+        id: build
+        run: |
+          NAME="Runes-and-Remnants-v${{ steps.read.outputs.version }}.zip"
+          zip -r "$NAME" . \
+            -x ".git/*" ".github/*" "node_modules/*" "tests/*" "scripts/*" \
+               "*.psd" "*.ai" "*.blend" ".DS_Store" "README*.md"
+          echo "zip_name=$NAME" >> $GITHUB_OUTPUT
+
+      - name: Publish Beta Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "Runes & Remnants v${{ steps.read.outputs.version }}"
+          generate_release_notes: true
+          files: |
+            ${{ steps.build.outputs.zip_name }}
+            module.json
