@@ -31,10 +31,10 @@
   border: 2px solid var(--rnr-brown);
 }
 
-.rnr-harvest section.rnr-columns.drag-hover {
+/*.rnr-harvest section.rnr-columns.drag-hover {
   outline: 2px dashed var(--rnr-red);
   background-color: rgba(178, 34, 34, 0.1);
-}
+}*/
 
 /* Layout */
 .rnr-header h2 { margin: 0 0 .5rem 0; color: var(--rnr-red); }

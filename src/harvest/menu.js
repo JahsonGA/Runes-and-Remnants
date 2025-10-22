@@ -149,12 +149,12 @@ export class HarvestMenu extends Application {
     super.activateListeners(html);
 
     // enable drop region
-      this._dragDrop = [{
+      /*this._dragDrop = [{
         dragSelector: null,
         dropSelector: "section.rnr-columns",
         callbacks: { drop: this._onDrop.bind(this) }
       }];
-      this._dragDrop.bind(html[0]);
+      this._dragDrop.bind(html[0]);*/
 
     // Add new harvester
     html.on("click", "[data-action='add-harvester']", ev => {
@@ -170,9 +170,9 @@ export class HarvestMenu extends Application {
     });
 
     // Drag and Drop logic
-    html.on("dragenter", "section.rnr-columns", ev => ev.currentTarget.classList.add("drag-hover"));
+    /*html.on("dragenter", "section.rnr-columns", ev => ev.currentTarget.classList.add("drag-hover"));
     html.on("dragleave", "section.rnr-columns", ev => ev.currentTarget.classList.remove("drag-hover"));
-    html.on("drop", "section.rnr-columns", ev => ev.currentTarget.classList.remove("drag-hover"));
+    html.on("drop", "section.rnr-columns", ev => ev.currentTarget.classList.remove("drag-hover"));*/
 
 
     // Move Up / Down / Remove
