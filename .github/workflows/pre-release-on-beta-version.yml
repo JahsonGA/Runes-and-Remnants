@@ -20,37 +20,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read module.json fields
+      - name: Read version
         id: read
         run: |
           VERSION=$(jq -r '.version' module.json)
-          DOWNLOAD=$(jq -r '.download' module.json)
-          MANIFEST=$(jq -r '.manifest' module.json)
-          echo "version=$VERSION"   >> $GITHUB_OUTPUT
-          echo "download=$DOWNLOAD" >> $GITHUB_OUTPUT
-          echo "manifest=$MANIFEST" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Ensure valid manifest
-        run: |
-          VERSION="${{ steps.read.outputs.version }}"
-          MANIFEST="${{ steps.read.outputs.manifest }}"
-          DOWNLOAD="${{ steps.read.outputs.download }}"
-
-          [ -n "$VERSION" ] || { echo "❌ version missing"; exit 1; }
-          [ -n "$MANIFEST" ] || { echo "❌ manifest missing"; exit 1; }
-          [ -n "$DOWNLOAD" ] || { echo "❌ download missing"; exit 1; }
-
-          echo "$MANIFEST" | grep -q "raw.githubusercontent.com" || {
-            echo "❌ manifest must be a raw.githubusercontent.com URL"; exit 1;
-          }
-
-      - name: Configure Git user
+      - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions@github.com"
+          git fetch --tags
 
-
-      - name: Create tag if not exists
+      - name: Check for existing tag
         id: tagcheck
         run: |
           TAG="v${{ steps.read.outputs.version }}"
@@ -64,25 +46,31 @@ jobs:
             echo "ℹ️ Tag $TAG already exists; skipping."
           else
             echo "should_release=true" >> $GITHUB_OUTPUT
-            echo "🚀 Creating new beta tag: $TAG"
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+            echo "🚀 New pre-release version: $TAG"
           fi
 
-      - name: Stop if no new version
+      - name: Stop if tag already exists
         if: steps.tagcheck.outputs.should_release == 'false'
         run: echo "No new pre-release needed."
 
       - name: Create beta tag
         if: steps.tagcheck.outputs.should_release == 'true'
         run: |
-          TAG="v${{ steps.read.outputs.version }}-beta"
+          TAG="${{ steps.tagcheck.outputs.tag }}"
           git tag -a "$TAG" -m "Pre-release $TAG"
           git push origin "$TAG"
+
+      # 🕒 Wait a few seconds for the tag to be visible via GitHub API
+      - name: Wait for tag propagation
+        if: steps.tagcheck.outputs.should_release == 'true'
+        run: sleep 10
 
       - name: Build module ZIP
         id: build
         if: steps.tagcheck.outputs.should_release == 'true'
         run: |
-          NAME="Runes-and-Remnants-v${{ steps.read.outputs.version }}-beta.zip"
+          NAME="Runes-and-Remnants-${{ steps.tagcheck.outputs.tag }}.zip"
           zip -r "$NAME" . \
             -x ".git/*" ".github/*" "node_modules/*" "tests/*" "scripts/*" \
                "*.psd" "*.ai" "*.blend" ".DS_Store" "README*.md"
@@ -92,8 +80,9 @@ jobs:
         if: steps.tagcheck.outputs.should_release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.read.outputs.version }}-beta
-          name: "Runes & Remnants v${{ steps.read.outputs.version }} Beta"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ steps.tagcheck.outputs.tag }}
+          name: "Runes & Remnants ${{ steps.tagcheck.outputs.tag }}"
           prerelease: true
           generate_release_notes: true
           files: |

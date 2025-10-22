@@ -1,5 +1,4 @@
 name: Block merges not from beta
-
 on:
   pull_request:
     branches: [ main ]
