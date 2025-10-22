@@ -1,15 +1,16 @@
-name: Block merges not from beta
+name: Block Non-Beta Merges to Main
+
 on:
   pull_request:
     branches: [ main ]
     types: [opened, synchronize, reopened]
 
 jobs:
-  check-source:
+  restrict:
     runs-on: ubuntu-latest
     steps:
-      - name: Ensure PR source branch is beta
+      - name: Reject PRs not from beta
         if: github.head_ref != 'beta'
         run: |
-          echo "❌ Only PRs from 'beta' can be merged into 'main'."
+          echo "❌ Only PRs from 'beta' may be merged into 'main'."
           exit 1
