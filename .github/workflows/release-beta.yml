@@ -24,7 +24,6 @@ jobs:
         id: read
         run: |
           VERSION=$(jq -r '.version' module.json)
-          [[ "$VERSION" =~ -beta$ ]] || VERSION="${VERSION}-beta"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "🚀 Preparing beta release for v$VERSION"
 
@@ -38,6 +37,7 @@ jobs:
         id: tag
         run: |
           TAG="v${{ steps.read.outputs.version }}"
+          git fetch --tags
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "Tag $TAG exists, skipping."
             echo "should_release=false" >> $GITHUB_OUTPUT
@@ -58,7 +58,8 @@ jobs:
         run: |
           NAME="Runes-and-Remnants-v${{ steps.read.outputs.version }}.zip"
           zip -r "$NAME" . \
-            -x ".git/*" ".github/*" "node_modules/*" "tests/*" "scripts/*" "*.psd" "*.ai" "*.blend" ".DS_Store"
+            -x ".git/*" ".github/*" "node_modules/*" "tests/*" "scripts/*" \
+               "*.psd" "*.ai" "*.blend" ".DS_Store" "README*.md"
           echo "zip_name=$NAME" >> $GITHUB_OUTPUT
 
       - name: Publish Beta Release

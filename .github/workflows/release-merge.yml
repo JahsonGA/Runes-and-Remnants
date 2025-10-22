@@ -24,17 +24,8 @@ jobs:
         id: read
         run: |
           VERSION=$(jq -r '.version' module.json)
-          if [[ "$VERSION" == *"-beta"* ]]; then
-            echo "🚫 Beta version detected; skipping stable release."
-            echo "skip_release=true" >> $GITHUB_OUTPUT
-          else
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-            echo "skip_release=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Stop if Beta
-        if: steps.read.outputs.skip_release == 'true'
-        run: exit 0
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "🚀 Preparing stable release for v$VERSION"
 
       - name: Configure Git
         run: |
@@ -42,14 +33,16 @@ jobs:
           git config user.email "github-actions@github.com"
           git fetch --tags
 
-      - name: Tag and Push
+      - name: Tag & Push
         id: tag
         run: |
           TAG="v${{ steps.read.outputs.version }}"
+          git fetch --tags
           if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG exists; skipping."
+            echo "Tag $TAG exists, skipping."
             echo "should_release=false" >> $GITHUB_OUTPUT
           else
+            echo "Creating new stable tag: $TAG"
             git tag -a "$TAG" -m "Release $TAG"
             git push origin "$TAG"
             echo "should_release=true" >> $GITHUB_OUTPUT
@@ -65,7 +58,8 @@ jobs:
         run: |
           NAME="Runes-and-Remnants-v${{ steps.read.outputs.version }}.zip"
           zip -r "$NAME" . \
-            -x ".git/*" ".github/*" "node_modules/*" "tests/*" "scripts/*" "*.psd" "*.ai" "*.blend" ".DS_Store"
+            -x ".git/*" ".github/*" "node_modules/*" "tests/*" "scripts/*" \
+               "*.psd" "*.ai" "*.blend" ".DS_Store" "README*.md"
           echo "zip_name=$NAME" >> $GITHUB_OUTPUT
 
       - name: Publish Stable Release
