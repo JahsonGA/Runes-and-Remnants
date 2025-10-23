@@ -50,6 +50,19 @@ export class HarvestMenu extends Application {
     return { type, cr };
   }
 
+  _getHarvesterLimit(sizeKey) {
+    const sizeMap = {
+      tiny: 1,
+      sm: 1,
+      med: 2,
+      lg: 3,
+      huge: 4,
+      grg: 5
+    };
+    return sizeMap[sizeKey?.toLowerCase?.()] ?? 1;
+  }
+
+
   /* ========================= PORTRAIT FIX ========================= */
   _getPortrait(actor) {
     try {
@@ -89,6 +102,8 @@ export class HarvestMenu extends Application {
   const targetName = this.targetActor?.name ?? "Unknown Target";
   const targetImg = this._getTargetPortrait();
   const { type, cr } = this._actorSummary(this.targetActor);
+  const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
+  this.harvesterLimit = this._getHarvesterLimit(sizeKey);
 
   const availableHarvesters = this._getAvailableHarvesters();
 
@@ -98,6 +113,8 @@ export class HarvestMenu extends Application {
     targetImg,
     type,
     cr,
+    sizeKey,
+    harvesterLimit: this.harvesterLimit,     // expose to template
     loot: this.loot,
     selectedLoot: Array.from(this.selectedLoot),
     harvesters: this.harvesters,
@@ -163,6 +180,13 @@ export class HarvestMenu extends Application {
       const name = el.dataset.actorName;
       const img = el.dataset.actorImg;
       const owners = el.dataset.actorOwners;
+
+      const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
+      if (this.harvesters.length >= this.harvesterLimit) {
+        return ui.notifications.warn(
+          `You cannot assign more than ${this.harvesterLimit} harvesters for a ${sizeKey} creature.`
+        );
+      }
 
       if (this.harvesters.some(h => h.actorId === id)) return;
       this.harvesters.push({ actorId: id, name, img, owner: owners });

@@ -22,6 +22,7 @@
         <div class="meta">
           <div class="name">{{targetName}}</div>
           <div class="sub">Type: {{type}} • CR: {{cr}}</div>
+          <div class="sub">Size: {{sizeKey}} • Max Harvesters: {{harvesterLimit}}</div>
         </div>
       </div>
     {{else}}
@@ -49,7 +50,7 @@
 
   <!-- ========================= HARVESTERS PANEL ========================= -->
   <div class="rnr-card">
-    <h3>Select Harvesters — first entry is the leader</h3>
+    <h3>Select Harvesters — first entry is the leader({{harvesters.length}} / {{harvesterLimit}})</h3>
 
     {{#if availableHarvesters.length}}
       <div class="rnr-dropdown">
@@ -78,7 +79,11 @@
             <div class="row">
               <img src="{{h.img}}" alt="{{h.name}} Portrait" class="portrait">
               <span class="who">{{h.name}}</span>
-              <span class="owner">({{h.owner}})</span>
+              <span class="owner">({{h.owner}})
+                {{#if (eq i 0)}}
+                  <img src = "icons/tools/hand/saw-hacksaw-brass-grey.webp" alt="Leader Icon" title="Harvester Leader" class="leader-icon">
+                {{/if}}
+              </span>
             </div>
             <div class="controls-inline">
               <button data-action="move-up" title="Move Up">↑</button>

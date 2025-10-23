@@ -77,6 +77,26 @@
   padding: 4px 0;
   border-bottom: 1px solid #231a1a;
 }
+
+/* Leader Icon (first harvester) */
+.rnr-order .leader-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  margin-left: 4px;
+  filter: drop-shadow(0 0 2px gold);
+  opacity: 0.9;
+}
+
+.rnr-order li:first-child .leader-icon {
+  animation: pulse-leader 1.8s infinite ease-in-out;
+}
+
+@keyframes pulse-leader {
+  0%, 100% { opacity: 0.9; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
 .rnr-order .row {
   display: flex;
   align-items: center;
