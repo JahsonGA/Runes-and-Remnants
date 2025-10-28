@@ -31,6 +31,20 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions@github.com"
 
+      # Update download URL in module.json to include the beta tag and filename
+      - name: Update download URL
+        id: update
+        run: |
+          VERSION="${{ steps.read.outputs.version }}"
+          NEW_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}-beta/Runes-and-Remnants-v${VERSION}-beta.zip"
+          jq --arg url "$NEW_URL" '.download = $url' module.json > tmp.json && mv tmp.json module.json
+          echo "Updated download URL: $NEW_URL"
+
+      - name: Commit updated module.json
+        run: |
+          git add module.json
+          git commit -m "chore: update beta download URL for v${{ steps.read.outputs.version }}" || echo "No changes to commit"
+
       - name: Determine tag
         id: tagcheck
         run: |
@@ -74,8 +88,10 @@ jobs:
           body: |
             🚧 **Beta Release** for testing purposes.
             This build includes the latest experimental features and fixes.
-            - Tagged as: v${{ steps.read.outputs.version }}-beta
-            - Use with caution; this may not be final.
+
+            - 🔖 Tagged as: v${{ steps.read.outputs.version }}-beta
+            - 📦 File: Runes-and-Remnants-v${{ steps.read.outputs.version }}-beta.zip
+            - 🧩 Use for internal testing only.
           generate_release_notes: true
           files: |
             ${{ steps.build.outputs.zip_name }}
