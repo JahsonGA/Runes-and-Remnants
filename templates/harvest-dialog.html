@@ -10,6 +10,7 @@
   }
 </style>
 
+<!-- ========================= Runes & Remnants Harvest Menu ========================= -->
 <section class="rnr-columns">
 
   <!-- ========================= TARGET PANEL ========================= -->
@@ -31,7 +32,7 @@
 
     <hr>
 
-    <h3>Materials</h3>
+    <h3>Materials Available</h3>
     {{#if loot.length}}
       <ul class="rnr-list">
         {{#each loot}}
@@ -48,58 +49,111 @@
     {{/if}}
   </div>
 
-  <!-- ========================= HARVESTERS PANEL ========================= -->
-  <div class="rnr-card">
-    <h3>Select Harvesters — first entry is the leader({{harvesters.length}} / {{harvesterLimit}})</h3>
+  <!-- ========================= HARVEST TEAM PANEL ========================= -->
+<div class="rnr-card">
+  <h3>Assign Roles</h3>
 
-    {{#if availableHarvesters.length}}
+  <!-- Assessor -->
+  <div class="rnr-role">
+    <h4>
+      <img src="icons/sundries/books/book-backed-wood-tan.webp" class="role-icon" alt="Assessor Icon">
+      Assessor
+    </h4>
+    {{#if assessor}}
+      <div class="rnr-role-entry">
+        <img src="{{assessor.img}}" class="portrait" alt="{{assessor.name}}">
+        <span>{{assessor.name}}</span>
+        <button data-action="remove-assessor" title="Remove Assessor">✕</button>
+      </div>
+    {{else}}
       <div class="rnr-dropdown">
         {{#each availableHarvesters}}
           <div class="rnr-dropdown-entry"
-               data-action="add-harvester"
+               data-action="set-assessor"
                data-actor-id="{{id}}"
                data-actor-name="{{name}}"
-               data-actor-img="{{img}}"
-               data-actor-owners="{{owners}}">
-            <img src="{{img}}" alt="{{name}} Portrait" class="portrait">
-            <span class="label">{{name}} <small>({{owners}})</small></span>
+               data-actor-img="{{img}}">
+            <img src="{{img}}" class="portrait" alt="{{name}}">
+            <span>{{name}}</span>
           </div>
         {{/each}}
       </div>
-    {{else}}
-      <p class="muted">No available harvesters to add.</p>
     {{/if}}
+  </div>
 
-    <hr>
+  <!-- Harvester -->
+  <div class="rnr-role">
+    <h4>
+      <img src="icons/tools/hand/bone-saw.webp" class="role-icon" alt="Harvester Icon">
+      Harvester
+    </h4>
+    {{#if harvester}}
+      <div class="rnr-role-entry">
+        <img src="{{harvester.img}}" class="portrait" alt="{{harvester.name}}">
+        <span>{{harvester.name}}</span>
+        <button data-action="remove-harvester" title="Remove Harvester">✕</button>
+      </div>
+    {{else}}
+      <div class="rnr-dropdown">
+        {{#each availableHarvesters}}
+          <div class="rnr-dropdown-entry"
+               data-action="set-harvester"
+               data-actor-id="{{id}}"
+               data-actor-name="{{name}}"
+               data-actor-img="{{img}}">
+            <img src="{{img}}" class="portrait" alt="{{name}}">
+            <span>{{name}}</span>
+          </div>
+        {{/each}}
+      </div>
+    {{/if}}
+  </div>
 
-    {{#if harvesters.length}}
-      <ul class="rnr-order">
-        {{#each harvesters as |h i|}}
+  <!-- Helpers -->
+  <div class="rnr-role">
+    <h4>Helpers</h4>
+    {{#if helpers.length}}
+      <ul class="rnr-helper-list">
+        {{#each helpers as |h i|}}
           <li data-index="{{i}}">
-            <div class="row">
-              <img src="{{h.img}}" alt="{{h.name}} Portrait" class="portrait">
-              <span class="who">{{h.name}}</span>
-              <span class="owner">({{h.owner}})
-                {{#if (eq i 0)}}
-                  <img src = "icons/tools/hand/saw-hacksaw-brass-grey.webp" alt="Leader Icon" title="Harvester Leader" class="leader-icon">
-                {{/if}}
-              </span>
-            </div>
-            <div class="controls-inline">
-              <button data-action="move-up" title="Move Up">↑</button>
-              <button data-action="move-down" title="Move Down">↓</button>
-              <button data-action="remove-harvester" title="Remove">✕</button>
-            </div>
+            <img src="{{h.img}}" class="portrait" alt="{{h.name}}">
+            <span>{{h.name}}</span>
+            <button data-action="remove-helper" title="Remove Helper">✕</button>
           </li>
         {{/each}}
       </ul>
     {{else}}
-      <p class="muted">No harvesters assigned yet.</p>
+      <p class="muted">No helpers assigned yet.</p>
     {{/if}}
 
-    <div class="actions">
-      <button class="primary" data-action="start-harvest">Start Harvest</button>
+    <div class="rnr-dropdown">
+      {{#each availableHarvesters}}
+        <div class="rnr-dropdown-entry"
+             data-action="add-helper"
+             data-actor-id="{{id}}"
+             data-actor-name="{{name}}"
+             data-actor-img="{{img}}">
+          <img src="{{img}}" class="portrait" alt="{{name}}">
+          <span>{{name}}</span>
+        </div>
+      {{/each}}
     </div>
   </div>
 
+  {{#if helpers.length}}
+    <p class="muted helper-bonus {{helperBonusClass}}">
+      Potential Bonus: +{{helperBonus}} (max {{harvesterLimit}})
+    </p>
+  {{/if}}
+
+
+
+  <hr>
+  <div class="actions">
+    <button class="primary" data-action="start-harvest">Start Harvest</button>
+  </div>
+</div>
+
+
 </section>
+

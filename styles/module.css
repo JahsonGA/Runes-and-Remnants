@@ -142,3 +142,95 @@ button.primary {
 button.primary:hover { background: #3a0f0f; }
 
 .muted { opacity: .7; }
+
+.rnr-role { margin-bottom: 1rem; }
+.rnr-role h4 { color: var(--rnr-red); margin-bottom: 0.25rem; }
+
+.rnr-role-entry, .rnr-helper-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--rnr-wood);
+  border-radius: 6px;
+  margin-bottom: 4px;
+  background: #171315;
+}
+
+.rnr-role-entry img,
+.rnr-helper-list img {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid var(--rnr-wood);
+  object-fit: cover;
+}
+
+.rnr-role-entry button,
+.rnr-helper-list button {
+  margin-left: auto;
+  background: #1a0e0e;
+  color: var(--rnr-text);
+  border: 1px solid var(--rnr-brown);
+  border-radius: 4px;
+  width: 22px;
+  height: 22px;
+}
+
+.rnr-role-entry button:hover,
+.rnr-helper-list button:hover {
+  border-color: var(--rnr-red);
+  background: #3a0f0f;
+}
+
+/* Role headers */
+.rnr-role h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--rnr-red);
+  font-weight: bold;
+}
+
+.role-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  object-fit: contain;
+  opacity: 0.85;
+}
+
+.helper-bonus {
+  text-align: right;
+  font-style: italic;
+  color: var(--rnr-text);
+  opacity: 0.8;
+  margin-top: 0.25rem;
+}
+
+/* ===== Dynamic Helper Bonus Colors ===== */
+.helper-bonus.none {
+  color: #888;
+  text-shadow: none;
+}
+
+.helper-bonus.low {
+  color: #c79a3a;
+  text-shadow: 0 0 6px rgba(199, 154, 58, 0.3);
+}
+
+.helper-bonus.medium {
+  color: #a4e1a1;
+  text-shadow: 0 0 8px rgba(164, 225, 161, 0.4);
+}
+
+.helper-bonus.high {
+  color: #80ffb5;
+  text-shadow: 0 0 10px rgba(128, 255, 181, 0.5);
+}
+
+.helper-bonus {
+  font-weight: 500;
+  text-align: right;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
