@@ -7,6 +7,29 @@ export const TYPE_MOD = {
   fey: 2, fiend: 3, giant: 1, humanoid: 0, monstrosity: 2, ooze: 1, plant: 1, undead: 3, other: 0
 };
 
+/**
+ * Harvesting skill associations by creature type
+ * (Used for both assessment and harvesting phases)
+ */
+export const HARVEST_SKILL_BY_TYPE = {
+  aberration: "Arcana",
+  beast: "Survival",
+  celestial: "Religion",
+  construct: "Investigation",
+  dragon: "Survival",
+  elemental: "Arcana",
+  fey: "Arcana",
+  fiend: "Religion",
+  giant: "Medicine",
+  humanoid: "Medicine",
+  monstrosity: "Survival",
+  ooze: "Nature",
+  plant: "Nature",
+  undead: "Medicine",
+  other: "Survival"
+};
+
+
 export const RARITY_MOD = {
   common: 0, uncommon: 2, rare: 5, "very-rare": 8, legendary: 10
 };
@@ -83,15 +106,53 @@ export async function rollSkillCheck(actor, skillKey, label = "Harvest Check") {
 }
 
 /* ---------- ROLE-SPECIFIC ROLLS ---------- */
-export async function rollAssessment(actor) {
-  const skill = bestSkillFor(actor, ["nat", "arc", "med"]);
-  return rollSkillCheck(actor, skill.key, "Assessment (Identify Materials)");
+/**
+ * Performs the Assessment (Int-based) roll
+ * @param {Actor5e} actor
+ * @param {string} creatureType
+ */
+export async function rollAssessment(actor, creatureType = "other") {
+  const skillName = HARVEST_SKILL_BY_TYPE[String(creatureType).toLowerCase()] ?? "Survival";
+  const skillKey = skillName.toLowerCase().slice(0, 3); // e.g., Arcana → arc
+
+  const intMod = actor.system?.abilities?.int?.mod ?? 0;
+  const skill = actor.system?.skills?.[skillKey];
+  const prof = skill?.prof > 0 ? (actor.system?.attributes?.prof ?? 2) : 0;
+  const mod = intMod + prof;
+
+  const roll = await (new Roll("1d20 + @mod", { mod })).evaluate({ async: true });
+  await roll.toMessage({
+    flavor: `🧠 Assessment Check (${skillName}) — ${actor.name}`,
+    speaker: ChatMessage.getSpeaker({ actor })
+  });
+
+  return { total: roll.total, skillName };
 }
 
-export async function rollHarvest(actor) {
-  const skill = bestSkillFor(actor, ["sle", "sur"]);
-  return rollSkillCheck(actor, skill.key, "Harvest Attempt");
+/**
+ * Performs the Carving (Dex-based) roll
+ * @param {Actor5e} actor
+ * @param {string} creatureType
+ */
+export async function rollCarving(actor, creatureType = "other") {
+  const skillName = HARVEST_SKILL_BY_TYPE[String(creatureType).toLowerCase()] ?? "Survival";
+  const skillKey = skillName.toLowerCase().slice(0, 3);
+
+  const dexMod = actor.system?.abilities?.dex?.mod ?? 0;
+  const skill = actor.system?.skills?.[skillKey];
+  const prof = skill?.prof > 0 ? (actor.system?.attributes?.prof ?? 2) : 0;
+  const mod = dexMod + prof;
+
+  const roll = await (new Roll("1d20 + @mod", { mod })).evaluate({ async: true });
+  await roll.toMessage({
+    flavor: `🔪 Carving Check (${skillName}) — ${actor.name}`,
+    speaker: ChatMessage.getSpeaker({ actor })
+  });
+
+  return { total: roll.total, skillName };
 }
+
+
 
 /* ---------- HELPERS ---------- */
 export function computeHelperBonus(helpers = [], skillKey = "sur", sizeKey = "med") {
