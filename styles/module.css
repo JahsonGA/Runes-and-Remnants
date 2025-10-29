@@ -227,9 +227,12 @@ button.primary:hover { background: #3a0f0f; }
 .helper-bonus.medium { color: #a4e1a1; text-shadow: 0 0 8px rgba(164, 225, 161, 0.4); }
 .helper-bonus.high { color: #80ffb5; text-shadow: 0 0 10px rgba(128, 255, 181, 0.5); }
 
-/* Warning message for same actor */
-.warning {
+.rnr-harvest.grimdark .window-content .warning,
+.rnr-harvest .warning {
   color: #ffcc00;
   font-style: italic;
   margin: 0.25em 0;
+  text-shadow: 0 0 4px rgba(255, 204, 0, 0.4);
+  font-size: 0.9rem;
+  line-height: 1.2;
 }
