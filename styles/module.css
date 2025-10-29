@@ -1,3 +1,7 @@
+/* =========================================================
+   Runes & Remnants - Harvest Menu Styles (Updated)
+   ========================================================= */
+
 /* Theme colors */
 :root {
   --rnr-brown: #734A12;   /* main */
@@ -9,14 +13,14 @@
 
 /* HUD button */
 .control-icon.harvest-menu {
-  padding: 0; /* let the image fill the tile */
+  padding: 0;
   background: radial-gradient(circle, var(--rnr-wood) 0%, #000 95%);
   border: 1px solid var(--rnr-brown);
 }
 .control-icon.harvest-menu .rnr-cleaver {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* fill the whole button */
+  object-fit: cover;
   display: block;
 }
 .control-icon.harvest-menu:hover {
@@ -31,17 +35,13 @@
   border: 2px solid var(--rnr-brown);
 }
 
-/*.rnr-harvest section.rnr-columns.drag-hover {
-  outline: 2px dashed var(--rnr-red);
-  background-color: rgba(178, 34, 34, 0.1);
-}*/
-
 /* Layout */
 .rnr-header h2 { margin: 0 0 .5rem 0; color: var(--rnr-red); }
 .rnr-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .rnr-card { background: #171315; border: 1px solid var(--rnr-wood); border-radius: 10px; padding: 10px; }
 .rnr-card h3 { margin-top: 0; color: var(--rnr-brown); }
 
+/* Dropdowns */
 .rnr-dropdown {
   border: 1px solid var(--rnr-wood);
   border-radius: 8px;
@@ -70,6 +70,7 @@
   border: 1px solid var(--rnr-wood);
 }
 
+/* Order and controls */
 .rnr-order li {
   display: flex;
   align-items: center;
@@ -87,16 +88,15 @@
   filter: drop-shadow(0 0 2px gold);
   opacity: 0.9;
 }
-
 .rnr-order li:first-child .leader-icon {
   animation: pulse-leader 1.8s infinite ease-in-out;
 }
-
 @keyframes pulse-leader {
   0%, 100% { opacity: 0.9; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.15); }
 }
 
+/* Portraits and list entries */
 .rnr-order .row {
   display: flex;
   align-items: center;
@@ -109,6 +109,8 @@
   object-fit: cover;
   border: 1px solid var(--rnr-wood);
 }
+
+/* Inline buttons */
 .controls-inline {
   display: flex;
   gap: 4px;
@@ -117,7 +119,6 @@
   align-items: center;
   flex-shrink: 0;
 }
-
 .controls-inline button {
   width: 24px;
   height: 24px;
@@ -127,12 +128,12 @@
   border: 1px solid var(--rnr-brown);
   color: var(--rnr-text);
 }
-
 .controls-inline button:hover {
   background: #2b0d0d;
   border-color: var(--rnr-red);
 }
 
+/* Buttons and general UI */
 .actions { margin-top: 10px; display: flex; justify-content: flex-end; }
 button.primary {
   background: #2a0d0d;
@@ -140,12 +141,20 @@ button.primary {
   color: var(--rnr-text);
 }
 button.primary:hover { background: #3a0f0f; }
-
 .muted { opacity: .7; }
 
+/* Role containers */
 .rnr-role { margin-bottom: 1rem; }
-.rnr-role h4 { color: var(--rnr-red); margin-bottom: 0.25rem; }
+.rnr-role h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--rnr-red);
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
 
+/* Portraits in role lists */
 .rnr-role-entry, .rnr-helper-list li {
   display: flex;
   align-items: center;
@@ -156,7 +165,6 @@ button.primary:hover { background: #3a0f0f; }
   margin-bottom: 4px;
   background: #171315;
 }
-
 .rnr-role-entry img,
 .rnr-helper-list img {
   width: 28px;
@@ -165,7 +173,6 @@ button.primary:hover { background: #3a0f0f; }
   border: 1px solid var(--rnr-wood);
   object-fit: cover;
 }
-
 .rnr-role-entry button,
 .rnr-helper-list button {
   margin-left: auto;
@@ -176,73 +183,51 @@ button.primary:hover { background: #3a0f0f; }
   width: 22px;
   height: 22px;
 }
-
 .rnr-role-entry button:hover,
 .rnr-helper-list button:hover {
   border-color: var(--rnr-red);
   background: #3a0f0f;
 }
 
-/* Role headers */
-.rnr-role h4 {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--rnr-red);
-  font-weight: bold;
+/* --- Fixed Role Header Icons --- */
+.rnr-role > h4 > .role-icon {
+  width: 20px !important;
+  height: 20px !important;
+  border: none !important;
+  border-radius: 2px !important;
+  object-fit: contain !important;
+  background: none !important;
+  box-shadow: none !important;
+  flex-shrink: 0;
+  display: inline-block;
+  opacity: 1 !important;
 }
 
-.role-icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 3px;
-  object-fit: contain;
-  opacity: 0.85;
+/* --- Distinct Tint Colors for Roles --- */
+.rnr-role h4 img.role-icon[alt*="Assessor"] {
+  filter: drop-shadow(0 0 3px gold) brightness(1.1);
+}
+.rnr-role h4 img.role-icon[alt*="Harvester"] {
+  filter: drop-shadow(0 0 3px steelblue) brightness(1.2);
 }
 
+/* Helper bonus display */
 .helper-bonus {
   text-align: right;
   font-style: italic;
   color: var(--rnr-text);
   opacity: 0.8;
   margin-top: 0.25rem;
-}
-
-/* ===== Dynamic Helper Bonus Colors ===== */
-.helper-bonus.none {
-  color: #888;
-  text-shadow: none;
-}
-
-.helper-bonus.low {
-  color: #c79a3a;
-  text-shadow: 0 0 6px rgba(199, 154, 58, 0.3);
-}
-
-.helper-bonus.medium {
-  color: #a4e1a1;
-  text-shadow: 0 0 8px rgba(164, 225, 161, 0.4);
-}
-
-.helper-bonus.high {
-  color: #80ffb5;
-  text-shadow: 0 0 10px rgba(128, 255, 181, 0.5);
-}
-
-.helper-bonus {
   font-weight: 500;
   text-align: right;
   transition: color 0.3s ease, text-shadow 0.3s ease;
 }
+.helper-bonus.none { color: #888; text-shadow: none; }
+.helper-bonus.low { color: #c79a3a; text-shadow: 0 0 6px rgba(199, 154, 58, 0.3); }
+.helper-bonus.medium { color: #a4e1a1; text-shadow: 0 0 8px rgba(164, 225, 161, 0.4); }
+.helper-bonus.high { color: #80ffb5; text-shadow: 0 0 10px rgba(128, 255, 181, 0.5); }
 
-.rnr-role .role-icon {
-  width: 20px;
-  height: 20px;
-  margin-right: 6px;
-  filter: none !important;
-  opacity: 1 !important;
-}
-
+/* Warning message for same actor */
 .warning {
   color: #ffcc00;
   font-style: italic;

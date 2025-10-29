@@ -388,7 +388,7 @@ async _startHarvest() {
 
   // --- DETERMINE SKILL ---
   const skillName = HARVEST_SKILL_BY_TYPE[String(type).toLowerCase()] ?? "Survival";
-  const skillKey = skillName.toLowerCase().slice(0, 3); // e.g. Arcana → "arc"
+  const skillKey = skillName.toLowerCase().slice(0, 3);
 
   // --- 1️⃣ ASSESSMENT PHASE ---
   const assess = await rollAssessment(assessorActor, type);
