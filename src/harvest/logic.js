@@ -221,3 +221,11 @@ export function finalHarvestResult(dc, total) {
   if (total <= dc - 10) return "critical-failure";
   return "failure";
 }
+
+/**
+ * Compatibility alias for tests expecting rollOutcome()
+ * Uses same logic as finalHarvestResult()
+ */
+export function rollOutcome({ rollTotal, dc }) {
+  return finalHarvestResult(dc, rollTotal);
+}
