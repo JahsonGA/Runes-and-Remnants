@@ -233,3 +233,24 @@ button.primary:hover { background: #3a0f0f; }
   font-style: italic;
   margin: 0.25em 0;
 }
+
+/* Force header role icons to a fixed stable size; prevent portrait rules from bleeding in */
+.rnr-harvest .rnr-role > h4 > .role-icon {
+  width: 20px !important;
+  height: 20px !important;
+  border: none !important;
+  border-radius: 2px !important;
+  object-fit: contain !important;
+  background: none !important;
+  box-shadow: none !important;
+  display: inline-block !important;
+  opacity: 1 !important;
+}
+
+/* Optional tint to differentiate */
+.rnr-harvest .rnr-role h4 img.role-icon[data-role="assessor"] {
+  filter: drop-shadow(0 0 3px gold) brightness(1.05);
+}
+.rnr-harvest .rnr-role h4 img.role-icon[data-role="harvester"] {
+  filter: drop-shadow(0 0 3px steelblue) brightness(1.1);
+}
