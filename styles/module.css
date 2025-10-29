@@ -234,3 +234,17 @@ button.primary:hover { background: #3a0f0f; }
   text-align: right;
   transition: color 0.3s ease, text-shadow 0.3s ease;
 }
+
+.rnr-role .role-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+.warning {
+  color: #ffcc00;
+  font-style: italic;
+  margin: 0.25em 0;
+}

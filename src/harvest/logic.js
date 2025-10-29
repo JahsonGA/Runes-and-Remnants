@@ -134,7 +134,7 @@ export async function rollAssessment(actor, creatureType = "other") {
  * @param {Actor5e} actor
  * @param {string} creatureType
  */
-export async function rollCarving(actor, creatureType = "other") {
+export async function rollCarving(actor, creatureType = "other", options = {}) {
   const skillName = HARVEST_SKILL_BY_TYPE[String(creatureType).toLowerCase()] ?? "Survival";
   const skillKey = skillName.toLowerCase().slice(0, 3);
 
@@ -143,9 +143,11 @@ export async function rollCarving(actor, creatureType = "other") {
   const prof = skill?.prof > 0 ? (actor.system?.attributes?.prof ?? 2) : 0;
   const mod = dexMod + prof;
 
-  const roll = await (new Roll("1d20 + @mod", { mod })).evaluate({ async: true });
+  const formula = options.disadvantage ? "2d20kh1 + @mod" : "1d20 + @mod";
+  const roll = await (new Roll(formula, { mod })).evaluate({ async: true });
+
   await roll.toMessage({
-    flavor: `🔪 Carving Check (${skillName}) — ${actor.name}`,
+    flavor: `${options.disadvantage ? "Disadvantaged " : ""}🔪 Carving Check (${skillName}) — ${actor.name}`,
     speaker: ChatMessage.getSpeaker({ actor })
   });
 
@@ -154,11 +156,12 @@ export async function rollCarving(actor, creatureType = "other") {
 
 
 
+
 /* ---------- HELPERS ---------- */
 export function computeHelperBonus(helpers = [], skillKey = "sur", sizeKey = "med") {
   if (!helpers.length) return { total: 0, breakdown: [] };
 
-  const sizeCap = { tiny: 1, sm: 2, med: 3, lg: 5, huge: 7, grg: 11 }[sizeKey?.toLowerCase?.()] ?? 3;
+  const sizeCap = { tiny: 0, sm: 1, med: 2, lg: 4, huge: 6, grg: 10 }[sizeKey?.toLowerCase?.()] ?? 3;
   const breakdown = [];
   let total = 0;
 

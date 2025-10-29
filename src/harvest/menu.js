@@ -128,6 +128,11 @@ async getData() {
   this.assessor = this.assessor ?? null;
   this.harvester = this.harvester ?? null;
 
+  const sameActor = this.assessor?.actorId && this.harvester?.actorId
+  ? this.assessor.actorId === this.harvester.actorId
+  : false;
+
+
   // Compute live helper bonus
   const { total: helperBonus } = computeHelperBonus(this.helpers, "sur", sizeKey);
   // Determine color class dynamically
@@ -154,7 +159,8 @@ async getData() {
     helperBonus,
     helperBonusClass,
     harvesterLimit: this.harvesterLimit,
-    availableHarvesters
+    availableHarvesters,
+    sameActor
   };
 }
 
@@ -378,6 +384,8 @@ async _startHarvest() {
   if (!assessorActor || !harvesterActor)
     return ui.notifications.error("One or more assigned actors could not be found.");
 
+  const sameActor = this.assessor.actorId === this.harvester.actorId;
+
   // --- DETERMINE SKILL ---
   const skillName = HARVEST_SKILL_BY_TYPE[String(type).toLowerCase()] ?? "Survival";
   const skillKey = skillName.toLowerCase().slice(0, 3); // e.g. Arcana → "arc"
@@ -386,7 +394,14 @@ async _startHarvest() {
   const assess = await rollAssessment(assessorActor, type);
 
   // --- 2️⃣ CARVING PHASE ---
-  const carve = await rollCarving(harvesterActor, type);
+  // Carving roll
+  let carve;
+  if (sameActor) {
+    ui.notifications.warn(`${this.harvester.name} is performing both roles — rolling Carving at disadvantage.`);
+    carve = await rollCarving(harvesterActor, type, { disadvantage: true });
+  } else {
+    carve = await rollCarving(harvesterActor, type);
+  }
 
   // --- 3️⃣ COMBINE ROLLS ---
   const harvestTotal = assess.total + carve.total;
