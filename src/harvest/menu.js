@@ -1,4 +1,4 @@
-/*import {
+import {
   MODULE_ID,
   computeHarvestDC,
   outcome,
@@ -8,10 +8,10 @@
   getHarvestOptions,
   rollAssessment,
   rollHarvest,
-  applyHelperBonus,
-  finalHarvestResult
+  finalHarvestResult,
+  getEssenceByCR
 } from "./logic.js";
-*/
+
 
 export class HarvestMenu extends Application {
   constructor(initialTokenDoc = null, options = {}) {
