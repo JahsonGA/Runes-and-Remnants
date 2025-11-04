@@ -23,7 +23,7 @@
         <div class="meta">
           <div class="name">{{targetName}}</div>
           <div class="sub">Type: {{type}} • CR: {{cr}}</div>
-          <div class="sub">Size: {{sizeKey}} • Max Harvesters: {{harvesterLimit}}</div>
+          <div class="sub">Size: {{sizeKey}} • Max Helpers: {{helperCap}}</div>
         </div>
       </div>
     {{else}}
@@ -127,7 +127,7 @@
     {{/if}}
 
     <div class="rnr-dropdown">
-      {{#each availableHarvesters}}
+      {{#each availableHelpers}}
         <div class="rnr-dropdown-entry"
              data-action="add-helper"
              data-actor-id="{{id}}"
@@ -142,7 +142,7 @@
 
   {{#if helpers.length}}
     <p class="muted helper-bonus {{helperBonusClass}}">
-      Potential Bonus: +{{helperBonus}} (max {{harvesterLimit}})
+      Potential Bonus: +{{helperBonus}} (max {{helperCap}})
     </p>
   {{/if}}
 

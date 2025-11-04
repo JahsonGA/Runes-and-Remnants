@@ -70,12 +70,12 @@ export class HarvestMenu extends Application {
 
   _getHarvesterLimit(sizeKey) {
     const sizeMap = {
-      tiny: 1,
-      sm: 2,
-      med: 3,
-      lg: 5,
-      huge: 7,
-      grg: 11
+      tiny: 0,
+      sm: 1,
+      med: 2,
+      lg: 4,
+      huge: 6,
+      grg: 10
     };
     return sizeMap[sizeKey?.toLowerCase?.()] ?? 1;
   }
@@ -113,6 +113,23 @@ export class HarvestMenu extends Application {
     return this._getPortrait(this.targetActor);
   }
 
+  /* ========================= DATA PREPARATION ========================= */
+  _skillKeyForType(type) {
+  const t = String(type || "other").toLowerCase();
+  // Full-name → dnd5e key
+  const nameToKey = {
+    Arcana: "arc",
+    Survival: "sur",
+    Religion: "rel",
+    Investigation: "inv",
+    Medicine: "med",
+    Nature: "nat"
+  };
+  const skillName = HARVEST_SKILL_BY_TYPE[t] ?? "Survival";
+  return { skillName, skillKey: nameToKey[skillName] ?? "sur" };
+}
+
+
   /* ========================= DATA RENDER ========================= */
 async getData() {
   await this._ensureLootIndex();
@@ -123,26 +140,41 @@ async getData() {
   const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
   this.harvesterLimit = this._getHarvesterLimit(sizeKey);
 
-  // Ensure helper array exists
-  this.helpers = this.helpers ?? [];
-  this.assessor = this.assessor ?? null;
+  this.helpers   = this.helpers   ?? [];
+  this.assessor  = this.assessor  ?? null;
   this.harvester = this.harvester ?? null;
 
-  const sameActor = this.assessor?.actorId && this.harvester?.actorId
-  ? this.assessor.actorId === this.harvester.actorId
-  : false;
+  const sameActor = !!(this.assessor?.actorId && this.harvester?.actorId &&
+                       this.assessor.actorId === this.harvester.actorId);
 
+  // Use correct skill for helper bonus
+  const { skillName, skillKey } = this._skillKeyForType(type);
+  const hb = computeHelperBonus(this.helpers, skillKey, sizeKey);
+  const helperBonus = hb.total;
+  const helperCap   = hb.cap;
 
-  // Compute live helper bonus
-  const { total: helperBonus } = computeHelperBonus(this.helpers, "sur", sizeKey);
-  // Determine color class dynamically
-  let helperBonusClass = "neutral";
-  if (helperBonus === 0) helperBonusClass = "none";
+  // Color class
+  let helperBonusClass = "none";
+  if (helperBonus <= 0) helperBonusClass = "none";
   else if (helperBonus <= 3) helperBonusClass = "low";
   else if (helperBonus <= 6) helperBonusClass = "medium";
   else helperBonusClass = "high";
 
-  const availableHarvesters = this._getAvailableHarvesters();
+  // Build filtered pools
+  const availableActors = this._getAvailableHarvesters(); // raw full pool
+  const takenHelperIds = new Set(this.helpers.map(h => h.actorId));
+  const assessorId  = this.assessor?.actorId  ?? null;
+  const harvesterId = this.harvester?.actorId ?? null;
+
+  const availableForAssessor = availableActors.filter(a => a.id !== harvesterId && !takenHelperIds.has(a.id));
+  const availableForHarvester = availableActors.filter(a => a.id !== assessorId && !takenHelperIds.has(a.id));
+  const availableHelpers = availableActors.filter(a => a.id !== assessorId && a.id !== harvesterId && !takenHelperIds.has(a.id));
+
+  // Clean invalid helpers (e.g., same as roles)
+  this.helpers = this.helpers.filter(h => 
+    h.actorId !== assessorId && h.actorId !== harvesterId
+  );
+
 
   return {
     hasTarget: !!this.targetActor,
@@ -158,11 +190,15 @@ async getData() {
     helpers: this.helpers,
     helperBonus,
     helperBonusClass,
-    harvesterLimit: this.harvesterLimit,
-    availableHarvesters,
-    sameActor
+    helperCap,
+    availableForAssessor,   
+    availableForHarvester,  
+    availableHelpers,       
+    sameActor,
+    helperSkillName: skillName
   };
 }
+
 
 
 
@@ -261,28 +297,50 @@ async getData() {
     });
 
     // Role assignment handlers
+    // Set Assessor
     html.on("click", "[data-action='set-assessor']", ev => {
       const el = ev.currentTarget;
+      const actorId = el.dataset.actorId;
+
+      // prevent using same as harvester
+      if (this.harvester?.actorId === actorId) {
+        return ui.notifications.warn("This actor is already the Harvester.");
+      }
+
       this.assessor = {
-        actorId: el.dataset.actorId,
+        actorId,
         name: el.dataset.actorName,
-        img: el.dataset.actorImg
+        img:  el.dataset.actorImg
       };
+
+      // If they were a helper, remove them
+      this.helpers = (this.helpers || []).filter(h => h.actorId !== actorId);
       this.render(true);
     });
 
+    // Remove Assessor (allowed)
     html.on("click", "[data-action='remove-assessor']", () => {
       this.assessor = null;
       this.render(true);
     });
 
+    // Set Harvester
     html.on("click", "[data-action='set-harvester']", ev => {
       const el = ev.currentTarget;
+      const actorId = el.dataset.actorId;
+
+      if (this.assessor?.actorId === actorId) {
+        return ui.notifications.warn("This actor is already the Assessor.");
+      }
+
       this.harvester = {
-        actorId: el.dataset.actorId,
+        actorId,
         name: el.dataset.actorName,
-        img: el.dataset.actorImg
+        img:  el.dataset.actorImg
       };
+
+      // If they were a helper, remove them
+      this.helpers = (this.helpers || []).filter(h => h.actorId !== actorId);
       this.render(true);
     });
 
@@ -291,23 +349,31 @@ async getData() {
       this.render(true);
     });
 
-    // Add helper
+
+    // Add Helper
     html.on("click", "[data-action='add-helper']", ev => {
       const el = ev.currentTarget;
-      const id = el.dataset.actorId;
-      const name = el.dataset.actorName;
-      const img = el.dataset.actorImg;
-      if (this.helpers.some(h => h.actorId === id)) return;
-      this.helpers.push({ actorId: id, name, img });
-      this.render(true);
-    });
+      const actorId = el.dataset.actorId;
 
-    // Remove helper
-    html.on("click", "[data-action='remove-helper']", ev => {
-      const li = ev.currentTarget.closest("li[data-index]");
-      const i = Number(li.dataset.index);
-      if (!Number.isInteger(i)) return;
-      this.helpers.splice(i, 1);
+      // Block assessor/harvester and duplicates
+      if (this.assessor?.actorId === actorId || this.harvester?.actorId === actorId) {
+        return ui.notifications.warn("That actor is assigned as a role and cannot be a Helper.");
+      }
+      if (this.helpers.some(h => h.actorId === actorId)) return;
+
+      // Size cap (helpers cap is handled at roll time too, but enforce here for UX)
+      const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
+      const { skillKey } = this._skillKeyForType(this._actorSummary(this.targetActor).type);
+      const cap = computeHelperBonus([], skillKey, sizeKey).cap; // ask logic for the cap
+      if (this.helpers.length >= cap) {
+        return ui.notifications.warn(`You cannot assign more than ${cap} helpers for a ${sizeKey} creature.`);
+      }
+
+      this.helpers.push({
+        actorId,
+        name: el.dataset.actorName,
+        img:  el.dataset.actorImg
+      });
       this.render(true);
     });
 
