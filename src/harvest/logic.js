@@ -155,6 +155,24 @@ export async function rollCarving(actor, creatureType = "other", options = {}) {
 }
 
 
+/**
+ * Performs both Assessment and Carving rolls,
+ * applying disadvantage automatically if the same actor performs both.
+ * Returns { assess, carve, sameActor }.
+ */
+export async function performHarvestRolls(assessorActor, harvesterActor, creatureType = "other") {
+  const sameActor = assessorActor?.id === harvesterActor?.id;
+
+  if (sameActor) {
+    ui.notifications.warn(`${assessorActor.name} is performing both roles — rolls are made at disadvantage.`);
+  }
+
+  const assess = await rollAssessment(assessorActor, creatureType);
+  const carve  = await rollCarving(harvesterActor, creatureType, { disadvantage: sameActor });
+
+  return { assess, carve, sameActor };
+}
+
 
 
 /* ---------- HELPERS ---------- */

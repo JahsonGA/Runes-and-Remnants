@@ -203,10 +203,12 @@ export class HarvestMenu extends Application {
       const { type } = this._actorSummary(this.targetActor);
       const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
       const { skillKey } = this._skillKeyForType(type);
-      const cap = this._helperCap ?? 0;
+      const { cap } = computeHelperBonus([], skillKey, sizeKey);
       
-      if (this.helpers.length >= cap) return ui.notifications.warn(`You cannot assign more than ${cap} helpers.`);
-      
+      if (this.helpers.length >= cap) {
+        return ui.notifications.warn(`You cannot assign more than ${cap} helpers for a ${sizeKey} creature.`);
+      }
+
       this.helpers.push({ actorId, name: el.dataset.actorName, img: el.dataset.actorImg });
       this.render(true);
     });
@@ -227,60 +229,94 @@ export class HarvestMenu extends Application {
   }
 
   async _startHarvest() {
-    if (!this.targetActor) return ui.notifications.warn("No target creature selected.");
-    if (!this.assessor || !this.harvester) return ui.notifications.warn("Assign both an Assessor and a Harvester first.");
+    // --- 0️⃣ PRECONDITIONS ---
+    if (!this.targetActor)
+      return ui.notifications.warn("No target creature selected.");
+
+    if (!this.assessor || !this.harvester)
+      return ui.notifications.warn("Assign both an Assessor and a Harvester first.");
 
     const helpers = this.helpers ?? [];
     const { type, cr } = this._actorSummary(this.targetActor);
     const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
-    const pack = game.packs.get("runes-and-remnants.harvest-items");
-    if (!pack) return ui.notifications.error("Harvest Items compendium not found.");
 
+    // --- LOAD COMPENDIUM ---
+    const pack = game.packs.get("runes-and-remnants.harvest-items");
+    if (!pack)
+      return ui.notifications.error("Harvest Items compendium not found.");
+
+    // --- FETCH ACTORS ---
     const assessorActor = game.actors.get(this.assessor.actorId);
     const harvesterActor = game.actors.get(this.harvester.actorId);
-    const sameActor = this.assessor.actorId === this.harvester.actorId;
+
+    if (!assessorActor || !harvesterActor)
+      return ui.notifications.error("One or more assigned actors could not be found.");
+
+    // --- ROLL HANDLER (with disadvantage if same actor) ---
+    const { assess, carve, sameActor } = await performHarvestRolls(assessorActor, harvesterActor, type);
+
+    // --- COMBINE RESULTS ---
+    const harvestTotal = assess.total + carve.total;
+    const baseDC = computeHarvestDC({ cr, type, rarity: "common", baseDC: 10 });
 
     const skillName = HARVEST_SKILL_BY_TYPE[String(type).toLowerCase()] ?? "Survival";
     const skillKey = skillName.toLowerCase().slice(0, 3);
 
-    const assess = await rollAssessment(assessorActor, type);
-    const carve  = await rollCarving(harvesterActor, type, sameActor ? { disadvantage: true } : {});
-
-    const harvestTotal = assess.total + carve.total;
-    const baseDC = computeHarvestDC({ cr, type, rarity: "common", baseDC: 10 });
-    const { total: helperBonus, breakdown: helperBreakdown, cap: helperCap } = computeHelperBonus(helpers, skillKey, sizeKey);
+    // --- HELPER BONUS ---
+    const { total: helperBonus, breakdown: helperBreakdown, cap: helperCap } =
+      computeHelperBonus(helpers, skillKey, sizeKey);
 
     const totalRoll = harvestTotal + helperBonus;
     const result = finalHarvestResult(baseDC, totalRoll);
 
+    // --- DETERMINE MATERIALS ---
     const typeData = getHarvestOptions(type);
-    if (!typeData?.length) return ui.notifications.warn(`No harvest data for ${type}.`);
+    if (!typeData?.length)
+      return ui.notifications.warn(`No harvest data found for ${type} creatures.`);
+
     const materials = [];
-    for (const tier of typeData) if (totalRoll >= tier.dc) materials.push(...tier.items);
+    for (const tier of typeData)
+      if (totalRoll >= tier.dc) materials.push(...tier.items);
+
     const essence = getEssenceByCR(Number(cr) || 0);
     materials.push(essence.name);
 
+    // --- GRANT ITEMS ---
     const dropPoint = this.targetToken?.object?.center ?? null;
     for (const itemName of materials) {
       const itemEntry = game.rnrHarvestItems.find(i => i.name === itemName);
       if (!itemEntry) continue;
+
       try {
         const itemDoc = await pack.getDocument(itemEntry._id);
-        await grantMaterial({ item: itemDoc, qty: 1, toActor: harvesterActor, dropAt: dropPoint });
+        await grantMaterial({
+          item: itemDoc,
+          qty: 1,
+          toActor: harvesterActor,
+          dropAt: dropPoint
+        });
       } catch (err) {
         console.warn(`[${MODULE_ID}] Failed to grant ${itemName}:`, err);
       }
     }
 
+    // --- COMPOSE CHAT MESSAGE ---
     const helperList = helperBreakdown.length
-      ? helperBreakdown.map(h => `<li>${h.name}: +${h.contribution} (${h.proficient ? "proficient" : "half"})</li>`).join("")
+      ? helperBreakdown.map(h =>
+          `<li>${h.name}: +${h.contribution} (${h.proficient ? "proficient" : "half"})</li>`
+        ).join("")
       : "<li>None</li>";
+
+    const disadvantageNote = sameActor
+      ? `<p class="warning">⚠️ ${this.assessor.name} performed both roles (rolled at disadvantage).</p>`
+      : "";
 
     const msg = `
       <p><b>${this.targetActor.name}</b> (CR ${cr}, ${type}) was harvested.</p>
+      ${disadvantageNote}
       <ul>
-        <li><b>Assessor:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
-        <li><b>Harvester:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
+        <li><b>🧠 Assessor:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
+        <li><b>🔪 Harvester:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
       </ul>
       <p><b>Helpers:</b></p>
       <ul>${helperList}</ul>
@@ -289,7 +325,11 @@ export class HarvestMenu extends Application {
       <p><b>Outcome:</b> ${result}</p>
       <p><b>Recovered:</b> ${materials.join(", ") || "Nothing"}</p>
     `;
+
     ChatMessage.create({ speaker: { alias: "Runes & Remnants" }, content: msg });
+
+    // --- CLEANUP ---
     await this.targetToken.document.delete();
   }
+
 }
