@@ -147,7 +147,7 @@ export async function rollCarving(actor, creatureType = "other", options = {}) {
   const roll = await (new Roll(formula, { mod })).evaluate({ async: true });
 
   await roll.toMessage({
-    flavor: `${options.disadvantage ? "Disadvantaged " : ""}🔪 Carving Check (${skillName}) — ${actor.name}`,
+    flavor: `${options.disadvantage ? "Disadvantaged " : ""} Carving Check (${skillName}) — ${actor.name}`,
     speaker: ChatMessage.getSpeaker({ actor })
   });
 
@@ -173,7 +173,7 @@ export async function performHarvestRolls(assessorActor, harvesterActor, creatur
   return { assess, carve, sameActor };
 }
 
-
+// TODO: Jahson follow chat for details. I am resting here for now.11/4/25 10:03pm
 
 /* ---------- HELPERS ---------- */
 export function computeHelperBonus(helpers = [], skillKey = "sur", sizeKey = "med") {

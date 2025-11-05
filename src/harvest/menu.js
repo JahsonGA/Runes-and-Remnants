@@ -229,7 +229,7 @@ export class HarvestMenu extends Application {
   }
 
   async _startHarvest() {
-    // --- 0️⃣ PRECONDITIONS ---
+    // --- PRECONDITIONS ---
     if (!this.targetActor)
       return ui.notifications.warn("No target creature selected.");
 
@@ -315,8 +315,8 @@ export class HarvestMenu extends Application {
       <p><b>${this.targetActor.name}</b> (CR ${cr}, ${type}) was harvested.</p>
       ${disadvantageNote}
       <ul>
-        <li><b>🧠 Assessor:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
-        <li><b>🔪 Harvester:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
+        <li><b> Assessor:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
+        <li><b> Harvester:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
       </ul>
       <p><b>Helpers:</b></p>
       <ul>${helperList}</ul>
