@@ -73,6 +73,7 @@
 }
 
 /* Role containers */
+/* --- Role header icons (with glow effects) --- */
 .rnr-role {
   margin-bottom: 1rem;
 }
@@ -90,6 +91,26 @@
   object-fit: contain;
   border: none;
   filter: none;
+}
+
+/* Subtle glow for role types */
+.rnr-role h4 img.role-icon[data-role="assessor"] {
+  filter: drop-shadow(0 0 4px gold) brightness(1.1);
+}
+.rnr-role h4 img.role-icon[data-role="harvester"] {
+  filter: drop-shadow(0 0 4px steelblue) brightness(1.2);
+}
+.rnr-role h4 img.role-icon[data-role="helper"] {
+  filter: drop-shadow(0 0 4px limegreen) brightness(1.2);
+}
+
+/* Optional glow animation */
+@keyframes softPulse {
+  0%, 100% { filter: brightness(1.1); }
+  50% { filter: brightness(1.4); }
+}
+.rnr-role h4 img.role-icon {
+  animation: softPulse 3s ease-in-out infinite;
 }
 
 /* Portrait entries */

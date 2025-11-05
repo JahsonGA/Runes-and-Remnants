@@ -91,6 +91,9 @@ export class HarvestMenu extends Application {
     const helperBonus = hb.total;
     const helperCap   = hb.cap;
 
+    // expose helper cap to template
+    this._helperCap = helperCap;
+
     const helperBonusClass =
       helperBonus <= 0 ? "none" :
       helperBonus <= 3 ? "low" :
@@ -127,12 +130,43 @@ export class HarvestMenu extends Application {
   }
 
   _getAvailableActors() {
-    return Array.from(game.actors.values()).map(a => ({
-      id: a.id,
-      name: a.name,
-      img: this._getPortrait(a)
-    }));
-  }
+    const allActors = Array.from(game.actors.values());
+    const activeUsers = game.users.filter(u => u.active);
+    const activeUserIds = new Set(activeUsers.map(u => u.id));
+
+    const sceneActorIds = new Set(
+      (canvas?.tokens?.placeables ?? [])
+        .map(t => t.actor?.id)
+        .filter(id => !!id)
+    );
+
+    const weighted = allActors.map(a => {
+      const isPC = a.type === "character";
+      const owners = game.users.filter(u => a.testUserPermission(u, "OWNER"));
+      const activeOwners = owners.filter(u => activeUserIds.has(u.id));
+
+      // Priority ranking:
+      // 1 → Player-owned
+      // 2 → Scene actors
+      // 3 → Everything else
+      let priority = 3;
+      if (isPC && activeOwners.length) priority = 1;
+      else if (sceneActorIds.has(a.id)) priority = 2;
+
+      return {
+        id: a.id,
+        name: a.name,
+        img: this._getPortrait(a),
+        priority
+      };
+  });
+
+  // Sort by priority, then alphabetically
+  weighted.sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name));
+
+  return weighted;
+}
+
 
   activateListeners(html) {
     super.activateListeners(html);
@@ -162,13 +196,17 @@ export class HarvestMenu extends Application {
     html.on("click", "[data-action='add-helper']", ev => {
       const el = ev.currentTarget;
       const actorId = el.dataset.actorId;
+      
       if (this.assessor?.actorId === actorId || this.harvester?.actorId === actorId) return ui.notifications.warn("That actor already has a role.");
       if (this.helpers.some(h => h.actorId === actorId)) return;
+      
       const { type } = this._actorSummary(this.targetActor);
       const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
       const { skillKey } = this._skillKeyForType(type);
-      const cap = computeHelperBonus([], skillKey, sizeKey).cap;
+      const cap = this._helperCap ?? 0;
+      
       if (this.helpers.length >= cap) return ui.notifications.warn(`You cannot assign more than ${cap} helpers.`);
+      
       this.helpers.push({ actorId, name: el.dataset.actorName, img: el.dataset.actorImg });
       this.render(true);
     });
