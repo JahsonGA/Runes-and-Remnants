@@ -159,12 +159,11 @@ export async function rollCarving(actor, creatureType = "other", options = {}) {
 
 /* ---------- HELPERS ---------- */
 export function computeHelperBonus(helpers = [], skillKey = "sur", sizeKey = "med") {
-  if (!helpers.length) return { total: 0, breakdown: [] };
-
   const sizeCap = { tiny: 0, sm: 1, med: 2, lg: 4, huge: 6, grg: 10 }[sizeKey?.toLowerCase?.()] ?? 3;
   const breakdown = [];
   let total = 0;
 
+  // compute even if no helpers (to expose cap)
   for (let i = 0; i < Math.min(helpers.length, sizeCap); i++) {
     const helper = helpers[i];
     const actor = game.actors.get(helper.actorId);

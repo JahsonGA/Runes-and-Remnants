@@ -1,5 +1,5 @@
 /* =========================================================
-   Runes & Remnants - Harvest Menu Styles (Fixed)
+   Runes & Remnants - Harvest Menu Styles
    ========================================================= */
 
 /* Theme colors */
@@ -85,33 +85,44 @@
   font-weight: bold;
   margin-bottom: 0.25rem;
 }
+/* --- Bigger, glowing role icons --- */
 .rnr-role > h4 > .role-icon {
-  width: 20px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   object-fit: contain;
   border: none;
-  filter: none;
+  margin-right: 6px;
 }
 
-/* Subtle glow for role types */
+/* Distinct static glows */
 .rnr-role h4 img.role-icon[data-role="assessor"] {
-  filter: drop-shadow(0 0 4px gold) brightness(1.1);
+  filter: drop-shadow(0 0 5px gold);
 }
 .rnr-role h4 img.role-icon[data-role="harvester"] {
-  filter: drop-shadow(0 0 4px steelblue) brightness(1.2);
+  filter: drop-shadow(0 0 5px steelblue);
 }
 .rnr-role h4 img.role-icon[data-role="helper"] {
-  filter: drop-shadow(0 0 4px limegreen) brightness(1.2);
+  filter: drop-shadow(0 0 5px limegreen);
 }
 
-/* Optional glow animation */
-@keyframes softPulse {
-  0%, 100% { filter: brightness(1.1); }
-  50% { filter: brightness(1.4); }
+/* Gentle pulsing brightness on top of the glow */
+@keyframes softPulseGold {
+  0%,100% { filter: brightness(1.1) drop-shadow(0 0 5px gold); }
+  50%     { filter: brightness(1.4) drop-shadow(0 0 9px gold); }
 }
-.rnr-role h4 img.role-icon {
-  animation: softPulse 3s ease-in-out infinite;
+@keyframes softPulseBlue {
+  0%,100% { filter: brightness(1.1) drop-shadow(0 0 5px steelblue); }
+  50%     { filter: brightness(1.4) drop-shadow(0 0 9px steelblue); }
 }
+@keyframes softPulseGreen {
+  0%,100% { filter: brightness(1.1) drop-shadow(0 0 5px limegreen); }
+  50%     { filter: brightness(1.4) drop-shadow(0 0 9px limegreen); }
+}
+
+.rnr-role h4 img.role-icon[data-role="assessor"] { animation: softPulseGold 3s ease-in-out infinite; }
+.rnr-role h4 img.role-icon[data-role="harvester"] { animation: softPulseBlue 3s ease-in-out infinite; }
+.rnr-role h4 img.role-icon[data-role="helper"] { animation: softPulseGreen 3s ease-in-out infinite; }
+
 
 /* Portrait entries */
 .rnr-role-entry, .rnr-helper-list li {
