@@ -11,15 +11,12 @@ import {
   HARVEST_SKILL_BY_TYPE
 } from "./logic.js";
 
-
-
 export class HarvestMenu extends Application {
   constructor(initialTokenDoc = null, options = {}) {
     super(options);
     this.targetToken = initialTokenDoc ?? null;
     this.targetActor = this.targetToken?.actor ?? null;
 
-    this.harvesters = [];
     this.loot = [];
     this._lootLoaded = false;
     this.selectedLoot = new Set();
@@ -32,11 +29,10 @@ export class HarvestMenu extends Application {
       template: "modules/runes-and-remnants/templates/harvest-dialog.html",
       width: 700,
       height: "auto",
-      classes: ["rnr-harvest", "grimdark"]  
+      classes: ["rnr-harvest", "grimdark"]
     });
   }
 
-  /* ========================= DATA LOAD ========================= */
   async _ensureLootIndex() {
     if (this._lootLoaded) return;
     const pack = game.packs.get("runes-and-remnants.harvest-items");
@@ -44,7 +40,6 @@ export class HarvestMenu extends Application {
     const idx = await pack.getIndex();
     this.loot = idx.contents ?? idx;
 
-    // Always include remnant
     const cr = Number(this.targetActor?.system?.details?.cr ?? 0);
     const essence = getEssenceByCR(cr);
     this.loot.push({
@@ -59,472 +54,195 @@ export class HarvestMenu extends Application {
   }
 
   _actorSummary(actor) {
-    const type =
-      actor?.system?.details?.type?.value ??
-      actor?.system?.details?.type ??
-      "Unknown";
-    const cr = actor?.system?.details?.cr ??
-      actor?.system?.details?.challenge ?? "—";
+    const type = actor?.system?.details?.type?.value ?? actor?.system?.details?.type ?? "Unknown";
+    const cr = actor?.system?.details?.cr ?? actor?.system?.details?.challenge ?? "—";
     return { type, cr };
   }
 
   _getHarvesterLimit(sizeKey) {
-    const sizeMap = {
-      tiny: 0,
-      sm: 1,
-      med: 2,
-      lg: 4,
-      huge: 6,
-      grg: 10
-    };
+    const sizeMap = { tiny: 1, sm: 1, med: 2, lg: 4, huge: 6, grg: 10 };
     return sizeMap[sizeKey?.toLowerCase?.()] ?? 1;
   }
 
-
-  /* ========================= PORTRAIT FIX ========================= */
   _getPortrait(actor) {
-    try {
-      if (!actor) return "icons/svg/mystery-man.svg";
-      const actorData = actor.toObject?.() ?? actor;
-      const actorImg = actorData.img || actor.img;
-      const protoImg = actor.prototypeToken?.texture?.src;
-
-      // Try fallback from item if both missing
-      let itemImg = null;
-      if (actor.items?.size > 0) {
-        const firstItem = actor.items.find(i => i.img && i.img !== "icons/svg/mystery-man.svg");
-        if (firstItem) itemImg = firstItem.img;
-      }
-
-      const resolved =
-        protoImg && protoImg !== "icons/svg/mystery-man.svg" ? protoImg :
-        actorImg && actorImg !== "icons/svg/mystery-man.svg" ? actorImg :
-        itemImg && itemImg !== "icons/svg/mystery-man.svg" ? itemImg :
-        "icons/svg/mystery-man.svg";
-
-      return resolved;
-    } catch (err) {
-      console.warn(`[${MODULE_ID}] Portrait resolution failed:`, err);
-      return "icons/svg/mystery-man.svg";
-    }
+    if (!actor) return "icons/svg/mystery-man.svg";
+    return actor.img || actor.prototypeToken?.texture?.src || "icons/svg/mystery-man.svg";
   }
 
-  _getTargetPortrait() {
-    return this._getPortrait(this.targetActor);
-  }
-
-  /* ========================= DATA PREPARATION ========================= */
   _skillKeyForType(type) {
-  const t = String(type || "other").toLowerCase();
-  // Full-name → dnd5e key
-  const nameToKey = {
-    Arcana: "arc",
-    Survival: "sur",
-    Religion: "rel",
-    Investigation: "inv",
-    Medicine: "med",
-    Nature: "nat"
-  };
-  const skillName = HARVEST_SKILL_BY_TYPE[t] ?? "Survival";
-  return { skillName, skillKey: nameToKey[skillName] ?? "sur" };
-}
-
-
-  /* ========================= DATA RENDER ========================= */
-async getData() {
-  await this._ensureLootIndex();
-
-  const targetName = this.targetActor?.name ?? "Unknown Target";
-  const targetImg = this._getTargetPortrait();
-  const { type, cr } = this._actorSummary(this.targetActor);
-  const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
-  this.harvesterLimit = this._getHarvesterLimit(sizeKey);
-
-  this.helpers   = this.helpers   ?? [];
-  this.assessor  = this.assessor  ?? null;
-  this.harvester = this.harvester ?? null;
-
-  const sameActor = !!(this.assessor?.actorId && this.harvester?.actorId &&
-                       this.assessor.actorId === this.harvester.actorId);
-
-  // Use correct skill for helper bonus
-  const { skillName, skillKey } = this._skillKeyForType(type);
-  const hb = computeHelperBonus(this.helpers, skillKey, sizeKey);
-  const helperBonus = hb.total;
-  const helperCap   = hb.cap;
-
-  // Color class
-  let helperBonusClass = "none";
-  if (helperBonus <= 0) helperBonusClass = "none";
-  else if (helperBonus <= 3) helperBonusClass = "low";
-  else if (helperBonus <= 6) helperBonusClass = "medium";
-  else helperBonusClass = "high";
-
-  // Build filtered pools
-  const availableActors = this._getAvailableHarvesters(); // raw full pool
-  const takenHelperIds = new Set(this.helpers.map(h => h.actorId));
-  const assessorId  = this.assessor?.actorId  ?? null;
-  const harvesterId = this.harvester?.actorId ?? null;
-
-  const availableForAssessor = availableActors.filter(a => a.id !== harvesterId && !takenHelperIds.has(a.id));
-  const availableForHarvester = availableActors.filter(a => a.id !== assessorId && !takenHelperIds.has(a.id));
-  const availableHelpers = availableActors.filter(a => a.id !== assessorId && a.id !== harvesterId && !takenHelperIds.has(a.id));
-
-  // Clean invalid helpers (e.g., same as roles)
-  this.helpers = this.helpers.filter(h => 
-    h.actorId !== assessorId && h.actorId !== harvesterId
-  );
-
-
-  return {
-    hasTarget: !!this.targetActor,
-    targetName,
-    targetImg,
-    type,
-    cr,
-    sizeKey,
-    loot: this.loot,
-    selectedLoot: Array.from(this.selectedLoot),
-    assessor: this.assessor,
-    harvester: this.harvester,
-    helpers: this.helpers,
-    helperBonus,
-    helperBonusClass,
-    helperCap,
-    availableForAssessor,   
-    availableForHarvester,  
-    availableHelpers,       
-    sameActor,
-    helperSkillName: skillName
-  };
-}
-
-
-
-
-  /* ========================= HARVESTER DROPDOWN LOGIC ========================= */
-  _getAvailableHarvesters() {
-    const activeUserIds = game.users.filter(u => u.active).map(u => u.id);
-    const sceneTokenIds = (canvas?.tokens?.placeables ?? []).map(t => t.actor?.id);
-    const allActors = Array.from(game.actors.values());
-
-    const weighted = allActors.map(a => {
-      const isPC = a.type === "character";
-      const owners = game.users.filter(u => a.testUserPermission(u, "OWNER"));
-      const activeOwners = owners.filter(u => activeUserIds.includes(u.id));
-      let weight = 99;
-
-      if (isPC && activeOwners.length) weight = 1;
-      else if (isPC && owners.length) weight = 2;
-      else if (sceneTokenIds.includes(a.id)) weight = 3;
-      else weight = 4;
-
-      return {
-        actor: a,
-        ownerNames: owners.map(u => u.name).join(", ") || "—",
-        weight
-      };
-    });
-
-    weighted.sort((a, b) => a.weight - b.weight || a.actor.name.localeCompare(b.actor.name));
-
-    const takenIds = new Set(this.harvesters.map(h => h.actorId));
-
-    return weighted
-      .filter(w => !takenIds.has(w.actor.id))
-      .map(w => ({
-        id: w.actor.id,
-        name: w.actor.name,
-        img: this._getPortrait(w.actor),
-        owners: w.ownerNames
-      }));
+    const nameToKey = { Arcana: "arc", Survival: "sur", Religion: "rel", Investigation: "inv", Medicine: "med", Nature: "nat" };
+    const skillName = HARVEST_SKILL_BY_TYPE[String(type).toLowerCase()] ?? "Survival";
+    return { skillName, skillKey: nameToKey[skillName] ?? "sur" };
   }
 
-  /* ========================= EVENT HANDLERS ========================= */
+  async getData() {
+    await this._ensureLootIndex();
+    const targetName = this.targetActor?.name ?? "Unknown Target";
+    const targetImg = this._getPortrait(this.targetActor);
+    const { type, cr } = this._actorSummary(this.targetActor);
+    const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
+
+    this.assessor  = this.assessor  ?? null;
+    this.harvester = this.harvester ?? null;
+    this.helpers   = this.helpers   ?? [];
+
+    const { skillName, skillKey } = this._skillKeyForType(type);
+    const hb = computeHelperBonus(this.helpers, skillKey, sizeKey);
+    const helperBonus = hb.total;
+    const helperCap   = hb.cap;
+
+    const helperBonusClass =
+      helperBonus <= 0 ? "none" :
+      helperBonus <= 3 ? "low" :
+      helperBonus <= 6 ? "medium" : "high";
+
+    const sameActor = !!(this.assessor?.actorId && this.harvester?.actorId &&
+                         this.assessor.actorId === this.harvester.actorId);
+
+    const availableActors = this._getAvailableActors();
+    const takenHelperIds = new Set(this.helpers.map(h => h.actorId));
+    const assessorId  = this.assessor?.actorId  ?? null;
+    const harvesterId = this.harvester?.actorId ?? null;
+
+    // Filter roles properly
+    const availableForAssessor  = availableActors.filter(a => a.id !== harvesterId && !takenHelperIds.has(a.id));
+    const availableForHarvester = availableActors.filter(a => a.id !== assessorId && !takenHelperIds.has(a.id));
+    const availableHelpers      = availableActors.filter(a => a.id !== assessorId && a.id !== harvesterId && !takenHelperIds.has(a.id));
+
+    // Ensure no overlap
+    this.helpers = this.helpers.filter(h => h.actorId !== assessorId && h.actorId !== harvesterId);
+
+    return {
+      hasTarget: !!this.targetActor,
+      targetName, targetImg, type, cr, sizeKey,
+      loot: this.loot,
+      selectedLoot: Array.from(this.selectedLoot),
+      assessor: this.assessor,
+      harvester: this.harvester,
+      helpers: this.helpers,
+      helperBonus, helperBonusClass, helperCap,
+      availableForAssessor, availableForHarvester, availableHelpers,
+      sameActor
+    };
+  }
+
+  _getAvailableActors() {
+    return Array.from(game.actors.values()).map(a => ({
+      id: a.id,
+      name: a.name,
+      img: this._getPortrait(a)
+    }));
+  }
+
   activateListeners(html) {
     super.activateListeners(html);
 
-    // enable drop region
-      /*this._dragDrop = [{
-        dragSelector: null,
-        dropSelector: "section.rnr-columns",
-        callbacks: { drop: this._onDrop.bind(this) }
-      }];
-      this._dragDrop.bind(html[0]);*/
-
-    // Add new harvester
-    html.on("click", "[data-action='add-harvester']", ev => {
-      const el = ev.currentTarget;
-      const id = el.dataset.actorId;
-      const name = el.dataset.actorName;
-      const img = el.dataset.actorImg;
-      const owners = el.dataset.actorOwners;
-
-      const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
-      if (this.harvesters.length >= this.harvesterLimit) {
-        return ui.notifications.warn(
-          `You cannot assign more than ${this.harvesterLimit} harvesters for a ${sizeKey} creature.`
-        );
-      }
-
-      if (this.harvesters.some(h => h.actorId === id)) return;
-      this.harvesters.push({ actorId: id, name, img, owner: owners });
-      this.render(true);
-    });
-
-    // Drag and Drop logic
-    /*html.on("dragenter", "section.rnr-columns", ev => ev.currentTarget.classList.add("drag-hover"));
-    html.on("dragleave", "section.rnr-columns", ev => ev.currentTarget.classList.remove("drag-hover"));
-    html.on("drop", "section.rnr-columns", ev => ev.currentTarget.classList.remove("drag-hover"));*/
-
-
-    // Move Up / Down / Remove
-    html.on("click", "[data-action='move-up'], [data-action='move-down'], [data-action='remove-harvester']", ev => {
-      const li = ev.currentTarget.closest("li[data-index]");
-      const i = Number(li.dataset.index);
-      if (!Number.isInteger(i)) return;
-
-      const action = ev.currentTarget.dataset.action;
-      if (action === "remove-harvester") {
-        this.harvesters.splice(i, 1);
-      } else {
-        const j = i + (action === "move-up" ? -1 : 1);
-        if (j >= 0 && j < this.harvesters.length) {
-          [this.harvesters[i], this.harvesters[j]] = [this.harvesters[j], this.harvesters[i]];
-        }
-      }
-      this.render(true);
-    });
-
-    // Role assignment handlers
-    // Set Assessor
     html.on("click", "[data-action='set-assessor']", ev => {
       const el = ev.currentTarget;
       const actorId = el.dataset.actorId;
-
-      // prevent using same as harvester
-      if (this.harvester?.actorId === actorId) {
-        return ui.notifications.warn("This actor is already the Harvester.");
-      }
-
-      this.assessor = {
-        actorId,
-        name: el.dataset.actorName,
-        img:  el.dataset.actorImg
-      };
-
-      // If they were a helper, remove them
-      this.helpers = (this.helpers || []).filter(h => h.actorId !== actorId);
+      if (this.harvester?.actorId === actorId) return ui.notifications.warn("This actor is already the Harvester.");
+      this.assessor = { actorId, name: el.dataset.actorName, img: el.dataset.actorImg };
+      this.helpers = this.helpers.filter(h => h.actorId !== actorId);
       this.render(true);
     });
 
-    // Remove Assessor (allowed)
-    html.on("click", "[data-action='remove-assessor']", () => {
-      this.assessor = null;
-      this.render(true);
-    });
+    html.on("click", "[data-action='remove-assessor']", () => { this.assessor = null; this.render(true); });
 
-    // Set Harvester
     html.on("click", "[data-action='set-harvester']", ev => {
       const el = ev.currentTarget;
       const actorId = el.dataset.actorId;
-
-      if (this.assessor?.actorId === actorId) {
-        return ui.notifications.warn("This actor is already the Assessor.");
-      }
-
-      this.harvester = {
-        actorId,
-        name: el.dataset.actorName,
-        img:  el.dataset.actorImg
-      };
-
-      // If they were a helper, remove them
-      this.helpers = (this.helpers || []).filter(h => h.actorId !== actorId);
+      if (this.assessor?.actorId === actorId) return ui.notifications.warn("This actor is already the Assessor.");
+      this.harvester = { actorId, name: el.dataset.actorName, img: el.dataset.actorImg };
+      this.helpers = this.helpers.filter(h => h.actorId !== actorId);
       this.render(true);
     });
 
-    html.on("click", "[data-action='remove-harvester']", () => {
-      this.harvester = null;
-      this.render(true);
-    });
+    html.on("click", "[data-action='remove-harvester']", () => { this.harvester = null; this.render(true); });
 
-
-    // Add Helper
     html.on("click", "[data-action='add-helper']", ev => {
       const el = ev.currentTarget;
       const actorId = el.dataset.actorId;
-
-      // Block assessor/harvester and duplicates
-      if (this.assessor?.actorId === actorId || this.harvester?.actorId === actorId) {
-        return ui.notifications.warn("That actor is assigned as a role and cannot be a Helper.");
-      }
+      if (this.assessor?.actorId === actorId || this.harvester?.actorId === actorId) return ui.notifications.warn("That actor already has a role.");
       if (this.helpers.some(h => h.actorId === actorId)) return;
-
-      // Size cap (helpers cap is handled at roll time too, but enforce here for UX)
+      const { type } = this._actorSummary(this.targetActor);
       const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
-      const { skillKey } = this._skillKeyForType(this._actorSummary(this.targetActor).type);
-      const cap = computeHelperBonus([], skillKey, sizeKey).cap; // ask logic for the cap
-      if (this.helpers.length >= cap) {
-        return ui.notifications.warn(`You cannot assign more than ${cap} helpers for a ${sizeKey} creature.`);
-      }
-
-      this.helpers.push({
-        actorId,
-        name: el.dataset.actorName,
-        img:  el.dataset.actorImg
-      });
+      const { skillKey } = this._skillKeyForType(type);
+      const cap = computeHelperBonus([], skillKey, sizeKey).cap;
+      if (this.helpers.length >= cap) return ui.notifications.warn(`You cannot assign more than ${cap} helpers.`);
+      this.helpers.push({ actorId, name: el.dataset.actorName, img: el.dataset.actorImg });
       this.render(true);
     });
 
+    html.on("click", "[data-action='remove-helper']", ev => {
+      const li = ev.currentTarget.closest("li[data-index]");
+      const i = Number(li.dataset.index);
+      if (Number.isInteger(i)) this.helpers.splice(i, 1);
+      this.render(true);
+    });
 
-
-    // Loot selection
     html.on("change", "input[name='lootChoice']", ev => {
       const id = ev.currentTarget.value;
       ev.currentTarget.checked ? this.selectedLoot.add(id) : this.selectedLoot.delete(id);
     });
 
-    // Start Harvest
     html.on("click", "[data-action='start-harvest']", async () => this._startHarvest());
   }
 
-  
-
-  /* ========================= DRAG & DROP ========================= */
-  async _onDrop(event) {
-    event.preventDefault();
-    const data = event.dataTransfer.getData("text/plain");
-    if (!data) return;
-
-    let dropped;
-    try {
-      dropped = JSON.parse(data);
-    } catch {
-      console.warn(`[${MODULE_ID}] Invalid drop data.`);
-      return;
-    }
-
-    // Handle compendium drops
-    if (dropped.pack && dropped.id) {
-      const pack = game.packs.get(dropped.pack);
-      if (!pack) return;
-      const item = await pack.getDocument(dropped.id);
-      if (item?.type !== "loot" && item?.type !== "material") return;
-      this.loot.push(item);
-    }
-
-    // Handle actor/item drops directly from sidebar or sheet
-    else if (dropped.type === "Item") {
-      const item = await Item.implementation.fromDropData(dropped);
-      this.loot.push(item);
-    }
-
-    // Re-render to show new loot entry
-    this.render(true);
-  }
-
-
-  /* ========================= HARVEST EXECUTION ========================= */
-async _startHarvest() {
-    // --- PRECONDITIONS ---
-    if (!this.targetActor)
-      return ui.notifications.warn("No target creature selected.");
-
-    if (!this.assessor || !this.harvester)
-      return ui.notifications.warn("You must assign an Assessor and a Harvester.");
+  async _startHarvest() {
+    if (!this.targetActor) return ui.notifications.warn("No target creature selected.");
+    if (!this.assessor || !this.harvester) return ui.notifications.warn("Assign both an Assessor and a Harvester first.");
 
     const helpers = this.helpers ?? [];
     const { type, cr } = this._actorSummary(this.targetActor);
     const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
-
-    // --- FETCH COMPENDIUM ---
     const pack = game.packs.get("runes-and-remnants.harvest-items");
-    if (!pack)
-      return ui.notifications.error("Harvest Items compendium not found.");
+    if (!pack) return ui.notifications.error("Harvest Items compendium not found.");
 
-    // --- FETCH ACTORS ---
     const assessorActor = game.actors.get(this.assessor.actorId);
     const harvesterActor = game.actors.get(this.harvester.actorId);
-
-    if (!assessorActor || !harvesterActor)
-      return ui.notifications.error("One or more assigned actors could not be found.");
-
     const sameActor = this.assessor.actorId === this.harvester.actorId;
 
-    // --- DETERMINE SKILL ---
     const skillName = HARVEST_SKILL_BY_TYPE[String(type).toLowerCase()] ?? "Survival";
     const skillKey = skillName.toLowerCase().slice(0, 3);
 
-    // --- 1️⃣ ASSESSMENT PHASE ---
     const assess = await rollAssessment(assessorActor, type);
+    const carve  = await rollCarving(harvesterActor, type, sameActor ? { disadvantage: true } : {});
 
-    // --- 2️⃣ CARVING PHASE ---
-    // Carving roll
-    let carve;
-    if (sameActor) {
-      ui.notifications.warn(`${this.harvester.name} is performing both roles — rolling Carving at disadvantage.`);
-      carve = await rollCarving(harvesterActor, type, { disadvantage: true });
-    } else {
-      carve = await rollCarving(harvesterActor, type);
-    }
-
-    // --- 3️⃣ COMBINE ROLLS ---
     const harvestTotal = assess.total + carve.total;
     const baseDC = computeHarvestDC({ cr, type, rarity: "common", baseDC: 10 });
-
-    // --- 4️⃣ HELPER BONUS ---
-    const { total: helperBonus, breakdown: helperBreakdown, cap: helperCap } =
-      computeHelperBonus(helpers, skillKey, sizeKey);
+    const { total: helperBonus, breakdown: helperBreakdown, cap: helperCap } = computeHelperBonus(helpers, skillKey, sizeKey);
 
     const totalRoll = harvestTotal + helperBonus;
     const result = finalHarvestResult(baseDC, totalRoll);
 
-    // --- 5️⃣ DETERMINE MATERIALS ---
     const typeData = getHarvestOptions(type);
-    if (!typeData?.length)
-      return ui.notifications.warn(`No harvest data found for ${type} creatures.`);
-
+    if (!typeData?.length) return ui.notifications.warn(`No harvest data for ${type}.`);
     const materials = [];
-    for (const tier of typeData) {
-      if (totalRoll >= tier.dc) materials.push(...tier.items);
-    }
-
-    // Always include Essence
+    for (const tier of typeData) if (totalRoll >= tier.dc) materials.push(...tier.items);
     const essence = getEssenceByCR(Number(cr) || 0);
     materials.push(essence.name);
 
-    // --- 6️⃣ GRANT ITEMS TO ACTOR / DROP ON TOKEN ---
-    const dropPoint = this._tokenCenter(this.targetToken);
+    const dropPoint = this.targetToken?.object?.center ?? null;
     for (const itemName of materials) {
       const itemEntry = game.rnrHarvestItems.find(i => i.name === itemName);
       if (!itemEntry) continue;
-
       try {
         const itemDoc = await pack.getDocument(itemEntry._id);
-        await grantMaterial({
-          item: itemDoc,
-          qty: 1,
-          toActor: harvesterActor,
-          dropAt: dropPoint
-        });
+        await grantMaterial({ item: itemDoc, qty: 1, toActor: harvesterActor, dropAt: dropPoint });
       } catch (err) {
         console.warn(`[${MODULE_ID}] Failed to grant ${itemName}:`, err);
       }
     }
 
-    // --- 7️⃣ REPORT RESULTS ---
     const helperList = helperBreakdown.length
-      ? helperBreakdown.map(h =>
-          `<li>${h.name}: +${h.contribution} (${h.proficient ? "proficient" : "half"})</li>`
-        ).join("")
+      ? helperBreakdown.map(h => `<li>${h.name}: +${h.contribution} (${h.proficient ? "proficient" : "half"})</li>`).join("")
       : "<li>None</li>";
 
     const msg = `
       <p><b>${this.targetActor.name}</b> (CR ${cr}, ${type}) was harvested.</p>
       <ul>
-        <li> <b>Assessor:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
-        <li> <b>Harvester:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
+        <li><b>Assessor:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
+        <li><b>Harvester:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
       </ul>
       <p><b>Helpers:</b></p>
       <ul>${helperList}</ul>
@@ -534,8 +252,6 @@ async _startHarvest() {
       <p><b>Recovered:</b> ${materials.join(", ") || "Nothing"}</p>
     `;
     ChatMessage.create({ speaker: { alias: "Runes & Remnants" }, content: msg });
-
-    // --- 8️⃣ CLEANUP ---
-    await this.targetToken.document.delete(); // remove harvested token
+    await this.targetToken.document.delete();
   }
 }

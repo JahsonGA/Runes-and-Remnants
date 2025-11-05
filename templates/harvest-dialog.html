@@ -1,19 +1,9 @@
-<!-- ========================= Runes & Remnants Harvest Menu ========================= -->
-<!-- ========================= THEME COLORS ========================= -->
-<style>
-  :root {
-    --rnr-brown: #734A12;   /* main */
-    --rnr-red:   #B22222;   /* accent */
-    --rnr-wood:  #60402B;   /* panels */
-    --rnr-ink:   #0c0c0f;   /* bg */
-    --rnr-text:  #e6e0d6;   /* text */
-  }
-</style>
-
-<!-- ========================= Runes & Remnants Harvest Menu ========================= -->
+<!-- =========================================================
+     Runes & Remnants — Harvest Menu Template (Fixed)
+     ========================================================= -->
 <section class="rnr-columns">
 
-  <!-- ========================= TARGET PANEL ========================= -->
+  <!-- ================= TARGET CREATURE ================= -->
   <div class="rnr-card">
     <h3>Target Creature</h3>
 
@@ -49,116 +39,113 @@
     {{/if}}
   </div>
 
-  <!-- ========================= HARVEST TEAM PANEL ========================= -->
-<div class="rnr-card">
-  <h3>Assign Roles</h3>
+  <!-- ================= ASSIGN ROLES ================= -->
+  <div class="rnr-card">
+    <h3>Assign Roles</h3>
 
-  <!-- Assessor -->
-  <div class="rnr-role">
-    <h4>
-      <img data-role="assessor" src="icons/sundries/books/book-backed-wood-tan.webp" class="role-icon" alt="Assessor Icon">
-      Assessor
-    </h4>
-    {{#if assessor}}
-      <div class="rnr-role-entry">
-        <img src="{{assessor.img}}" class="portrait" alt="{{assessor.name}}">
-        <span>{{assessor.name}}</span>
-        <button data-action="remove-assessor" title="Remove Assessor">✕</button>
-      </div>
-    {{else}}
-      <div class="rnr-dropdown">
-        {{#each availableHarvesters}}
-          <div class="rnr-dropdown-entry"
-               data-action="set-assessor"
-               data-actor-id="{{id}}"
-               data-actor-name="{{name}}"
-               data-actor-img="{{img}}">
-            <img src="{{img}}" class="portrait" alt="{{name}}">
-            <span>{{name}}</span>
-          </div>
-        {{/each}}
-      </div>
-    {{/if}}
-  </div>
-
-  <!-- Harvester -->
-  <div class="rnr-role">
-    <h4>
-      <img data-role="harvester" src="icons/tools/hand/saw-hacksaw-brass-grey.webp" class="role-icon" alt="Harvester Icon">
-      Harvester
-    </h4>
-    {{#if harvester}}
-      <div class="rnr-role-entry">
-        <img src="{{harvester.img}}" class="portrait" alt="{{harvester.name}}">
-        <span>{{harvester.name}}</span>
-        <button data-action="remove-harvester" title="Remove Harvester">✕</button>
-      </div>
-    {{else}}
-      <div class="rnr-dropdown">
-        {{#each availableHarvesters}}
-          <div class="rnr-dropdown-entry"
-               data-action="set-harvester"
-               data-actor-id="{{id}}"
-               data-actor-name="{{name}}"
-               data-actor-img="{{img}}">
-            <img src="{{img}}" class="portrait" alt="{{name}}">
-            <span>{{name}}</span>
-          </div>
-        {{/each}}
-      </div>
-    {{/if}}
-  </div>
-
-  <!-- Helpers -->
-  <div class="rnr-role">
-    <h4>Helpers</h4>
-    {{#if helpers.length}}
-      <ul class="rnr-helper-list">
-        {{#each helpers as |h i|}}
-          <li data-index="{{i}}">
-            <img src="{{h.img}}" class="portrait" alt="{{h.name}}">
-            <span>{{h.name}}</span>
-            <button data-action="remove-helper" title="Remove Helper">✕</button>
-          </li>
-        {{/each}}
-      </ul>
-    {{else}}
-      <p class="muted">No helpers assigned yet.</p>
-    {{/if}}
-
-    <div class="rnr-dropdown">
-      {{#each availableHelpers}}
-        <div class="rnr-dropdown-entry"
-             data-action="add-helper"
-             data-actor-id="{{id}}"
-             data-actor-name="{{name}}"
-             data-actor-img="{{img}}">
-          <img src="{{img}}" class="portrait" alt="{{name}}">
-          <span>{{name}}</span>
+    <!-- Assessor -->
+    <div class="rnr-role">
+      <h4>
+        <img data-role="assessor" src="icons/sundries/books/book-backed-wood-tan.webp" class="role-icon" alt="Assessor Icon">
+        Assessor
+      </h4>
+      {{#if assessor}}
+        <div class="rnr-role-entry">
+          <img src="{{assessor.img}}" class="portrait" alt="{{assessor.name}}">
+          <span>{{assessor.name}}</span>
+          <button data-action="remove-assessor" title="Remove Assessor">✕</button>
         </div>
-      {{/each}}
+      {{else}}
+        <div class="rnr-dropdown">
+          {{#each availableForAssessor}}
+            <div class="rnr-dropdown-entry"
+                 data-action="set-assessor"
+                 data-actor-id="{{id}}"
+                 data-actor-name="{{name}}"
+                 data-actor-img="{{img}}">
+              <img src="{{img}}" class="portrait" alt="{{name}}">
+              <span>{{name}}</span>
+            </div>
+          {{/each}}
+        </div>
+      {{/if}}
+    </div>
+
+    <!-- Harvester -->
+    <div class="rnr-role">
+      <h4>
+        <img data-role="harvester" src="icons/tools/hand/saw-hacksaw-brass-grey.webp" class="role-icon" alt="Harvester Icon">
+        Harvester
+      </h4>
+      {{#if harvester}}
+        <div class="rnr-role-entry">
+          <img src="{{harvester.img}}" class="portrait" alt="{{harvester.name}}">
+          <span>{{harvester.name}}</span>
+          <button data-action="remove-harvester" title="Remove Harvester">✕</button>
+        </div>
+      {{else}}
+        <div class="rnr-dropdown">
+          {{#each availableForHarvester}}
+            <div class="rnr-dropdown-entry"
+                 data-action="set-harvester"
+                 data-actor-id="{{id}}"
+                 data-actor-name="{{name}}"
+                 data-actor-img="{{img}}">
+              <img src="{{img}}" class="portrait" alt="{{name}}">
+              <span>{{name}}</span>
+            </div>
+          {{/each}}
+        </div>
+      {{/if}}
+    </div>
+
+    <!-- Helpers -->
+    <div class="rnr-role">
+      <h4>Helpers</h4>
+      {{#if helpers.length}}
+        <ul class="rnr-helper-list">
+          {{#each helpers as |h i|}}
+            <li data-index="{{i}}">
+              <img src="{{h.img}}" class="portrait" alt="{{h.name}}">
+              <span>{{h.name}}</span>
+              <button data-action="remove-helper" title="Remove Helper">✕</button>
+            </li>
+          {{/each}}
+        </ul>
+      {{else}}
+        <p class="muted">No helpers assigned yet.</p>
+      {{/if}}
+
+      <div class="rnr-dropdown">
+        {{#each availableHelpers}}
+          <div class="rnr-dropdown-entry"
+               data-action="add-helper"
+               data-actor-id="{{id}}"
+               data-actor-name="{{name}}"
+               data-actor-img="{{img}}">
+            <img src="{{img}}" class="portrait" alt="{{name}}">
+            <span>{{name}}</span>
+          </div>
+        {{/each}}
+      </div>
+    </div>
+
+    {{#if helpers.length}}
+      <p class="helper-bonus {{helperBonusClass}}">
+        Potential Bonus: +{{helperBonus}} (max {{helperCap}})
+      </p>
+    {{/if}}
+
+    {{#if sameActor}}
+      <p class="warning">
+        ⚠️ The same character is both Assessor and Harvester — rolls will be made at disadvantage.
+      </p>
+    {{/if}}
+
+    <hr>
+    <div class="actions">
+      <button class="primary" data-action="start-harvest">Start Harvest</button>
     </div>
   </div>
 
-  {{#if helpers.length}}
-    <p class="muted helper-bonus {{helperBonusClass}}">
-      Potential Bonus: +{{helperBonus}} (max {{helperCap}})
-    </p>
-  {{/if}}
-
-   {{#if sameActor}}
-  <p class="warning">
-    ⚠️ The same character is both Assessor and Harvester — rolls will be made at disadvantage.
-  </p>
-{{/if}}
-
-
-  <hr>
-  <div class="actions">
-    <button class="primary" data-action="start-harvest">Start Harvest</button>
-  </div>
-</div>
-
-
 </section>
-

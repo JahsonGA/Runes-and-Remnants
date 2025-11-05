@@ -1,14 +1,14 @@
 /* =========================================================
-   Runes & Remnants - Harvest Menu Styles (Updated)
+   Runes & Remnants - Harvest Menu Styles (Fixed)
    ========================================================= */
 
 /* Theme colors */
 :root {
-  --rnr-brown: #734A12;   /* main */
-  --rnr-red:   #B22222;   /* accent */
-  --rnr-wood:  #60402B;   /* panels */
-  --rnr-ink:   #0c0c0f;   /* bg */
-  --rnr-text:  #e6e0d6;   /* text */
+  --rnr-brown: #734A12;
+  --rnr-red:   #B22222;
+  --rnr-wood:  #60402B;
+  --rnr-ink:   #0c0c0f;
+  --rnr-text:  #e6e0d6;
 }
 
 /* HUD button */
@@ -16,12 +16,6 @@
   padding: 0;
   background: radial-gradient(circle, var(--rnr-wood) 0%, #000 95%);
   border: 1px solid var(--rnr-brown);
-}
-.control-icon.harvest-menu .rnr-cleaver {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
 }
 .control-icon.harvest-menu:hover {
   border-color: var(--rnr-red);
@@ -36,9 +30,17 @@
 }
 
 /* Layout */
-.rnr-header h2 { margin: 0 0 .5rem 0; color: var(--rnr-red); }
-.rnr-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.rnr-card { background: #171315; border: 1px solid var(--rnr-wood); border-radius: 10px; padding: 10px; }
+.rnr-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.rnr-card {
+  background: #171315;
+  border: 1px solid var(--rnr-wood);
+  border-radius: 10px;
+  padding: 10px;
+}
 .rnr-card h3 { margin-top: 0; color: var(--rnr-brown); }
 
 /* Dropdowns */
@@ -70,81 +72,10 @@
   border: 1px solid var(--rnr-wood);
 }
 
-/* Order and controls */
-.rnr-order li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 0;
-  border-bottom: 1px solid #231a1a;
-}
-
-/* Leader Icon (first harvester) */
-.rnr-order .leader-icon {
-  width: 16px;
-  height: 16px;
-  vertical-align: middle;
-  margin-left: 4px;
-  filter: drop-shadow(0 0 2px gold);
-  opacity: 0.9;
-}
-.rnr-order li:first-child .leader-icon {
-  animation: pulse-leader 1.8s infinite ease-in-out;
-}
-@keyframes pulse-leader {
-  0%, 100% { opacity: 0.9; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.15); }
-}
-
-/* Portraits and list entries */
-.rnr-order .row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.rnr-order .portrait {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  object-fit: cover;
-  border: 1px solid var(--rnr-wood);
-}
-
-/* Inline buttons */
-.controls-inline {
-  display: flex;
-  gap: 4px;
-  margin-left: auto;
-  justify-content: flex-end;
-  align-items: center;
-  flex-shrink: 0;
-}
-.controls-inline button {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  font-weight: bold;
-  background: #1a0e0e;
-  border: 1px solid var(--rnr-brown);
-  color: var(--rnr-text);
-}
-.controls-inline button:hover {
-  background: #2b0d0d;
-  border-color: var(--rnr-red);
-}
-
-/* Buttons and general UI */
-.actions { margin-top: 10px; display: flex; justify-content: flex-end; }
-button.primary {
-  background: #2a0d0d;
-  border: 1px solid var(--rnr-red);
-  color: var(--rnr-text);
-}
-button.primary:hover { background: #3a0f0f; }
-.muted { opacity: .7; }
-
 /* Role containers */
-.rnr-role { margin-bottom: 1rem; }
+.rnr-role {
+  margin-bottom: 1rem;
+}
 .rnr-role h4 {
   display: flex;
   align-items: center;
@@ -153,8 +84,15 @@ button.primary:hover { background: #3a0f0f; }
   font-weight: bold;
   margin-bottom: 0.25rem;
 }
+.rnr-role > h4 > .role-icon {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  border: none;
+  filter: none;
+}
 
-/* Portraits in role lists */
+/* Portrait entries */
 .rnr-role-entry, .rnr-helper-list li {
   display: flex;
   align-items: center;
@@ -173,20 +111,21 @@ button.primary:hover { background: #3a0f0f; }
   border: 1px solid var(--rnr-wood);
   object-fit: cover;
 }
+
+/* Centered red remove buttons */
 .rnr-role-entry button,
 .rnr-helper-list button {
   margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: #1a0e0e;
-  color: var(--rnr-text);
+  color: #ff5a5a;
   border: 1px solid var(--rnr-brown);
   border-radius: 4px;
   width: 22px;
   height: 22px;
-  font-size: 0.8rem;
   line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 0;
   cursor: pointer;
 }
@@ -194,52 +133,28 @@ button.primary:hover { background: #3a0f0f; }
 .rnr-helper-list button:hover {
   border-color: var(--rnr-red);
   background: #3a0f0f;
+  color: #ff8585;
 }
 
-/* --- Fixed Role Header Icons --- */
-.rnr-role > h4 > .role-icon {
-  width: 20px !important;
-  height: 20px !important;
-  border: none !important;
-  border-radius: 2px !important;
-  object-fit: contain !important;
-  background: none !important;
-  box-shadow: none !important;
-  flex-shrink: 0;
-  display: inline-block;
-  opacity: 1 !important;
-}
-
-/* --- Distinct Tint Colors for Roles --- */
-.rnr-role h4 img.role-icon[alt*="Assessor"] {
-  filter: drop-shadow(0 0 3px gold) brightness(1.1);
-}
-.rnr-role h4 img.role-icon[alt*="Harvester"] {
-  filter: drop-shadow(0 0 3px steelblue) brightness(1.2);
-}
-
-/* Helper bonus display */
+/* Helper bonus */
 .helper-bonus {
   text-align: right;
   font-style: italic;
-  color: var(--rnr-text);
-  opacity: 0.8;
-  margin-top: 0.25rem;
   font-weight: 500;
-  text-align: right;
+  color: var(--rnr-text);
+  opacity: 0.9;
   transition: color 0.3s ease, text-shadow 0.3s ease;
 }
 .helper-bonus.none { color: #888; text-shadow: none; }
-.helper-bonus.low { color: #c79a3a; text-shadow: 0 0 6px rgba(199, 154, 58, 0.3); }
-.helper-bonus.medium { color: #a4e1a1; text-shadow: 0 0 8px rgba(164, 225, 161, 0.4); }
-.helper-bonus.high { color: #80ffb5; text-shadow: 0 0 10px rgba(128, 255, 181, 0.5); }
+.helper-bonus.low { color: #c79a3a; text-shadow: 0 0 6px rgba(199,154,58,0.3); }
+.helper-bonus.medium { color: #a4e1a1; text-shadow: 0 0 8px rgba(164,225,161,0.4); }
+.helper-bonus.high { color: #80ffb5; text-shadow: 0 0 10px rgba(128,255,181,0.5); }
 
-.rnr-harvest.grimdark .window-content .warning,
+/* Warning scoped to module */
 .rnr-harvest .warning {
   color: #ffcc00;
   font-style: italic;
   margin: 0.25em 0;
-  text-shadow: 0 0 4px rgba(255, 204, 0, 0.4);
+  text-shadow: 0 0 4px rgba(255,204,0,0.4);
   font-size: 0.9rem;
-  line-height: 1.2;
 }
