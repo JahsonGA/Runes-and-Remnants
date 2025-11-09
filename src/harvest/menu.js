@@ -362,8 +362,7 @@ export class HarvestMenu extends Application {
 
     await ChatMessage.create({
       speaker: { alias: "Runes & Remnants" },
-      content: chatContent,
-      whisper: ChatMessage.getWhisperRecipients("GM")
+      content: chatContent
     });
 
     await this.targetToken.document.delete();
