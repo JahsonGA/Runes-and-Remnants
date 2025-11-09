@@ -241,9 +241,6 @@ export class HarvestMenu extends Application {
   html.on("click", "[data-action='start-harvest']", async () => this._startHarvest());
 }
 
-
-  // ---------------------- Harvest Execution ----------------------
-
   // ---------------------- Harvest Execution ----------------------
   async _startHarvest() {
     if (!this.targetActor)
@@ -265,7 +262,7 @@ export class HarvestMenu extends Application {
     if (!assessorActor || !harvesterActor)
       return ui.notifications.error("One or more assigned actors could not be found.");
 
-    // Same actor check
+    // --- Handle same-actor disadvantage ---
     const sameActor = assessorActor.id === harvesterActor.id;
     if (sameActor)
       ui.notifications.warn(`${assessorActor.name} is performing both roles — both rolls are made at disadvantage.`);
@@ -274,28 +271,27 @@ export class HarvestMenu extends Application {
     const assess = await rollAssessment(assessorActor, type, { disadvantage: sameActor });
     const carve  = await rollCarving(harvesterActor, type, { disadvantage: sameActor });
 
+    // --- Totals & DC ---
     const harvestTotal = assess.total + carve.total;
-
-    // --- DC & Bonuses ---
     const baseDC = computeHarvestDC({ cr, type, rarity: "common", baseDC: 10 });
     const skillName = HARVEST_SKILL_BY_TYPE[String(type).toLowerCase()] ?? "Survival";
     const skillKey = skillName.toLowerCase().slice(0, 3);
 
+    // --- Helper Bonus ---
     const { total: helperBonus, breakdown: helperBreakdown, cap: helperCap } =
       computeHelperBonus(helpers, skillKey, sizeKey);
 
     const totalRoll = harvestTotal + helperBonus;
     const result = finalHarvestResult(baseDC, totalRoll);
 
-    // --- Material Results ---
-    const typeData = getHarvestOptions(type);
-    if (!typeData?.length)
-      return ui.notifications.warn(`No harvest data found for ${type} creatures.`);
-
+    // --- Gather Materials (never early-return) ---
+    const typeData = getHarvestOptions(type) ?? [];
     const materials = [];
+
     for (const tier of typeData)
       if (totalRoll >= tier.dc) materials.push(...tier.items);
 
+    // Always add essence even if table empty
     const essence = getEssenceByCR(Number(cr) || 0);
     materials.push(essence.name);
 
@@ -324,24 +320,6 @@ export class HarvestMenu extends Application {
       ? `<p class="warning">⚠️ ${this.assessor.name} performed both roles — both rolls at disadvantage.</p>`
       : "";
 
-    const msg = `
-      <p><b>${this.targetActor.name}</b> (CR ${cr}, ${type}) was harvested.</p>
-      ${disadvantageNote}
-      <ul>
-        <li><b>Assessment:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
-        <li><b>Carving:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
-      </ul>
-      <p><b>Helpers:</b></p>
-      <ul>${helperList}</ul>
-      <p><b>Helper Bonus:</b> +${helperBonus} (cap: ${helperCap})</p>
-      <p><b>Roll Breakdown:</b> ${assess.total} + ${carve.total} + ${helperBonus} = <b>${totalRoll}</b></p>
-      <p><b>DC:</b> ${baseDC} → <b>Outcome:</b> ${result}</p>
-      <p><b>Recovered:</b> ${materials.join(", ") || "Nothing"}</p>
-    `;
-
-    // Wait briefly so roll cards appear first
-    await new Promise(r => setTimeout(r, 500));
-
     const chatContent = `
     <div class="rnr-harvest-summary">
       <hr>
@@ -353,19 +331,26 @@ export class HarvestMenu extends Application {
         <li><b>Carving:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
         <li><b>Helper Bonus:</b> +${helperBonus} (cap: ${helperCap})</li>
       </ul>
-      <p><b>Roll Breakdown:</b> ${assess.total} + ${carve.total} + ${helperBonus} = 
+      <p><b>Roll Breakdown:</b> ${assess.total} + ${carve.total} + ${helperBonus} =
         <b style="color:#8ef;">${totalRoll}</b> vs DC <b>${baseDC}</b></p>
-      <p><b>Outcome:</b> <span style="color:${result.includes("success") ? "#80ff80" : "#ff8080"};">${result}</span></p>
-      <p><b>Recovered:</b> ${materials.join(", ") || "Nothing recovered"}</p>
+      <p><b>Outcome:</b> <span style="color:${result.includes('success') ? '#80ff80' : '#ff8080'};">${result}</span></p>
+      <p><b>Recovered:</b> ${materials.join(', ') || 'Nothing recovered'}</p>
     </div>
     `;
+
+    // --- Create Final Chat Message ---
+    console.log(`[${MODULE_ID}] Harvest summary posted`, { totalRoll, baseDC, result });
+
+    // Wait briefly so roll cards appear first
+    await new Promise(r => setTimeout(r, 500));
 
     await ChatMessage.create({
       speaker: { alias: "Runes & Remnants" },
       content: chatContent
     });
 
+    // Allow UI to update before token deletion
+    await new Promise(r => setTimeout(r, 200));
     await this.targetToken.document.delete();
-  }
-
+  } 
 }

@@ -190,3 +190,81 @@
   text-shadow: 0 0 4px rgba(255,204,0,0.4);
   font-size: 0.9rem;
 }
+
+/* =========================================================
+   Harvest Summary Chat Card
+   ========================================================= */
+.rnr-harvest-summary {
+  background: radial-gradient(circle at top left, #151212 0%, #0c0c0f 100%);
+  border: 1px solid var(--rnr-brown);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--rnr-text);
+  font-family: "Roboto", "Segoe UI", sans-serif;
+  box-shadow: 0 0 8px rgba(115, 74, 18, 0.4);
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.rnr-harvest-summary h3 {
+  color: var(--rnr-red);
+  text-transform: uppercase;
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 8px rgba(178, 34, 34, 0.5);
+  margin-bottom: 0.25em;
+}
+
+.rnr-harvest-summary hr {
+  border: none;
+  border-top: 1px solid rgba(115, 74, 18, 0.5);
+  margin: 4px 0 8px 0;
+}
+
+.rnr-harvest-summary ul {
+  margin: 0.25em 0 0.5em 1em;
+  padding: 0;
+  list-style-type: disc;
+}
+
+.rnr-harvest-summary p {
+  margin: 0.25em 0;
+  line-height: 1.3;
+}
+
+.rnr-harvest-summary b {
+  color: #f0e6d2;
+}
+
+.rnr-harvest-summary .warning {
+  color: #ffcc00;
+  font-style: italic;
+  text-shadow: 0 0 6px rgba(255, 204, 0, 0.4);
+  margin: 0.25em 0 0.5em 0;
+}
+
+/* Highlight result outcome */
+.rnr-harvest-summary span[style*="#80ff80"],
+.rnr-harvest-summary span[style*="#ff8080"] {
+  font-weight: bold;
+  text-transform: capitalize;
+  padding: 0 4px;
+  border-radius: 3px;
+  text-shadow: 0 0 6px currentColor;
+}
+
+/* Soft glow animation for the total roll */
+@keyframes rollGlow {
+  0%, 100% { text-shadow: 0 0 6px rgba(142, 239, 255, 0.5); }
+  50%      { text-shadow: 0 0 12px rgba(142, 239, 255, 0.9); }
+}
+
+.rnr-harvest-summary b[style*="#8ef"] {
+  animation: rollGlow 2.5s ease-in-out infinite;
+}
+
+/* Subtle hover interaction for immersion */
+.rnr-harvest-summary:hover {
+  box-shadow: 0 0 10px rgba(178, 34, 34, 0.5);
+  transition: box-shadow 0.4s ease-in-out;
+}
