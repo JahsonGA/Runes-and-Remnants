@@ -328,8 +328,8 @@ export class HarvestMenu extends Application {
       <p><b>${this.targetActor.name}</b> (CR ${cr}, ${type}) was harvested.</p>
       ${disadvantageNote}
       <ul>
-        <li><b>🧠 Assessment:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
-        <li><b>🔪 Carving:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
+        <li><b>Assessment:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
+        <li><b>Carving:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
       </ul>
       <p><b>Helpers:</b></p>
       <ul>${helperList}</ul>
@@ -339,7 +339,33 @@ export class HarvestMenu extends Application {
       <p><b>Recovered:</b> ${materials.join(", ") || "Nothing"}</p>
     `;
 
-    ChatMessage.create({ speaker: { alias: "Runes & Remnants" }, content: msg });
+    // Wait briefly so roll cards appear first
+    await new Promise(r => setTimeout(r, 500));
+
+    const chatContent = `
+    <div class="rnr-harvest-summary">
+      <hr>
+      <h3><b>Harvest Summary</b></h3>
+      ${disadvantageNote}
+      <p><b>Target:</b> ${this.targetActor.name} (CR ${cr}, ${type})</p>
+      <ul>
+        <li><b>Assessment:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
+        <li><b>Carving:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
+        <li><b>Helper Bonus:</b> +${helperBonus} (cap: ${helperCap})</li>
+      </ul>
+      <p><b>Roll Breakdown:</b> ${assess.total} + ${carve.total} + ${helperBonus} = 
+        <b style="color:#8ef;">${totalRoll}</b> vs DC <b>${baseDC}</b></p>
+      <p><b>Outcome:</b> <span style="color:${result.includes("success") ? "#80ff80" : "#ff8080"};">${result}</span></p>
+      <p><b>Recovered:</b> ${materials.join(", ") || "Nothing recovered"}</p>
+    </div>
+    `;
+
+    await ChatMessage.create({
+      speaker: { alias: "Runes & Remnants" },
+      content: chatContent,
+      whisper: ChatMessage.getWhisperRecipients("GM")
+    });
+
     await this.targetToken.document.delete();
   }
 
