@@ -1,16 +1,19 @@
-// ========================= Runes & Remnants: Harvest Logic =========================
+// =========================================================
+// Runes & Remnants — Harvest Logic 
+// =========================================================
+
 export const MODULE_ID = "runes-and-remnants";
 
-/* ---------- TYPE & RARITY MODIFIERS ---------- */
+/* ---------------------------------------------
+   TYPE & RARITY MODIFIERS
+--------------------------------------------- */
 export const TYPE_MOD = {
   aberration: 2, beast: 0, celestial: 2, construct: 3, dragon: 4, elemental: 2,
-  fey: 2, fiend: 3, giant: 1, humanoid: 0, monstrosity: 2, ooze: 1, plant: 1, undead: 3, other: 0
+  fey: 2, fiend: 3, giant: 1, humanoid: 0, monstrosity: 2, ooze: 1,
+  plant: 1, undead: 3, other: 0
 };
 
-/**
- * Harvesting skill associations by creature type
- * (Used for both assessment and harvesting phases)
- */
+/** Mapping creature types to their associated harvest skills */
 export const HARVEST_SKILL_BY_TYPE = {
   aberration: "Arcana",
   beast: "Survival",
@@ -29,12 +32,22 @@ export const HARVEST_SKILL_BY_TYPE = {
   other: "Survival"
 };
 
-
+/** Rarity difficulty modifiers */
 export const RARITY_MOD = {
-  common: 0, uncommon: 2, rare: 5, "very-rare": 8, legendary: 10
+  common: 0,
+  uncommon: 2,
+  rare: 5,
+  "very-rare": 8,
+  legendary: 10
 };
 
-/* ---------- LOAD HARVEST DATA ---------- */
+/* ---------------------------------------------
+   DATA LOADERS
+--------------------------------------------- */
+
+/**
+ * Loads harvest tables and item data into game memory.
+ */
 export async function loadHarvestData() {
   const [tableRes, itemsRes] = await Promise.all([
     fetch("modules/runes-and-remnants/data/harvest-table.json"),
@@ -44,7 +57,9 @@ export async function loadHarvestData() {
   game.rnrHarvestItems = await itemsRes.json();
 }
 
-/* ---------- ESSENCE (REMNANT) TABLE ---------- */
+/* ---------------------------------------------
+   ESSENCE / REMNANT TABLE
+--------------------------------------------- */
 export const ESSENCE_TABLE = [
   { crMin: 3, crMax: 6, dc: 25, name: "Frail Remnant", rarity: "uncommon" },
   { crMin: 7, crMax: 11, dc: 30, name: "Robust Remnant", rarity: "rare" },
@@ -53,12 +68,21 @@ export const ESSENCE_TABLE = [
   { crMin: 25, crMax: 99, dc: 50, name: "Deific Remnant", rarity: "artifact" }
 ];
 
+/**
+ * Determines which essence type drops based on CR.
+ */
 export function getEssenceByCR(cr) {
   const entry = ESSENCE_TABLE.find(e => cr >= e.crMin && cr <= e.crMax);
   return entry ?? { name: "Frail Remnant", rarity: "uncommon", dc: 20 };
 }
 
-/* ---------- DC COMPUTATION ---------- */
+/* ---------------------------------------------
+   DIFFICULTY COMPUTATION
+--------------------------------------------- */
+
+/**
+ * Computes the DC for harvesting based on CR, rarity, and type.
+ */
 export function computeHarvestDC({
   cr = 0,
   type = "other",
@@ -69,7 +93,6 @@ export function computeHarvestDC({
   const t = (String(type || "other").toLowerCase());
   const typeMod = TYPE_MOD[t] ?? TYPE_MOD.other;
 
-  // Compute rarity mod
   let rarityMod;
   if (rarityMultiplier !== null && !Number.isNaN(Number(rarityMultiplier))) {
     rarityMod = Number(rarityMultiplier);
@@ -82,7 +105,13 @@ export function computeHarvestDC({
   return Math.max(5, baseDC + crMod + typeMod + rarityMod);
 }
 
-/* ---------- SKILL ROLL UTILITIES ---------- */
+/* ---------------------------------------------
+   SKILL ROLL HELPERS
+--------------------------------------------- */
+
+/**
+ * Returns the best of a list of skill keys for an actor.
+ */
 export function bestSkillFor(actor, skills = ["sur"]) {
   const bag = actor?.system?.skills || {};
   let best = { key: skills[0], mod: -Infinity };
@@ -94,6 +123,9 @@ export function bestSkillFor(actor, skills = ["sur"]) {
   return best;
 }
 
+/**
+ * Rolls a skill check generically.
+ */
 export async function rollSkillCheck(actor, skillKey, label = "Harvest Check") {
   const bag = actor?.system?.skills || {};
   const mod = (bag[skillKey]?.total ?? bag[skillKey]?.mod ?? 0);
@@ -105,15 +137,17 @@ export async function rollSkillCheck(actor, skillKey, label = "Harvest Check") {
   return { total: roll.total, roll };
 }
 
-/* ---------- ROLE-SPECIFIC ROLLS ---------- */
+/* ---------------------------------------------
+   ROLE-SPECIFIC ROLLS
+--------------------------------------------- */
+
 /**
- * Performs the Assessment (Int-based) roll
- * @param {Actor5e} actor
- * @param {string} creatureType
+ * Performs the Assessment (Intelligence-based) roll.
+ * This roll identifies harvesting method and weak points.
  */
 export async function rollAssessment(actor, creatureType = "other") {
   const skillName = HARVEST_SKILL_BY_TYPE[String(creatureType).toLowerCase()] ?? "Survival";
-  const skillKey = skillName.toLowerCase().slice(0, 3); // e.g., Arcana → arc
+  const skillKey = skillName.toLowerCase().slice(0, 3);
 
   const intMod = actor.system?.abilities?.int?.mod ?? 0;
   const skill = actor.system?.skills?.[skillKey];
@@ -130,9 +164,8 @@ export async function rollAssessment(actor, creatureType = "other") {
 }
 
 /**
- * Performs the Carving (Dex-based) roll
- * @param {Actor5e} actor
- * @param {string} creatureType
+ * Performs the Carving (Dexterity-based) roll.
+ * This roll extracts materials from the target.
  */
 export async function rollCarving(actor, creatureType = "other", options = {}) {
   const skillName = HARVEST_SKILL_BY_TYPE[String(creatureType).toLowerCase()] ?? "Survival";
@@ -143,45 +176,31 @@ export async function rollCarving(actor, creatureType = "other", options = {}) {
   const prof = skill?.prof > 0 ? (actor.system?.attributes?.prof ?? 2) : 0;
   const mod = dexMod + prof;
 
+  // Only applies disadvantage if passed from menu.js
   const formula = options.disadvantage ? "2d20kh1 + @mod" : "1d20 + @mod";
   const roll = await (new Roll(formula, { mod })).evaluate({ async: true });
 
   await roll.toMessage({
-    flavor: `${options.disadvantage ? "Disadvantaged " : ""} Carving Check (${skillName}) — ${actor.name}`,
+    flavor: `${options.disadvantage ? "Disadvantaged " : ""}🔪 Carving Check (${skillName}) — ${actor.name}`,
     speaker: ChatMessage.getSpeaker({ actor })
   });
 
   return { total: roll.total, skillName };
 }
 
+/* ---------------------------------------------
+   HELPER BONUS COMPUTATION
+--------------------------------------------- */
 
 /**
- * Performs both Assessment and Carving rolls,
- * applying disadvantage automatically if the same actor performs both.
- * Returns { assess, carve, sameActor }.
+ * Computes total helper contribution and cap based on size.
+ * Helpers add full proficiency if trained, half if untrained.
  */
-export async function performHarvestRolls(assessorActor, harvesterActor, creatureType = "other") {
-  const sameActor = assessorActor?.id === harvesterActor?.id;
-
-  if (sameActor) {
-    ui.notifications.warn(`${assessorActor.name} is performing both roles — rolls are made at disadvantage.`);
-  }
-
-  const assess = await rollAssessment(assessorActor, creatureType);
-  const carve  = await rollCarving(harvesterActor, creatureType, { disadvantage: sameActor });
-
-  return { assess, carve, sameActor };
-}
-
-// TODO: Jahson follow chat for details. I am resting here for now.11/4/25 10:03pm
-
-/* ---------- HELPERS ---------- */
 export function computeHelperBonus(helpers = [], skillKey = "sur", sizeKey = "med") {
   const sizeCap = { tiny: 0, sm: 1, med: 2, lg: 4, huge: 6, grg: 10 }[sizeKey?.toLowerCase?.()] ?? 3;
   const breakdown = [];
   let total = 0;
 
-  // compute even if no helpers (to expose cap)
   for (let i = 0; i < Math.min(helpers.length, sizeCap); i++) {
     const helper = helpers[i];
     const actor = game.actors.get(helper.actorId);
@@ -199,7 +218,13 @@ export function computeHelperBonus(helpers = [], skillKey = "sur", sizeKey = "me
   return { total, breakdown, cap: sizeCap };
 }
 
-/* ---------- ITEM GRANTING ---------- */
+/* ---------------------------------------------
+   MATERIAL GRANTING
+--------------------------------------------- */
+
+/**
+ * Grants harvested materials to an actor or drops them on the map.
+ */
 export async function grantMaterial({ item, qty = 1, toActor = null, dropAt = null }) {
   let q = Number(qty);
   if (Number.isNaN(q)) {
@@ -228,13 +253,25 @@ export async function grantMaterial({ item, qty = 1, toActor = null, dropAt = nu
   }
 }
 
-/* ---------- HARVEST TABLE LOOKUP ---------- */
+/* ---------------------------------------------
+   HARVEST TABLE LOOKUP
+--------------------------------------------- */
+
+/**
+ * Retrieves harvestable component data from the harvest table.
+ */
 export function getHarvestOptions(type) {
   const t = String(type || "other").toLowerCase();
   return game.rnrHarvestTable?.find(e => e.creatureType === t)?.components ?? [];
 }
 
-/* ---------- FINAL OUTCOME ---------- */
+/* ---------------------------------------------
+   RESULT INTERPRETATION
+--------------------------------------------- */
+
+/**
+ * Determines success level based on DC and total roll.
+ */
 export function finalHarvestResult(dc, total) {
   if (total >= dc + 10) return "critical-success";
   if (total >= dc) return "success";
@@ -243,8 +280,7 @@ export function finalHarvestResult(dc, total) {
 }
 
 /**
- * Compatibility alias for tests expecting rollOutcome()
- * Uses same logic as finalHarvestResult()
+ * Legacy alias for tests or older macros.
  */
 export function rollOutcome({ rollTotal, dc }) {
   return finalHarvestResult(dc, rollTotal);

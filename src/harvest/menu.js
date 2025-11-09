@@ -1,3 +1,7 @@
+// =========================================================
+// Runes & Remnants — Harvest Menu
+// =========================================================
+
 import {
   MODULE_ID,
   computeHarvestDC,
@@ -7,7 +11,7 @@ import {
   rollCarving,
   finalHarvestResult,
   getEssenceByCR,
-  computeHelperBonus,  
+  computeHelperBonus,
   HARVEST_SKILL_BY_TYPE
 } from "./logic.js";
 
@@ -20,6 +24,11 @@ export class HarvestMenu extends Application {
     this.loot = [];
     this._lootLoaded = false;
     this.selectedLoot = new Set();
+
+    // Roles
+    this.assessor = null;
+    this.harvester = null;
+    this.helpers = [];
   }
 
   static get defaultOptions() {
@@ -33,13 +42,17 @@ export class HarvestMenu extends Application {
     });
   }
 
+  // ---------------------- Data Loading ----------------------
+
   async _ensureLootIndex() {
     if (this._lootLoaded) return;
+
     const pack = game.packs.get("runes-and-remnants.harvest-items");
     if (!pack) return;
     const idx = await pack.getIndex();
     this.loot = idx.contents ?? idx;
 
+    // Always append essence based on CR
     const cr = Number(this.targetActor?.system?.details?.cr ?? 0);
     const essence = getEssenceByCR(cr);
     this.loot.push({
@@ -59,11 +72,6 @@ export class HarvestMenu extends Application {
     return { type, cr };
   }
 
-  _getHarvesterLimit(sizeKey) {
-    const sizeMap = { tiny: 1, sm: 1, med: 2, lg: 4, huge: 6, grg: 10 };
-    return sizeMap[sizeKey?.toLowerCase?.()] ?? 1;
-  }
-
   _getPortrait(actor) {
     if (!actor) return "icons/svg/mystery-man.svg";
     return actor.img || actor.prototypeToken?.texture?.src || "icons/svg/mystery-man.svg";
@@ -75,23 +83,50 @@ export class HarvestMenu extends Application {
     return { skillName, skillKey: nameToKey[skillName] ?? "sur" };
   }
 
+  _getAvailableActors() {
+    const allActors = Array.from(game.actors.values());
+    const activeUsers = game.users.filter(u => u.active);
+    const activeUserIds = new Set(activeUsers.map(u => u.id));
+
+    const sceneActorIds = new Set(
+      (canvas?.tokens?.placeables ?? [])
+        .map(t => t.actor?.id)
+        .filter(Boolean)
+    );
+
+    const weighted = allActors.map(a => {
+      const isPC = a.type === "character";
+      const owners = game.users.filter(u => a.testUserPermission(u, "OWNER"));
+      const activeOwners = owners.filter(u => activeUserIds.has(u.id));
+
+      let priority = 3;
+      if (isPC && activeOwners.length) priority = 1;
+      else if (sceneActorIds.has(a.id)) priority = 2;
+
+      return {
+        id: a.id,
+        name: a.name,
+        img: this._getPortrait(a),
+        priority
+      };
+    });
+
+    weighted.sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name));
+    return weighted;
+  }
+
+  // ---------------------- Data for Template ----------------------
+
   async getData() {
     await this._ensureLootIndex();
+
     const targetName = this.targetActor?.name ?? "Unknown Target";
     const targetImg = this._getPortrait(this.targetActor);
     const { type, cr } = this._actorSummary(this.targetActor);
     const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
 
-    this.assessor  = this.assessor  ?? null;
-    this.harvester = this.harvester ?? null;
-    this.helpers   = this.helpers   ?? [];
-
     const { skillName, skillKey } = this._skillKeyForType(type);
-    const hb = computeHelperBonus(this.helpers, skillKey, sizeKey);
-    const helperBonus = hb.total;
-    const helperCap   = hb.cap;
-
-    // expose helper cap to template
+    const { total: helperBonus, cap: helperCap } = computeHelperBonus(this.helpers, skillKey, sizeKey);
     this._helperCap = helperCap;
 
     const helperBonusClass =
@@ -107,13 +142,9 @@ export class HarvestMenu extends Application {
     const assessorId  = this.assessor?.actorId  ?? null;
     const harvesterId = this.harvester?.actorId ?? null;
 
-    // Filter roles properly
     const availableForAssessor  = availableActors.filter(a => a.id !== harvesterId && !takenHelperIds.has(a.id));
     const availableForHarvester = availableActors.filter(a => a.id !== assessorId && !takenHelperIds.has(a.id));
     const availableHelpers      = availableActors.filter(a => a.id !== assessorId && a.id !== harvesterId && !takenHelperIds.has(a.id));
-
-    // Ensure no overlap
-    this.helpers = this.helpers.filter(h => h.actorId !== assessorId && h.actorId !== harvesterId);
 
     return {
       hasTarget: !!this.targetActor,
@@ -129,85 +160,61 @@ export class HarvestMenu extends Application {
     };
   }
 
-  _getAvailableActors() {
-    const allActors = Array.from(game.actors.values());
-    const activeUsers = game.users.filter(u => u.active);
-    const activeUserIds = new Set(activeUsers.map(u => u.id));
-
-    const sceneActorIds = new Set(
-      (canvas?.tokens?.placeables ?? [])
-        .map(t => t.actor?.id)
-        .filter(id => !!id)
-    );
-
-    const weighted = allActors.map(a => {
-      const isPC = a.type === "character";
-      const owners = game.users.filter(u => a.testUserPermission(u, "OWNER"));
-      const activeOwners = owners.filter(u => activeUserIds.has(u.id));
-
-      // Priority ranking:
-      // 1 → Player-owned
-      // 2 → Scene actors
-      // 3 → Everything else
-      let priority = 3;
-      if (isPC && activeOwners.length) priority = 1;
-      else if (sceneActorIds.has(a.id)) priority = 2;
-
-      return {
-        id: a.id,
-        name: a.name,
-        img: this._getPortrait(a),
-        priority
-      };
-  });
-
-  // Sort by priority, then alphabetically
-  weighted.sort((a, b) => a.priority - b.priority || a.name.localeCompare(b.name));
-
-  return weighted;
-}
-
+  // ---------------------- UI Listeners ----------------------
 
   activateListeners(html) {
     super.activateListeners(html);
 
+    // Set assessor
     html.on("click", "[data-action='set-assessor']", ev => {
       const el = ev.currentTarget;
       const actorId = el.dataset.actorId;
-      if (this.harvester?.actorId === actorId) return ui.notifications.warn("This actor is already the Harvester.");
+      if (this.harvester?.actorId === actorId)
+        return ui.notifications.warn("This actor is already the Harvester.");
+
       this.assessor = { actorId, name: el.dataset.actorName, img: el.dataset.actorImg };
       this.helpers = this.helpers.filter(h => h.actorId !== actorId);
       this.render(true);
     });
 
-    html.on("click", "[data-action='remove-assessor']", () => { this.assessor = null; this.render(true); });
+    html.on("click", "[data-action='remove-assessor']", () => {
+      this.assessor = null;
+      this.render(true);
+    });
 
+    // Set harvester
     html.on("click", "[data-action='set-harvester']", ev => {
       const el = ev.currentTarget;
       const actorId = el.dataset.actorId;
-      if (this.assessor?.actorId === actorId) return ui.notifications.warn("This actor is already the Assessor.");
+      if (this.assessor?.actorId === actorId)
+        return ui.notifications.warn("This actor is already the Assessor.");
+
       this.harvester = { actorId, name: el.dataset.actorName, img: el.dataset.actorImg };
       this.helpers = this.helpers.filter(h => h.actorId !== actorId);
       this.render(true);
     });
 
-    html.on("click", "[data-action='remove-harvester']", () => { this.harvester = null; this.render(true); });
+    html.on("click", "[data-action='remove-harvester']", () => {
+      this.harvester = null;
+      this.render(true);
+    });
 
+    // Add helper
     html.on("click", "[data-action='add-helper']", ev => {
       const el = ev.currentTarget;
       const actorId = el.dataset.actorId;
-      
-      if (this.assessor?.actorId === actorId || this.harvester?.actorId === actorId) return ui.notifications.warn("That actor already has a role.");
+
+      if (this.assessor?.actorId === actorId || this.harvester?.actorId === actorId)
+        return ui.notifications.warn("That actor already has a role.");
       if (this.helpers.some(h => h.actorId === actorId)) return;
-      
+
       const { type } = this._actorSummary(this.targetActor);
       const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
       const { skillKey } = this._skillKeyForType(type);
       const { cap } = computeHelperBonus([], skillKey, sizeKey);
-      
-      if (this.helpers.length >= cap) {
+
+      if (this.helpers.length >= cap)
         return ui.notifications.warn(`You cannot assign more than ${cap} helpers for a ${sizeKey} creature.`);
-      }
 
       this.helpers.push({ actorId, name: el.dataset.actorName, img: el.dataset.actorImg });
       this.render(true);
@@ -228,8 +235,9 @@ export class HarvestMenu extends Application {
     html.on("click", "[data-action='start-harvest']", async () => this._startHarvest());
   }
 
+  // ---------------------- Harvest Execution ----------------------
+
   async _startHarvest() {
-    // --- PRECONDITIONS ---
     if (!this.targetActor)
       return ui.notifications.warn("No target creature selected.");
 
@@ -240,36 +248,36 @@ export class HarvestMenu extends Application {
     const { type, cr } = this._actorSummary(this.targetActor);
     const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
 
-    // --- LOAD COMPENDIUM ---
     const pack = game.packs.get("runes-and-remnants.harvest-items");
     if (!pack)
       return ui.notifications.error("Harvest Items compendium not found.");
 
-    // --- FETCH ACTORS ---
     const assessorActor = game.actors.get(this.assessor.actorId);
     const harvesterActor = game.actors.get(this.harvester.actorId);
-
     if (!assessorActor || !harvesterActor)
       return ui.notifications.error("One or more assigned actors could not be found.");
 
-    // --- ROLL HANDLER (with disadvantage if same actor) ---
-    const { assess, carve, sameActor } = await performHarvestRolls(assessorActor, harvesterActor, type);
+    // Check for same actor — decision in menu.js
+    const sameActor = assessorActor.id === harvesterActor.id;
+    if (sameActor)
+      ui.notifications.warn(`${assessorActor.name} is performing both roles — rolls will be made at disadvantage.`);
 
-    // --- COMBINE RESULTS ---
+    // Perform rolls (mechanics handled in logic.js)
+    const assess = await rollAssessment(assessorActor, type);
+    const carve  = await rollCarving(harvesterActor, type, { disadvantage: sameActor });
+
     const harvestTotal = assess.total + carve.total;
     const baseDC = computeHarvestDC({ cr, type, rarity: "common", baseDC: 10 });
 
     const skillName = HARVEST_SKILL_BY_TYPE[String(type).toLowerCase()] ?? "Survival";
     const skillKey = skillName.toLowerCase().slice(0, 3);
 
-    // --- HELPER BONUS ---
     const { total: helperBonus, breakdown: helperBreakdown, cap: helperCap } =
       computeHelperBonus(helpers, skillKey, sizeKey);
 
     const totalRoll = harvestTotal + helperBonus;
     const result = finalHarvestResult(baseDC, totalRoll);
 
-    // --- DETERMINE MATERIALS ---
     const typeData = getHarvestOptions(type);
     if (!typeData?.length)
       return ui.notifications.warn(`No harvest data found for ${type} creatures.`);
@@ -281,26 +289,19 @@ export class HarvestMenu extends Application {
     const essence = getEssenceByCR(Number(cr) || 0);
     materials.push(essence.name);
 
-    // --- GRANT ITEMS ---
+    // Drop or assign materials
     const dropPoint = this.targetToken?.object?.center ?? null;
     for (const itemName of materials) {
       const itemEntry = game.rnrHarvestItems.find(i => i.name === itemName);
       if (!itemEntry) continue;
-
       try {
         const itemDoc = await pack.getDocument(itemEntry._id);
-        await grantMaterial({
-          item: itemDoc,
-          qty: 1,
-          toActor: harvesterActor,
-          dropAt: dropPoint
-        });
+        await grantMaterial({ item: itemDoc, qty: 1, toActor: harvesterActor, dropAt: dropPoint });
       } catch (err) {
         console.warn(`[${MODULE_ID}] Failed to grant ${itemName}:`, err);
       }
     }
 
-    // --- COMPOSE CHAT MESSAGE ---
     const helperList = helperBreakdown.length
       ? helperBreakdown.map(h =>
           `<li>${h.name}: +${h.contribution} (${h.proficient ? "proficient" : "half"})</li>`
@@ -315,8 +316,8 @@ export class HarvestMenu extends Application {
       <p><b>${this.targetActor.name}</b> (CR ${cr}, ${type}) was harvested.</p>
       ${disadvantageNote}
       <ul>
-        <li><b> Assessor:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
-        <li><b> Harvester:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
+        <li><b>🧠 Assessor:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
+        <li><b>🔪 Harvester:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
       </ul>
       <p><b>Helpers:</b></p>
       <ul>${helperList}</ul>
@@ -327,9 +328,6 @@ export class HarvestMenu extends Application {
     `;
 
     ChatMessage.create({ speaker: { alias: "Runes & Remnants" }, content: msg });
-
-    // --- CLEANUP ---
     await this.targetToken.document.delete();
   }
-
 }
