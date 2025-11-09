@@ -154,7 +154,7 @@ export async function rollAssessment(actor, creatureType = "other", options = {}
   const prof = skill?.prof > 0 ? (actor.system?.attributes?.prof ?? 2) : 0;
   const mod = intMod + prof;
 
-  const formula = options.disadvantage ? "2d20kh1 + @mod" : "1d20 + @mod";
+  const formula = options.disadvantage ? "2d20kl1 + @mod" : "1d20 + @mod";
   const roll = await (new Roll(formula, { mod })).evaluate({ async: true });
 
   await roll.toMessage({
@@ -180,7 +180,7 @@ export async function rollCarving(actor, creatureType = "other", options = {}) {
   const mod = dexMod + prof;
 
   // Only applies disadvantage if passed from menu.js
-  const formula = options.disadvantage ? "2d20kh1 + @mod" : "1d20 + @mod";
+  const formula = options.disadvantage ? "2d20kl1 + @mod" : "1d20 + @mod";
   const roll = await (new Roll(formula, { mod })).evaluate({ async: true });
 
   await roll.toMessage({
