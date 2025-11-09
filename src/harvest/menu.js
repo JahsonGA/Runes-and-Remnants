@@ -142,9 +142,10 @@ export class HarvestMenu extends Application {
     const assessorId  = this.assessor?.actorId  ?? null;
     const harvesterId = this.harvester?.actorId ?? null;
 
-    const availableForAssessor  = availableActors.filter(a => a.id !== harvesterId && !takenHelperIds.has(a.id));
-    const availableForHarvester = availableActors.filter(a => a.id !== assessorId && !takenHelperIds.has(a.id));
+    const availableForAssessor  = availableActors.filter(a => !takenHelperIds.has(a.id));
+    const availableForHarvester = availableActors.filter(a => !takenHelperIds.has(a.id));
     const availableHelpers      = availableActors.filter(a => a.id !== assessorId && a.id !== harvesterId && !takenHelperIds.has(a.id));
+
 
     return {
       hasTarget: !!this.targetActor,
@@ -322,8 +323,8 @@ export class HarvestMenu extends Application {
       <p><b>${this.targetActor.name}</b> (CR ${cr}, ${type}) was harvested.</p>
       ${disadvantageNote}
       <ul>
-        <li><b>🧠 Assessor:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
-        <li><b>🔪 Harvester:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
+        <li><b>Assessor:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
+        <li><b>Harvester:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
       </ul>
       <p><b>Helpers:</b></p>
       <ul>${helperList}</ul>
