@@ -244,6 +244,7 @@ export class HarvestMenu extends Application {
 
   // ---------------------- Harvest Execution ----------------------
 
+  // ---------------------- Harvest Execution ----------------------
   async _startHarvest() {
     if (!this.targetActor)
       return ui.notifications.warn("No target creature selected.");
@@ -264,18 +265,19 @@ export class HarvestMenu extends Application {
     if (!assessorActor || !harvesterActor)
       return ui.notifications.error("One or more assigned actors could not be found.");
 
-    // Check for same actor — decision in menu.js
+    // Same actor check
     const sameActor = assessorActor.id === harvesterActor.id;
     if (sameActor)
-      ui.notifications.warn(`${assessorActor.name} is performing both roles — rolls will be made at disadvantage.`);
+      ui.notifications.warn(`${assessorActor.name} is performing both roles — both rolls are made at disadvantage.`);
 
-    // Perform rolls (mechanics handled in logic.js)
-    const assess = await rollAssessment(assessorActor, type);
+    // --- Perform Rolls ---
+    const assess = await rollAssessment(assessorActor, type, { disadvantage: sameActor });
     const carve  = await rollCarving(harvesterActor, type, { disadvantage: sameActor });
 
     const harvestTotal = assess.total + carve.total;
-    const baseDC = computeHarvestDC({ cr, type, rarity: "common", baseDC: 10 });
 
+    // --- DC & Bonuses ---
+    const baseDC = computeHarvestDC({ cr, type, rarity: "common", baseDC: 10 });
     const skillName = HARVEST_SKILL_BY_TYPE[String(type).toLowerCase()] ?? "Survival";
     const skillKey = skillName.toLowerCase().slice(0, 3);
 
@@ -285,6 +287,7 @@ export class HarvestMenu extends Application {
     const totalRoll = harvestTotal + helperBonus;
     const result = finalHarvestResult(baseDC, totalRoll);
 
+    // --- Material Results ---
     const typeData = getHarvestOptions(type);
     if (!typeData?.length)
       return ui.notifications.warn(`No harvest data found for ${type} creatures.`);
@@ -296,7 +299,7 @@ export class HarvestMenu extends Application {
     const essence = getEssenceByCR(Number(cr) || 0);
     materials.push(essence.name);
 
-    // Drop or assign materials
+    // --- Drop or Grant Materials ---
     const dropPoint = this.targetToken?.object?.center ?? null;
     for (const itemName of materials) {
       const itemEntry = game.rnrHarvestItems.find(i => i.name === itemName);
@@ -309,32 +312,35 @@ export class HarvestMenu extends Application {
       }
     }
 
+    // --- Build Helper Breakdown ---
     const helperList = helperBreakdown.length
       ? helperBreakdown.map(h =>
           `<li>${h.name}: +${h.contribution} (${h.proficient ? "proficient" : "half"})</li>`
         ).join("")
       : "<li>None</li>";
 
+    // --- Build Chat Output ---
     const disadvantageNote = sameActor
-      ? `<p class="warning">⚠️ ${this.assessor.name} performed both roles (rolled at disadvantage).</p>`
+      ? `<p class="warning">⚠️ ${this.assessor.name} performed both roles — both rolls at disadvantage.</p>`
       : "";
 
     const msg = `
       <p><b>${this.targetActor.name}</b> (CR ${cr}, ${type}) was harvested.</p>
       ${disadvantageNote}
       <ul>
-        <li><b>Assessor:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
-        <li><b>Harvester:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
+        <li><b>🧠 Assessment:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
+        <li><b>🔪 Carving:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
       </ul>
       <p><b>Helpers:</b></p>
       <ul>${helperList}</ul>
-      <p><b>Total Helper Bonus:</b> +${helperBonus} (cap: ${helperCap})</p>
-      <p><b>Combined Total:</b> ${totalRoll} vs DC ${baseDC}</p>
-      <p><b>Outcome:</b> ${result}</p>
+      <p><b>Helper Bonus:</b> +${helperBonus} (cap: ${helperCap})</p>
+      <p><b>Roll Breakdown:</b> ${assess.total} + ${carve.total} + ${helperBonus} = <b>${totalRoll}</b></p>
+      <p><b>DC:</b> ${baseDC} → <b>Outcome:</b> ${result}</p>
       <p><b>Recovered:</b> ${materials.join(", ") || "Nothing"}</p>
     `;
 
     ChatMessage.create({ speaker: { alias: "Runes & Remnants" }, content: msg });
     await this.targetToken.document.delete();
   }
+
 }

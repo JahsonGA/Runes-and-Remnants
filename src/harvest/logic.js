@@ -181,7 +181,7 @@ export async function rollCarving(actor, creatureType = "other", options = {}) {
   const roll = await (new Roll(formula, { mod })).evaluate({ async: true });
 
   await roll.toMessage({
-    flavor: `${options.disadvantage ? "Disadvantaged " : ""}🔪 Carving Check (${skillName}) — ${actor.name}`,
+    flavor: `${options.disadvantage ? "Disadvantaged " : ""} Carving Check (${skillName}) — ${actor.name}`,
     speaker: ChatMessage.getSpeaker({ actor })
   });
 
