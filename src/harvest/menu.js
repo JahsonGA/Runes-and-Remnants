@@ -163,77 +163,83 @@ export class HarvestMenu extends Application {
   // ---------------------- UI Listeners ----------------------
 
   activateListeners(html) {
-    super.activateListeners(html);
+  super.activateListeners(html);
 
-    // Set assessor
-    html.on("click", "[data-action='set-assessor']", ev => {
-      const el = ev.currentTarget;
-      const actorId = el.dataset.actorId;
-      if (this.harvester?.actorId === actorId)
-        return ui.notifications.warn("This actor is already the Harvester.");
+  // --- Assessor Selection ---
+  html.on("click", "[data-action='set-assessor']", ev => {
+    const el = ev.currentTarget;
+    const actorId = el.dataset.actorId;
 
-      this.assessor = { actorId, name: el.dataset.actorName, img: el.dataset.actorImg };
-      this.helpers = this.helpers.filter(h => h.actorId !== actorId);
-      this.render(true);
-    });
+    // Allow same actor to be harvester (for disadvantage case)
+    this.assessor = { actorId, name: el.dataset.actorName, img: el.dataset.actorImg };
 
-    html.on("click", "[data-action='remove-assessor']", () => {
-      this.assessor = null;
-      this.render(true);
-    });
+    // Remove from helpers only
+    this.helpers = this.helpers.filter(h => h.actorId !== actorId);
+    this.render(true);
+  });
 
-    // Set harvester
-    html.on("click", "[data-action='set-harvester']", ev => {
-      const el = ev.currentTarget;
-      const actorId = el.dataset.actorId;
-      if (this.assessor?.actorId === actorId)
-        return ui.notifications.warn("This actor is already the Assessor.");
+  html.on("click", "[data-action='remove-assessor']", () => {
+    this.assessor = null;
+    this.render(true);
+  });
 
-      this.harvester = { actorId, name: el.dataset.actorName, img: el.dataset.actorImg };
-      this.helpers = this.helpers.filter(h => h.actorId !== actorId);
-      this.render(true);
-    });
+  // --- Harvester Selection ---
+  html.on("click", "[data-action='set-harvester']", ev => {
+    const el = ev.currentTarget;
+    const actorId = el.dataset.actorId;
 
-    html.on("click", "[data-action='remove-harvester']", () => {
-      this.harvester = null;
-      this.render(true);
-    });
+    // Allow same actor to be assessor (for disadvantage case)
+    this.harvester = { actorId, name: el.dataset.actorName, img: el.dataset.actorImg };
 
-    // Add helper
-    html.on("click", "[data-action='add-helper']", ev => {
-      const el = ev.currentTarget;
-      const actorId = el.dataset.actorId;
+    // Remove from helpers only
+    this.helpers = this.helpers.filter(h => h.actorId !== actorId);
+    this.render(true);
+  });
 
-      if (this.assessor?.actorId === actorId || this.harvester?.actorId === actorId)
-        return ui.notifications.warn("That actor already has a role.");
-      if (this.helpers.some(h => h.actorId === actorId)) return;
+  html.on("click", "[data-action='remove-harvester']", () => {
+    this.harvester = null;
+    this.render(true);
+  });
 
-      const { type } = this._actorSummary(this.targetActor);
-      const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
-      const { skillKey } = this._skillKeyForType(type);
-      const { cap } = computeHelperBonus([], skillKey, sizeKey);
+  // --- Helper Add/Remove ---
+  html.on("click", "[data-action='add-helper']", ev => {
+    const el = ev.currentTarget;
+    const actorId = el.dataset.actorId;
 
-      if (this.helpers.length >= cap)
-        return ui.notifications.warn(`You cannot assign more than ${cap} helpers for a ${sizeKey} creature.`);
+    // Prevent using same actor if they’re already assessor or harvester
+    if (this.assessor?.actorId === actorId || this.harvester?.actorId === actorId)
+      return ui.notifications.warn("That actor already has a role.");
+    if (this.helpers.some(h => h.actorId === actorId)) return;
 
-      this.helpers.push({ actorId, name: el.dataset.actorName, img: el.dataset.actorImg });
-      this.render(true);
-    });
+    const { type } = this._actorSummary(this.targetActor);
+    const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
+    const { skillKey } = this._skillKeyForType(type);
+    const { cap } = computeHelperBonus([], skillKey, sizeKey);
 
-    html.on("click", "[data-action='remove-helper']", ev => {
-      const li = ev.currentTarget.closest("li[data-index]");
-      const i = Number(li.dataset.index);
-      if (Number.isInteger(i)) this.helpers.splice(i, 1);
-      this.render(true);
-    });
+    if (this.helpers.length >= cap)
+      return ui.notifications.warn(`You cannot assign more than ${cap} helpers for a ${sizeKey} creature.`);
 
-    html.on("change", "input[name='lootChoice']", ev => {
-      const id = ev.currentTarget.value;
-      ev.currentTarget.checked ? this.selectedLoot.add(id) : this.selectedLoot.delete(id);
-    });
+    this.helpers.push({ actorId, name: el.dataset.actorName, img: el.dataset.actorImg });
+    this.render(true);
+  });
 
-    html.on("click", "[data-action='start-harvest']", async () => this._startHarvest());
-  }
+  html.on("click", "[data-action='remove-helper']", ev => {
+    const li = ev.currentTarget.closest("li[data-index]");
+    const i = Number(li.dataset.index);
+    if (Number.isInteger(i)) this.helpers.splice(i, 1);
+    this.render(true);
+  });
+
+  // --- Loot Checkbox ---
+  html.on("change", "input[name='lootChoice']", ev => {
+    const id = ev.currentTarget.value;
+    ev.currentTarget.checked ? this.selectedLoot.add(id) : this.selectedLoot.delete(id);
+  });
+
+  // --- Begin Harvest ---
+  html.on("click", "[data-action='start-harvest']", async () => this._startHarvest());
+}
+
 
   // ---------------------- Harvest Execution ----------------------
 
