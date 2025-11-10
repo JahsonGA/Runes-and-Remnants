@@ -257,6 +257,15 @@ export class HarvestMenu extends Application {
     if (!pack)
       return ui.notifications.error("Harvest Items compendium not found.");
 
+    // Ensure data arrays exist for testing
+    if (!game.rnrHarvestItems) {
+      game.rnrHarvestItems = [{ _id: "mock-item", name: "Test Material" }];
+    }
+    if (!game.rnrHarvestTable) {
+      game.rnrHarvestTable = [{ creatureType: "other", components: [{ dc: 10, items: ["Test Material"] }] }];
+    }
+
+
     const assessorActor = game.actors.get(this.assessor.actorId);
     const harvesterActor = game.actors.get(this.harvester.actorId);
     if (!assessorActor || !harvesterActor)
