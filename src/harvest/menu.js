@@ -2,6 +2,8 @@
 // Runes & Remnants — Harvest Menu
 // =========================================================
 
+//TODO the math is not correct but the placement looks correct. the system is trtying to assign the DC of creature CR, type, rarity but it should be a flat number
+
 import {
   MODULE_ID,
   computeHarvestDC,
