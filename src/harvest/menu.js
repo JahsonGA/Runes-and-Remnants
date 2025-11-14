@@ -3,6 +3,7 @@
 // =========================================================
 
 //TODO the math is not correct but the placement looks correct. the system is trtying to assign the DC of creature CR, type, rarity but it should be a flat number
+// todo Data also needs to be added to the harvest table for creature types and their associated materials
 
 import {
   MODULE_ID,
