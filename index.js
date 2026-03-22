@@ -23,11 +23,15 @@ Hooks.once("init", () => {
   });
 });
 
+Hooks.once("init", () => {
+  Handlebars.registerHelper("eq", (a, b) => a === b);
+});
+
+
 /**
  * Socket listener: when anyone opens the Harvest Menu, broadcast so
  * all active users get the same window (pointing at the same token).
  */
-//! likely cause of the contenst repopulating issue
 Hooks.once("ready", () => {
   game.socket?.on(`module.${MODULE_ID}`, async (payload) => {
     if (!payload || payload.action !== "openHarvest") return;
