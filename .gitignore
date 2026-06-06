@@ -1,2 +1,5 @@
 Runes-and-Remnants.zip
 .github\workflows
+.agents/
+skills-lock.json
+node_modules/

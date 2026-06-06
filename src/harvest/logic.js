@@ -1,6 +1,8 @@
 // =========================================================
-// Runes & Remnants — Harvest Logic 
+// Runes & Remnants — Harvest Logic
 // =========================================================
+
+import { HARVEST_TABLE } from "../data/harvest-table.js";
 
 export const MODULE_ID = "runes-and-remnants";
 
@@ -42,38 +44,37 @@ export const RARITY_MOD = {
 };
 
 /* ---------------------------------------------
-   DATA LOADERS
+   DATA LOADERS  (legacy — no longer used)
 --------------------------------------------- */
 
 /**
- * Loads harvest tables and item data into game memory.
+ * @deprecated  Harvest data now comes from HARVEST_TABLE (src/data/harvest-table.js)
+ *              and the "runes-and-remnants.harvest-items" compendium.
+ *              The JSON files this function fetched no longer exist.
  */
 export async function loadHarvestData() {
-  const [tableRes, itemsRes] = await Promise.all([
-    fetch("modules/runes-and-remnants/data/harvest-table.json"),
-    fetch("modules/runes-and-remnants/data/harvest-items.json")
-  ]);
-  game.rnrHarvestTable = await tableRes.json();
-  game.rnrHarvestItems = await itemsRes.json();
+  console.warn(`[${MODULE_ID}] loadHarvestData() is deprecated and does nothing.`);
 }
 
 /* ---------------------------------------------
    ESSENCE / REMNANT TABLE
 --------------------------------------------- */
+// Names match compendium item names exactly (runes-and-remnants.harvest-items).
 export const ESSENCE_TABLE = [
-  { crMin: 3, crMax: 6, dc: 25, name: "Frail Remnant", rarity: "uncommon" },
-  { crMin: 7, crMax: 11, dc: 30, name: "Robust Remnant", rarity: "rare" },
-  { crMin: 12, crMax: 17, dc: 35, name: "Potent Remnant", rarity: "very-rare" },
-  { crMin: 18, crMax: 24, dc: 40, name: "Mythic Remnant", rarity: "legendary" },
-  { crMin: 25, crMax: 99, dc: 50, name: "Deific Remnant", rarity: "artifact" }
+  { crMin: 3,  crMax: 6,  dc: 25, name: "Essence (Frail)",  rarity: "uncommon" },
+  { crMin: 7,  crMax: 11, dc: 30, name: "Essence (Robust)", rarity: "rare"      },
+  { crMin: 12, crMax: 17, dc: 35, name: "Essence (Potent)", rarity: "veryRare"  },
+  { crMin: 18, crMax: 24, dc: 40, name: "Essence (Mythic)", rarity: "legendary" },
+  { crMin: 25, crMax: 99, dc: 50, name: "Essence (Deific)", rarity: "artifact"  }
 ];
 
 /**
  * Determines which essence type drops based on CR.
+ * CR 0-2 creatures drop the lowest tier by default.
  */
 export function getEssenceByCR(cr) {
   const entry = ESSENCE_TABLE.find(e => cr >= e.crMin && cr <= e.crMax);
-  return entry ?? { name: "Frail Remnant", rarity: "uncommon", dc: 20 };
+  return entry ?? { name: "Essence (Frail)", rarity: "uncommon", dc: 20 };
 }
 
 /* ---------------------------------------------
@@ -261,11 +262,13 @@ export async function grantMaterial({ item, qty = 1, toActor = null, dropAt = nu
 --------------------------------------------- */
 
 /**
- * Retrieves harvestable component data from the harvest table.
+ * Retrieves harvestable DC tiers for a given creature type.
+ * Returns an array of { dc, items[] } tiers sourced from HARVEST_TABLE.
+ * Falls back to "other" if the type is unrecognized.
  */
 export function getHarvestOptions(type) {
   const t = String(type || "other").toLowerCase();
-  return game.rnrHarvestTable?.find(e => e.creatureType === t)?.components ?? [];
+  return HARVEST_TABLE[t] ?? HARVEST_TABLE.other ?? [];
 }
 
 /* ---------------------------------------------
