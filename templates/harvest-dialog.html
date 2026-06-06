@@ -22,13 +22,21 @@
 
     <hr>
 
-    <h3>Materials Available</h3>
+    <div class="rnr-loot-header">
+      <h3>Materials Available</h3>
+      {{#if loot.length}}
+        <div class="rnr-loot-controls">
+          <button type="button" data-action="select-all-loot">Select All</button>
+          <button type="button" data-action="clear-loot">Clear</button>
+        </div>
+      {{/if}}
+    </div>
     {{#if loot.length}}
       <ul class="rnr-list">
         {{#each loot}}
           <li>
             <label>
-              <input type="checkbox" name="lootChoice" value="{{this._id}}">
+              <input type="checkbox" name="lootChoice" value="{{this._id}}" {{#if this.selected}}checked{{/if}}>
               {{this.name}}
             </label>
           </li>

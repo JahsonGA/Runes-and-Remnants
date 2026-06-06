@@ -258,6 +258,50 @@ export async function grantMaterial({ item, qty = 1, toActor = null, dropAt = nu
 }
 
 /* ---------------------------------------------
+   COMPENDIUM DUPLICATE RESOLUTION
+--------------------------------------------- */
+
+/**
+ * Some compendium items share a name but represent different things
+ * (e.g. "Membrane" for ooze vs. plant). This map provides type-hints
+ * so findCompendiumEntry can pick the right variant.
+ *
+ * Structure: { itemName: { creatureType: { fieldKey: expectedValue } } }
+ */
+export const DUPLICATE_RESOLVER = {
+  "Membrane": {
+    ooze:  { type: "loot"       }, // "The balloon-like surface of the Ooze"
+    plant: { type: "consumable" }  // "The membrane of a plant."
+  }
+};
+
+/**
+ * Finds the best matching compendium index entry for an item name,
+ * using DUPLICATE_RESOLVER to pick the correct variant when multiple
+ * entries share the same name.
+ *
+ * @param {object[]} loot         - compendium index array (from pack.getIndex())
+ * @param {string}   itemName     - exact item name to find
+ * @param {string}   creatureType - creature type being harvested (for disambiguation)
+ * @returns {object|null}
+ */
+export function findCompendiumEntry(loot, itemName, creatureType) {
+  const candidates = loot.filter(i => i.name === itemName);
+  if (candidates.length <= 1) return candidates[0] ?? null;
+
+  const t = String(creatureType || "other").toLowerCase();
+  const hints = DUPLICATE_RESOLVER[itemName]?.[t];
+  if (hints) {
+    const match = candidates.find(c =>
+      Object.entries(hints).every(([k, v]) => c[k] === v)
+    );
+    if (match) return match;
+  }
+
+  return candidates[0];
+}
+
+/* ---------------------------------------------
    HARVEST TABLE LOOKUP
 --------------------------------------------- */
 

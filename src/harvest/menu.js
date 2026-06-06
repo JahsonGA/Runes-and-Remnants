@@ -15,6 +15,7 @@ import {
   finalHarvestResult,
   getEssenceByCR,
   computeHelperBonus,
+  findCompendiumEntry,
   HARVEST_SKILL_BY_TYPE
 } from "./logic.js";
 
@@ -144,8 +145,8 @@ export class HarvestMenu extends Application {
     return {
       hasTarget: !!this.targetActor,
       targetName, targetImg, type, cr, sizeKey,
-      loot: this.loot,
-      selectedLoot: Array.from(this.selectedLoot),
+      loot: this.loot.map(item => ({ ...item, selected: this.selectedLoot.has(item._id) })),
+      anySelected: this.selectedLoot.size > 0,
       assessor: this.assessor,
       harvester: this.harvester,
       helpers: this.helpers,
@@ -229,6 +230,18 @@ export class HarvestMenu extends Application {
   html.on("change", "input[name='lootChoice']", ev => {
     const id = ev.currentTarget.value;
     ev.currentTarget.checked ? this.selectedLoot.add(id) : this.selectedLoot.delete(id);
+    // No re-render — browser maintains checkbox state, re-render causes scroll reset.
+  });
+
+  // --- Select All / Clear ---
+  html.on("click", "[data-action='select-all-loot']", () => {
+    this.loot.forEach(i => this.selectedLoot.add(i._id));
+    this.render(true);
+  });
+
+  html.on("click", "[data-action='clear-loot']", () => {
+    this.selectedLoot.clear();
+    this.render(true);
   });
 
   // --- Begin Harvest ---
@@ -272,31 +285,46 @@ export class HarvestMenu extends Application {
     const skillKey = skillName.toLowerCase().slice(0, 3);
 
     // --- Helper Bonus ---
-    const { total: helperBonus, breakdown: helperBreakdown, cap: helperCap } =
+    const { total: helperBonus, breakdown: helperBreakdown } =
       computeHelperBonus(helpers, skillKey, sizeKey);
 
     const totalRoll = harvestTotal + helperBonus;
     const result = finalHarvestResult(baseDC, totalRoll);
 
-    // --- Gather Materials (never early-return) ---
-    const typeData = getHarvestOptions(type) ?? [];
-    const materials = [];
+    // --- Build unlocked material pool from tier DCs ---
+    const typeKey = String(type || "other").toLowerCase();
+    const typeData = getHarvestOptions(typeKey);
+    const essence  = getEssenceByCR(Number(cr) || 0);
 
-    for (const tier of typeData)
-      if (totalRoll >= tier.dc) materials.push(...tier.items);
+    const unlockedNames = new Set();
+    for (const tier of typeData) {
+      if (totalRoll >= tier.dc) tier.items.forEach(n => unlockedNames.add(n));
+    }
+    unlockedNames.add(essence.name); // essence always unlocked
 
-    // Always add essence even if table empty
-    const essence = getEssenceByCR(Number(cr) || 0);
-    materials.push(essence.name);
+    // --- Apply GM selection filter ---
+    // If the GM selected specific items, only grant the intersection of
+    // selected + unlocked. Essence is always granted regardless.
+    // If nothing was selected, grant everything unlocked.
+    let materials;
+    if (this.selectedLoot.size > 0) {
+      const selectedNames = new Set(
+        this.loot
+          .filter(i => this.selectedLoot.has(i._id))
+          .map(i => i.name)
+      );
+      materials = Array.from(unlockedNames).filter(n => selectedNames.has(n));
+      if (!materials.includes(essence.name)) materials.push(essence.name);
+    } else {
+      materials = Array.from(unlockedNames);
+    }
 
     // --- Drop or Grant Materials ---
-    // this.loot is the compendium index loaded in _ensureLootIndex — look up
-    // each material by name to get its real compendium _id before fetching.
     const dropPoint = this.targetToken?.object?.center ?? null;
     for (const itemName of materials) {
-      const indexEntry = this.loot.find(i => i.name === itemName);
+      const indexEntry = findCompendiumEntry(this.loot, itemName, typeKey);
       if (!indexEntry) {
-        console.warn(`[${MODULE_ID}] No compendium entry found for "${itemName}" — skipping.`);
+        console.warn(`[${MODULE_ID}] No compendium entry for "${itemName}" — skipping.`);
         continue;
       }
       try {
@@ -326,9 +354,9 @@ export class HarvestMenu extends Application {
       ${disadvantageNote}
       <p><b>Target:</b> ${this.targetActor.name} (CR ${cr}, ${type})</p>
       <ul>
-        <li><b>Assessment:</b> ${this.assessor.name} — ${skillName} (rolled ${assess.total})</li>
-        <li><b>Carving:</b> ${this.harvester.name} — ${skillName} (rolled ${carve.total})</li>
-        <li><b>Helper Bonus:</b> +${helperBonus} (cap: ${helperCap})</li>
+        <li><b>Assessment:</b> ${this.assessor.name} — ${skillName} (INT) — rolled ${assess.total}</li>
+        <li><b>Carving:</b> ${this.harvester.name} — ${skillName} (DEX) — rolled ${carve.total}</li>
+        <li><b>Helpers:</b><ul>${helperList}</ul></li>
       </ul>
       <p><b>Roll Breakdown:</b> ${assess.total} + ${carve.total} + ${helperBonus} =
         <b style="color:#8ef;">${totalRoll}</b> vs DC <b>${baseDC}</b></p>

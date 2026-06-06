@@ -43,6 +43,34 @@
 }
 .rnr-card h3 { margin-top: 0; color: var(--rnr-brown); }
 
+/* Loot header row (title + Select All / Clear) */
+.rnr-loot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+.rnr-loot-header h3 { margin: 0; }
+
+.rnr-loot-controls {
+  display: flex;
+  gap: 4px;
+}
+.rnr-loot-controls button {
+  background: #1a1010;
+  color: var(--rnr-text);
+  border: 1px solid var(--rnr-wood);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.rnr-loot-controls button:hover {
+  border-color: var(--rnr-red);
+  color: #fff;
+}
+
 /* Dropdowns */
 .rnr-dropdown {
   border: 1px solid var(--rnr-wood);
