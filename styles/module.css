@@ -71,6 +71,52 @@
   color: #fff;
 }
 
+/* Material tiers */
+.rnr-hint {
+  font-size: 0.7rem;
+  font-style: italic;
+  margin: 0 0 0.4rem;
+}
+.rnr-tier {
+  border: 1px solid var(--rnr-wood);
+  border-radius: 6px;
+  margin-bottom: 6px;
+  background: #0f0d0e;
+}
+.rnr-tier-header {
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rnr-brown);
+  border-bottom: 1px solid var(--rnr-wood);
+  background: #1a1010;
+}
+.rnr-tier-essence .rnr-tier-header {
+  color: var(--rnr-red);
+}
+.rnr-tier .rnr-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 8px;
+}
+.rnr-tier .rnr-list li {
+  padding: 1px 0;
+}
+.rnr-tier .rnr-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+/* Named in HARVEST_TABLE but absent from the compendium */
+.rnr-tier .rnr-list label.rnr-missing {
+  color: #a08a6a;
+  text-decoration: line-through;
+}
+
 /* Dropdowns */
 .rnr-dropdown {
   border: 1px solid var(--rnr-wood);

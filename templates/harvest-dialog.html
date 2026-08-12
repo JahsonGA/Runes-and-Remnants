@@ -24,24 +24,46 @@
 
     <div class="rnr-loot-header">
       <h3>Materials Available</h3>
-      {{#if loot.length}}
+      {{#if hasMaterials}}
         <div class="rnr-loot-controls">
           <button type="button" data-action="select-all-loot">Select All</button>
           <button type="button" data-action="clear-loot">Clear</button>
         </div>
       {{/if}}
     </div>
-    {{#if loot.length}}
-      <ul class="rnr-list">
-        {{#each loot}}
-          <li>
-            <label>
-              <input type="checkbox" name="lootChoice" value="{{this._id}}" {{#if this.selected}}checked{{/if}}>
-              {{this.name}}
-            </label>
-          </li>
-        {{/each}}
-      </ul>
+    {{#if hasMaterials}}
+      <p class="muted rnr-hint">Leave everything unticked to take whatever the roll unlocks.</p>
+
+      {{#each materialTiers}}
+        <div class="rnr-tier">
+          <div class="rnr-tier-header">DC {{this.dc}}</div>
+          <ul class="rnr-list">
+            {{#each this.items}}
+              <li>
+                <label class="{{#if this.missing}}rnr-missing{{/if}}"
+                       {{#if this.missing}}title="Not found in the Harvest Items compendium"{{/if}}>
+                  <input type="checkbox" name="lootChoice" value="{{this.name}}" {{#if this.selected}}checked{{/if}}>
+                  {{this.name}}{{#if this.missing}} ⚠{{/if}}
+                </label>
+              </li>
+            {{/each}}
+          </ul>
+        </div>
+      {{/each}}
+
+      {{#if essence}}
+        <div class="rnr-tier rnr-tier-essence">
+          <div class="rnr-tier-header">DC {{essence.dc}} — Essence</div>
+          <ul class="rnr-list">
+            <li>
+              <label>
+                <input type="checkbox" name="lootChoice" value="{{essence.name}}" {{#if essence.selected}}checked{{/if}}>
+                {{essence.name}}
+              </label>
+            </li>
+          </ul>
+        </div>
+      {{/if}}
     {{else}}
       <p class="muted">Loading compendium (Harvest Items)…</p>
     {{/if}}

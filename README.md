@@ -43,13 +43,29 @@ Inspired by *Heliana’s Guide to Monster Hunting* and *Ancestral Weapons*, this
 ### Behind the Scenes
 - Rolls use the appropriate 5e skill based on **creature type**:
   - e.g., `Survival` for Beasts, `Arcana` for Aberrations, `Medicine` for Undead, etc.
-- Difficulty Class (DC) is computed dynamically:
-  - Assessor and Harvester will roll there checks and their combine total will determine how many of the listed items are earns
+- The Assessor and Harvester each roll, and their **combined total** (plus helper
+  bonus) determines how much of the creature's material table is unlocked:
+
+  ```
+  assessment (1d20 + INT + prof) + carving (1d20 + DEX + prof) + helper bonus
+  ```
+
+- Materials are gated by **flat DCs — 20 / 30 / 40** — defined per creature type
+  in `src/data/harvest-table.js`. Tiers are additive: meeting DC 30 also grants
+  the DC 20 materials.
+- **Essence** is gated separately by a **CR-scaled DC** (25 → 50) from
+  `ESSENCE_TABLE`. This is where creature difficulty is expressed; the material
+  tiers themselves are deliberately flat.
 - Each helper adds a **partial or full proficiency** bonus (capped by creature size).
-- Final results categorize as:
-  - **Full Success** → Abundant yield  
-  - **Success** → Partial yield  
-  - **Failure** → No yield  
+- Outcome is derived from how many tiers were unlocked:
+  - **Critical Success** → every tier unlocked
+  - **Success** → most tiers unlocked
+  - **Partial** → first tier only
+  - **Failure** → nothing unlocked
+
+> Only materials the target creature can actually yield are listed in the menu,
+> grouped by the DC required to reach them. Leave everything unticked to take
+> whatever the roll unlocks, or tick specific materials to take only those.
 
 ---
 

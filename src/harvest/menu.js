@@ -2,18 +2,18 @@
 // Runes & Remnants — Harvest Menu
 // =========================================================
 
-//TODO the math is not correct but the placement looks correct. the system is trtying to assign the DC of creature CR, type, rarity but it should be a flat number
-// todo Data also needs to be added to the harvest table for creature types and their associated materials
+// Difficulty comes entirely from the flat tier DCs in HARVEST_TABLE plus the
+// CR-scaled essence DCs in ESSENCE_TABLE. See docs/ROADMAP.md § 1.2.
 
 import {
   MODULE_ID,
-  computeHarvestDC,
   grantMaterial,
   getHarvestOptions,
   rollAssessment,
   rollCarving,
-  finalHarvestResult,
+  getUnlockedMaterials,
   getEssenceByCR,
+  harvestOutcome,
   computeHelperBonus,
   findCompendiumEntry,
   HARVEST_SKILL_BY_TYPE
@@ -54,11 +54,49 @@ export class HarvestMenu extends Application {
     const pack = game.packs.get("runes-and-remnants.harvest-items");
     if (!pack) return;
     const idx = await pack.getIndex();
-    // idx is the full compendium index — essence items are already present
-    // under their real names ("Essence (Frail)" etc.), so no fake entry needed.
+    // Full compendium index, kept only to resolve item names to documents.
+    // What the player actually sees is built by _buildMaterialTiers().
     this.loot = idx.contents ?? idx;
 
     this._lootLoaded = true;
+  }
+
+  /**
+   * Builds the tier-grouped material list for this creature type.
+   * Only materials this creature can actually yield are shown, each group
+   * labelled with the DC the party must reach.
+   */
+  _buildMaterialTiers() {
+    if (!this.targetActor) return { tiers: [], essence: null };
+
+    const { type, cr } = this._actorSummary(this.targetActor);
+    const tiers = getHarvestOptions(type).map(tier => ({
+      dc: tier.dc,
+      items: tier.items.map(name => ({
+        name,
+        selected: this.selectedLoot.has(name),
+        missing: !findCompendiumEntry(this.loot, name, String(type).toLowerCase())
+      }))
+    }));
+
+    // Essence sits in its own group — it is gated by CR, not by the tier table.
+    const essence = getEssenceByCR(Number(cr) || 0);
+    return {
+      tiers,
+      essence: {
+        dc: essence.dc,
+        name: essence.name,
+        selected: this.selectedLoot.has(essence.name)
+      }
+    };
+  }
+
+  /** Every material name offered for the current target, essence included. */
+  _allMaterialNames() {
+    const { tiers, essence } = this._buildMaterialTiers();
+    const names = tiers.flatMap(t => t.items.map(i => i.name));
+    if (essence) names.push(essence.name);
+    return names;
   }
 
   _actorSummary(actor) {
@@ -142,10 +180,14 @@ export class HarvestMenu extends Application {
     const availableHelpers      = availableActors.filter(a => a.id !== assessorId && a.id !== harvesterId && !takenHelperIds.has(a.id));
 
 
+    const { tiers: materialTiers, essence } = this._buildMaterialTiers();
+
     return {
       hasTarget: !!this.targetActor,
       targetName, targetImg, type, cr, sizeKey,
-      loot: this.loot.map(item => ({ ...item, selected: this.selectedLoot.has(item._id) })),
+      materialTiers,
+      essence,
+      hasMaterials: materialTiers.some(t => t.items.length > 0),
       anySelected: this.selectedLoot.size > 0,
       assessor: this.assessor,
       harvester: this.harvester,
@@ -227,15 +269,17 @@ export class HarvestMenu extends Application {
   });
 
   // --- Loot Checkbox ---
+  // Keyed by item NAME: names are the join key between HARVEST_TABLE and the
+  // compendium, and pack entries have no stable _id to key on.
   html.on("change", "input[name='lootChoice']", ev => {
-    const id = ev.currentTarget.value;
-    ev.currentTarget.checked ? this.selectedLoot.add(id) : this.selectedLoot.delete(id);
+    const name = ev.currentTarget.value;
+    ev.currentTarget.checked ? this.selectedLoot.add(name) : this.selectedLoot.delete(name);
     // No re-render — browser maintains checkbox state, re-render causes scroll reset.
   });
 
   // --- Select All / Clear ---
   html.on("click", "[data-action='select-all-loot']", () => {
-    this.loot.forEach(i => this.selectedLoot.add(i._id));
+    this._allMaterialNames().forEach(n => this.selectedLoot.add(n));
     this.render(true);
   });
 
@@ -278,9 +322,8 @@ export class HarvestMenu extends Application {
     const assess = await rollAssessment(assessorActor, type, { disadvantage: sameActor });
     const carve  = await rollCarving(harvesterActor, type, { disadvantage: sameActor });
 
-    // --- Totals & DC ---
+    // --- Totals ---
     const harvestTotal = assess.total + carve.total;
-    const baseDC = computeHarvestDC({ cr, type, rarity: "common", baseDC: 10 });
     const skillName = HARVEST_SKILL_BY_TYPE[String(type).toLowerCase()] ?? "Survival";
     const skillKey = skillName.toLowerCase().slice(0, 3);
 
@@ -289,35 +332,25 @@ export class HarvestMenu extends Application {
       computeHelperBonus(helpers, skillKey, sizeKey);
 
     const totalRoll = harvestTotal + helperBonus;
-    const result = finalHarvestResult(baseDC, totalRoll);
 
-    // --- Build unlocked material pool from tier DCs ---
+    // --- Resolve unlocked materials from the flat tier DCs ---
     const typeKey = String(type || "other").toLowerCase();
-    const typeData = getHarvestOptions(typeKey);
-    const essence  = getEssenceByCR(Number(cr) || 0);
+    const {
+      names: unlockedNames,
+      tierCount,
+      unlockedCount,
+      essence,
+      essenceUnlocked
+    } = getUnlockedMaterials(typeKey, totalRoll, Number(cr) || 0);
 
-    const unlockedNames = new Set();
-    for (const tier of typeData) {
-      if (totalRoll >= tier.dc) tier.items.forEach(n => unlockedNames.add(n));
-    }
-    unlockedNames.add(essence.name); // essence always unlocked
+    const result = harvestOutcome(unlockedCount, tierCount);
 
     // --- Apply GM selection filter ---
-    // If the GM selected specific items, only grant the intersection of
-    // selected + unlocked. Essence is always granted regardless.
-    // If nothing was selected, grant everything unlocked.
-    let materials;
-    if (this.selectedLoot.size > 0) {
-      const selectedNames = new Set(
-        this.loot
-          .filter(i => this.selectedLoot.has(i._id))
-          .map(i => i.name)
-      );
-      materials = Array.from(unlockedNames).filter(n => selectedNames.has(n));
-      if (!materials.includes(essence.name)) materials.push(essence.name);
-    } else {
-      materials = Array.from(unlockedNames);
-    }
+    // If specific materials were ticked, grant only the intersection of
+    // selected + unlocked. If nothing was ticked, grant everything unlocked.
+    const materials = this.selectedLoot.size > 0
+      ? unlockedNames.filter(n => this.selectedLoot.has(n))
+      : unlockedNames;
 
     // --- Drop or Grant Materials ---
     const dropPoint = this.targetToken?.object?.center ?? null;
@@ -359,14 +392,16 @@ export class HarvestMenu extends Application {
         <li><b>Helpers:</b><ul>${helperList}</ul></li>
       </ul>
       <p><b>Roll Breakdown:</b> ${assess.total} + ${carve.total} + ${helperBonus} =
-        <b style="color:#8ef;">${totalRoll}</b> vs DC <b>${baseDC}</b></p>
+        <b style="color:#8ef;">${totalRoll}</b></p>
+      <p><b>Tiers Unlocked:</b> ${unlockedCount} of ${tierCount}</p>
+      <p><b>${essence.name}</b> (DC ${essence.dc}): ${essenceUnlocked ? "recovered" : "not recovered"}</p>
       <p><b>Outcome:</b> <span style="color:${result.includes('success') ? '#80ff80' : '#ff8080'};">${result}</span></p>
       <p><b>Recovered:</b> ${materials.join(', ') || 'Nothing recovered'}</p>
     </div>
     `;
 
     // --- Create Final Chat Message ---
-    console.log(`[${MODULE_ID}] Harvest summary posted`, { totalRoll, baseDC, result });
+    console.log(`[${MODULE_ID}] Harvest summary posted`, { totalRoll, unlockedCount, tierCount, result });
 
     // Wait briefly so roll cards appear first
     await new Promise(r => setTimeout(r, 500));
@@ -378,6 +413,18 @@ export class HarvestMenu extends Application {
 
     // Allow UI to update before token deletion
     await new Promise(r => setTimeout(r, 200));
-    await this.targetToken.document.delete();
-  } 
+
+    // this.targetToken is already a TokenDocument (index.js passes
+    // hud.object.document / the result of fromUuid) — it has no .document.
+    // Only GMs may delete, and only if something was actually harvested.
+    if (game.user.isGM && materials.length) {
+      try {
+        await this.targetToken.delete();
+      } catch (err) {
+        console.warn(`[${MODULE_ID}] Could not delete harvested token:`, err);
+      }
+    }
+
+    this.close();
+  }
 }

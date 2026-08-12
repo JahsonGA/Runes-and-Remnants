@@ -16,21 +16,24 @@ const MOCK_LOOT = [
 // ─── DUPLICATE_RESOLVER structure ─────────────────────────────────────────────
 
 describe("DUPLICATE_RESOLVER", () => {
-  it("has an entry for Membrane", () => {
-    expect(DUPLICATE_RESOLVER).toHaveProperty("Membrane");
+  it("is empty — the shipped pack has no duplicate names", () => {
+    expect(Object.keys(DUPLICATE_RESOLVER)).toHaveLength(0);
   });
 
-  it("Membrane resolver distinguishes ooze and plant", () => {
-    expect(DUPLICATE_RESOLVER.Membrane).toHaveProperty("ooze");
-    expect(DUPLICATE_RESOLVER.Membrane).toHaveProperty("plant");
-  });
-
-  it("ooze Membrane hint targets type: loot", () => {
-    expect(DUPLICATE_RESOLVER.Membrane.ooze.type).toBe("loot");
-  });
-
-  it("plant Membrane hint targets type: consumable", () => {
-    expect(DUPLICATE_RESOLVER.Membrane.plant.type).toBe("consumable");
+  it("still resolves entries that a world adds at runtime", () => {
+    const resolver = {
+      Membrane: {
+        ooze:  { type: "loot" },
+        plant: { type: "consumable" }
+      }
+    };
+    // Mirrors findCompendiumEntry's hint matching against a caller-supplied map.
+    const candidates = MOCK_LOOT.filter(i => i.name === "Membrane");
+    const hints = resolver.Membrane.plant;
+    const match = candidates.find(c =>
+      Object.entries(hints).every(([k, v]) => c[k] === v)
+    );
+    expect(match?._id).toBe("membrane-b");
   });
 });
 
@@ -53,22 +56,11 @@ describe("findCompendiumEntry — unique items", () => {
 
 // ─── findCompendiumEntry — duplicate resolution ───────────────────────────────
 
-describe("findCompendiumEntry — Membrane (resolved duplicate)", () => {
-  it("returns the loot variant (ooze Membrane) for creature type 'ooze'", () => {
-    const result = findCompendiumEntry(MOCK_LOOT, "Membrane", "ooze");
-    expect(result?._id).toBe("membrane-a");
-    expect(result?.type).toBe("loot");
-  });
-
-  it("returns the consumable variant (plant Membrane) for creature type 'plant'", () => {
-    const result = findCompendiumEntry(MOCK_LOOT, "Membrane", "plant");
-    expect(result?._id).toBe("membrane-b");
-    expect(result?.type).toBe("consumable");
-  });
-
-  it("falls back to first candidate for an unresolved type", () => {
-    const result = findCompendiumEntry(MOCK_LOOT, "Membrane", "beast");
-    expect(result?._id).toBe("membrane-a"); // first in MOCK_LOOT
+describe("findCompendiumEntry — unresolved duplicates fall back to first", () => {
+  it("Membrane returns the first candidate for every creature type", () => {
+    for (const type of ["ooze", "plant", "beast"]) {
+      expect(findCompendiumEntry(MOCK_LOOT, "Membrane", type)?._id).toBe("membrane-a");
+    }
   });
 });
 

@@ -44,19 +44,6 @@ export const RARITY_MOD = {
 };
 
 /* ---------------------------------------------
-   DATA LOADERS  (legacy — no longer used)
---------------------------------------------- */
-
-/**
- * @deprecated  Harvest data now comes from HARVEST_TABLE (src/data/harvest-table.js)
- *              and the "runes-and-remnants.harvest-items" compendium.
- *              The JSON files this function fetched no longer exist.
- */
-export async function loadHarvestData() {
-  console.warn(`[${MODULE_ID}] loadHarvestData() is deprecated and does nothing.`);
-}
-
-/* ---------------------------------------------
    ESSENCE / REMNANT TABLE
 --------------------------------------------- */
 // Names match compendium item names exactly (runes-and-remnants.harvest-items).
@@ -82,7 +69,12 @@ export function getEssenceByCR(cr) {
 --------------------------------------------- */
 
 /**
- * Computes the DC for harvesting based on CR, rarity, and type.
+ * Computes a CR/type/rarity-scaled DC.
+ *
+ * NOTE: This is **not** used by the harvest workflow. Harvesting is gated by
+ * the flat tier DCs in HARVEST_TABLE (see getUnlockedMaterials) and by the
+ * CR-scaled essence DCs in ESSENCE_TABLE. This helper remains exported for
+ * macros and third-party callers that want a scaled difficulty number.
  */
 export function computeHarvestDC({
   cr = 0,
@@ -262,18 +254,17 @@ export async function grantMaterial({ item, qty = 1, toActor = null, dropAt = nu
 --------------------------------------------- */
 
 /**
- * Some compendium items share a name but represent different things
- * (e.g. "Membrane" for ooze vs. plant). This map provides type-hints
- * so findCompendiumEntry can pick the right variant.
+ * Type-hints for disambiguating compendium items that share a name.
  *
  * Structure: { itemName: { creatureType: { fieldKey: expectedValue } } }
+ *
+ * The shipped pack no longer has duplicate names — the former collisions
+ * ("Bone", "Hair", "Membrane") were renamed to "Bone Shards", "Fur",
+ * "Membrane (Ooze)" and "Membrane (Plant)", because item names are the join
+ * key between HARVEST_TABLE and the compendium. This map is kept empty as an
+ * extension point for worlds that add their own same-named variants.
  */
-export const DUPLICATE_RESOLVER = {
-  "Membrane": {
-    ooze:  { type: "loot"       }, // "The balloon-like surface of the Ooze"
-    plant: { type: "consumable" }  // "The membrane of a plant."
-  }
-};
+export const DUPLICATE_RESOLVER = {};
 
 /**
  * Finds the best matching compendium index entry for an item name,
@@ -316,11 +307,67 @@ export function getHarvestOptions(type) {
 }
 
 /* ---------------------------------------------
+   MATERIAL UNLOCKING
+--------------------------------------------- */
+
+/**
+ * Resolves which materials a harvest total unlocks for a creature type.
+ *
+ * Tiers are additive: meeting the DC 30 tier also grants the DC 20 tier.
+ * Essence is gated separately by its own CR-scaled DC — a Deific Essence
+ * (DC 50) should be genuinely out of reach for most parties.
+ *
+ * @param {string} type   creature type
+ * @param {number} total  combined assessment + carving + helper total
+ * @param {number} cr     challenge rating, for essence selection
+ * @returns {{ names: string[], tiers: HarvestTier[], tierCount: number,
+ *             unlockedCount: number, essence: object, essenceUnlocked: boolean }}
+ */
+export function getUnlockedMaterials(type, total, cr = 0) {
+  const tiers = getHarvestOptions(type);
+  const unlocked = tiers.filter(t => total >= t.dc);
+
+  const names = [];
+  for (const tier of unlocked) {
+    for (const n of tier.items) if (!names.includes(n)) names.push(n);
+  }
+
+  const essence = getEssenceByCR(Number(cr) || 0);
+  const essenceUnlocked = total >= essence.dc;
+  if (essenceUnlocked && !names.includes(essence.name)) names.push(essence.name);
+
+  return {
+    names,
+    tiers: unlocked,
+    tierCount: tiers.length,
+    unlockedCount: unlocked.length,
+    essence,
+    essenceUnlocked
+  };
+}
+
+/* ---------------------------------------------
    RESULT INTERPRETATION
 --------------------------------------------- */
 
 /**
+ * Derives an outcome label from how much of the tier table was unlocked.
+ * Replaces the old single pass/fail DC check — the tier table is now the
+ * only authority on harvest difficulty.
+ *
+ * @param {number} unlockedCount  tiers met
+ * @param {number} tierCount      tiers available for this creature type
+ */
+export function harvestOutcome(unlockedCount, tierCount) {
+  if (unlockedCount <= 0) return "failure";
+  if (unlockedCount >= tierCount) return "critical-success";
+  if (unlockedCount === 1) return "partial";
+  return "success";
+}
+
+/**
  * Determines success level based on DC and total roll.
+ * Retained for macros and third-party callers.
  */
 export function finalHarvestResult(dc, total) {
   if (total >= dc + 10) return "critical-success";
