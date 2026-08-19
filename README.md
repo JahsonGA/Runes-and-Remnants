@@ -84,3 +84,41 @@ Inspired by *Heliana’s Guide to Monster Hunting* and *Ancestral Weapons*, this
   ```js
   game.modules.get("runes-and-remnants").api.rollAssessment(actor, type);
   game.modules.get("runes-and-remnants").api.rollCarving(actor, type, { disadvantage: true });
+  ```
+
+---
+
+## Documentation Map
+
+Detailed per-folder documentation. Each `*Details.md` covers every file in its
+folder; `*Breakdown.md` files are deep dives into intricate logic.
+
+| Area | Document | Covers |
+|---|---|---|
+| **Source root** | [`src/SrcDetails.md`](src/SrcDetails.md) | Module structure, logic/Foundry split, data flow |
+| **Harvest system** | [`src/harvest/HarvestDetails.md`](src/harvest/HarvestDetails.md) | Full export reference for `logic.js` and `menu.js` |
+| ↳ *deep dive* | [`src/harvest/LogicBreakdown.md`](src/harvest/LogicBreakdown.md) | The DC model, unlock resolution, essence gating |
+| ↳ *deep dive* | [`src/harvest/MenuBreakdown.md`](src/harvest/MenuBreakdown.md) | `_startHarvest()` step by step, render behaviour |
+| **Game data** | [`src/data/DataDetails.md`](src/data/DataDetails.md) | `HARVEST_TABLE` contract and how to extend it |
+| **Compendium** | [`packs/PacksDetails.md`](packs/PacksDetails.md) | Pack invariants and the Foundry→repo authoring workflow |
+| **Templates** | [`templates/TemplatesDetails.md`](templates/TemplatesDetails.md) | Handlebars context and `data-action` conventions |
+| **Styles** | [`styles/StylesDetails.md`](styles/StylesDetails.md) | Theme tokens, class conventions, animations |
+| **Tests** | [`tests/TestDetails.md`](tests/TestDetails.md) | What each suite protects and what isn't covered |
+| **CI/CD** | [`.github/workflows/WorkflowsDetails.md`](.github/workflows/WorkflowsDetails.md) | Branch model and version-triggered releases |
+| **Planning** | [`docs/DocsDetails.md`](docs/DocsDetails.md) → [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phased plan and design rationale |
+
+### Root files
+
+| File | Purpose |
+|---|---|
+| `index.js` | Foundry entry point — registers the `playersCanOpenHarvest` setting, the `eq` Handlebars helper, the socket listener, and the Token HUD cleaver button |
+| `module.json` | Manifest — id `runes-and-remnants`, dnd5e, Foundry v11–v12, declares the `harvest-items` pack. **Bumping `version` here triggers a release** |
+| `package.json` | Dev tooling only (`vitest`, `glob`); `npm test` and `npm run check:assets` |
+
+### Where to start
+
+- **Changing harvest difficulty?** Read [ROADMAP § 1.2](docs/ROADMAP.md) first —
+  the flat-DC design is deliberate and easy to break by "fixing".
+- **Adding materials?** [`src/data/DataDetails.md`](src/data/DataDetails.md) and
+  [`packs/PacksDetails.md`](packs/PacksDetails.md) — item *names* are the join key.
+- **Touching the harvest flow?** [`MenuBreakdown.md`](src/harvest/MenuBreakdown.md).

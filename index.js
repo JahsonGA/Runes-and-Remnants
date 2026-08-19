@@ -45,26 +45,36 @@ Hooks.once("ready", () => {
 /**
  * Add cleaver button to the Token HUD.
  * Who sees the button depends on the world setting above.
+ *
+ * Foundry v13 migrated TokenHUD to ApplicationV2, which passes a native
+ * HTMLElement to render hooks; v11/v12 pass jQuery. Normalising here — and
+ * building the button with the DOM API instead of jQuery — keeps a single
+ * build working across v11 through v14.
  */
 Hooks.on("renderTokenHUD", (hud, html) => {
   const allowPlayers = game.settings.get(MODULE_ID, "playersCanOpenHarvest");
   const canOpen = game.user.isGM || (allowPlayers && (hud.object?.actor?.isOwner || !!game.user?.character));
   if (!canOpen) return;
 
+  const root = html instanceof HTMLElement ? html : html?.[0];
+  const column = root?.querySelector(".col.right");
+  if (!column) return;
+
   const title = allowPlayers ? "Open Harvest (shows to all)" : "Open Harvest (GM-only opener)";
 
-  // Use your cleaver image as the icon
-  const $btn = $(`
-    <div class="control-icon harvest-menu" title="${title}">
-      <img src="icons/tools/cooking/knife-cleaver-steel-grey.webp"/>
-    </div>
-  `);
+  const btn = document.createElement("div");
+  btn.className = "control-icon harvest-menu";
+  btn.title = title;
 
-  $btn.on("click", async () => {
+  const icon = document.createElement("img");
+  icon.src = "icons/tools/cooking/knife-cleaver-steel-grey.webp";
+  btn.appendChild(icon);
+
+  btn.addEventListener("click", () => {
     const tokenDoc = hud.object?.document ?? null;
     new HarvestMenu(tokenDoc).render(true);
     game.socket?.emit(`module.${MODULE_ID}`, { action: "openHarvest", tokenUuid: tokenDoc?.uuid ?? null });
   });
 
-  html.find(".col.right").append($btn);
+  column.appendChild(btn);
 });

@@ -22,10 +22,18 @@
   box-shadow: 0 0 8px var(--rnr-red);
 }
 
-/* Window chrome */
+/* Window chrome
+   v13 introduced CSS Layers and reworked application chrome. Unlayered module
+   CSS still wins over Foundry's layered styles, but the .window-content
+   element is no longer guaranteed to be the themed surface — so paint the
+   application root too rather than relying on that one selector.
+   NOTE: needs visual confirmation on a real v13/v14 instance. */
+.rnr-harvest.grimdark,
 .rnr-harvest.grimdark .window-content {
   background: var(--rnr-ink);
   color: var(--rnr-text);
+}
+.rnr-harvest.grimdark .window-content {
   border: 2px solid var(--rnr-brown);
 }
 

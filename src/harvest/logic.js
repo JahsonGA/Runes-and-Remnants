@@ -122,7 +122,7 @@ export function bestSkillFor(actor, skills = ["sur"]) {
 export async function rollSkillCheck(actor, skillKey, label = "Harvest Check") {
   const bag = actor?.system?.skills || {};
   const mod = (bag[skillKey]?.total ?? bag[skillKey]?.mod ?? 0);
-  const roll = await (new Roll("1d20 + @mod", { mod })).evaluate({ async: true });
+  const roll = await (new Roll("1d20 + @mod", { mod })).evaluate();
   await roll.toMessage({
     flavor: `${label} — ${actor.name} (${skillKey.toUpperCase()})`,
     speaker: ChatMessage.getSpeaker({ actor })
@@ -148,7 +148,7 @@ export async function rollAssessment(actor, creatureType = "other", options = {}
   const mod = intMod + prof;
 
   const formula = options.disadvantage ? "2d20kl1 + @mod" : "1d20 + @mod";
-  const roll = await (new Roll(formula, { mod })).evaluate({ async: true });
+  const roll = await (new Roll(formula, { mod })).evaluate();
 
   await roll.toMessage({
     flavor: `${options.disadvantage ? "Disadvantaged " : ""}Assessment Check (${skillName}) — ${actor.name}`,
@@ -174,7 +174,7 @@ export async function rollCarving(actor, creatureType = "other", options = {}) {
 
   // Only applies disadvantage if passed from menu.js
   const formula = options.disadvantage ? "2d20kl1 + @mod" : "1d20 + @mod";
-  const roll = await (new Roll(formula, { mod })).evaluate({ async: true });
+  const roll = await (new Roll(formula, { mod })).evaluate();
 
   await roll.toMessage({
     flavor: `${options.disadvantage ? "Disadvantaged " : ""}Carving Check (${skillName}) — ${actor.name}`,
@@ -224,7 +224,7 @@ export function computeHelperBonus(helpers = [], skillKey = "sur", sizeKey = "me
 export async function grantMaterial({ item, qty = 1, toActor = null, dropAt = null }) {
   let q = Number(qty);
   if (Number.isNaN(q)) {
-    try { q = await (await new Roll(String(qty)).evaluate({ async: true })).total; }
+    try { q = (await new Roll(String(qty)).evaluate()).total; }
     catch { q = 1; }
   }
   q = Math.max(1, Math.floor(q));

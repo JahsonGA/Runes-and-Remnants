@@ -110,6 +110,30 @@ unlocking more — the tier table alone can't express degrees of success.
 Update `tests/harvest-options.test.js` and `tests/harvest-table.test.js` for the
 rescaled DCs, and add coverage for essence DC gating and outcome derivation.
 
+### 1.7 — Foundry version compatibility
+
+The manifest declares `verified: "12"` while Foundry ships **v14**, so the
+module is two majors stale. Three concrete breakages were found and fixed:
+
+| Break | Effect on v13+ | Fix |
+|---|---|---|
+| `Roll#evaluate({async: true})` ×4 | `async` option was **removed in v12**; logs a deprecation warning | Call `.evaluate()` |
+| `renderTokenHUD` used jQuery (`html.find`) | v13 migrated TokenHUD to ApplicationV2, which passes a native `HTMLElement`. `html.find` is not a function → **the cleaver button never renders, so the module has no entry point at all** | Normalise `html` to an element, build the button with the DOM API |
+| CSS assumed `.window-content` is the themed surface | v13 added CSS Layers and reworked app chrome | Paint the application root as well |
+
+**Good news:** `Application` (ApplicationV1) is supported **through v15** and is
+not removed until **v16**, so `HarvestMenu extends Application` needs no
+rewrite. A single build can span v11–v14.
+
+**Still open — requires a real Foundry instance, cannot be verified from the repo:**
+
+1. Install a **separate** v13 or v14 instance with a throwaway world (do *not*
+   upgrade the campaign world to test this).
+2. Confirm the cleaver button appears, a harvest completes, and the grim-dark
+   theming still applies.
+3. Only then bump `compatibility.verified` in `module.json`. Claiming a
+   verified version that was never launched is worse than claiming none.
+
 ---
 
 ## Phase 2 — Item Metadata & Categorization
