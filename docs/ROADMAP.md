@@ -187,10 +187,26 @@ milestone evolution.
   is what lets `tests/` run under plain Vitest. Keep Foundry API calls in
   `menu.js`.
 
+### Resolved ahead of schedule
+
+- **Multi-client double-grant** *(was deferred to Phase 3; fixed before public
+  listing)*. The socket broadcast renders the menu on every connected client,
+  and any of them could click *Start Harvest*, granting the loot again. Now
+  GM-authoritative: clients send a `requestHarvest` payload, and only the
+  designated GM — resolved deterministically by `pickExecutorId` as the active
+  GM with the lowest user id — executes it. Execution moved to a static,
+  payload-driven `HarvestMenu.executeHarvest`, since the GM's client may never
+  have had the menu open. Also guarded by a per-token in-flight lock, a submit
+  latch against double-clicks, and an ownership check so a player cannot ask
+  the GM to grant loot to an actor they do not own.
+
+  Pulled forward because a public listing turns "nobody is using it yet" from
+  true into false, and an item duplicator is a defeated premise in a
+  scarcity-themed module.
+
 ### Known deferred issues
 
-- **Multi-client double-grant.** The socket broadcast renders the menu on every
-  connected client, and any of them can click *Start Harvest* — granting items
-  more than once. Needs a GM-authoritative execution path (clients request, GM
-  executes). Deferred to the Phase 3 hub rework, where the socket layer is
-  already being touched.
+- **Role selections are not synced between clients.** The menu is broadcast on
+  open, but assessor/harvester/helper assignments are local state, so each
+  client fills in its own. In practice one person completes the form and
+  submits. Proper shared state belongs with the Phase 3 hub rework.

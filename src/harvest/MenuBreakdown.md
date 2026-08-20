@@ -8,7 +8,9 @@ straightforward state management for the dialog.
 
 There are two, and both pass a **`TokenDocument`** — this matters:
 
-1. **Token HUD button** ([`index.js`](../../index.js)) — `hud.object?.document`
+1. **Token HUD button** ([`index.js`](../../index.js)) — `hud.object?.document`.
+   The hook normalises jQuery (v11/v12) vs `HTMLElement` (v13+), since v13
+   migrated TokenHUD to ApplicationV2.
 2. **Socket broadcast** — `await fromUuid(payload.tokenUuid)`, then
    `token?.document ?? token`
 
@@ -22,7 +24,37 @@ To reach the canvas object (for a drop point) the code goes *outward* via
 > property, so every harvest threw a `TypeError` at the final step — after
 > items were granted but before the token cleared.
 
-## `_startHarvest()` — step by step
+## Request vs execution
+
+`_startHarvest()` does **not** harvest. It validates, builds a payload, and
+hands off:
+
+```js
+const executorId = pickExecutorId(Array.from(game.users ?? []));
+
+if (game.user.id === executorId) await HarvestMenu.executeHarvest(payload);
+else game.socket?.emit(`module.${MODULE_ID}`, payload);   // action: requestHarvest
+```
+
+The menu is open on every connected client, so if each one executed locally
+they would all grant the same loot. `pickExecutorId` returns the active GM with
+the lowest user id — deterministic, so every client independently agrees on who
+executes without negotiating.
+
+Three guards stack on top:
+
+| Guard | Stops |
+|---|---|
+| `this._submitting` latch | A double-click sending twice |
+| `HarvestMenu._inFlight` (per token uuid) | Two players submitting the same corpse concurrently |
+| Ownership check on the requester | A player asking the GM to grant loot to an actor they don't own |
+
+`executeHarvest` / `_runHarvest` are **static and payload-driven** — the GM's
+client may never have had the menu open, so there is no instance state to read.
+Everything is resolved from the payload: the token via `fromUuid`, the actors
+via `game.actors.get`, the compendium index freshly.
+
+## `_runHarvest()` — step by step
 
 ### 1. Guards
 
@@ -128,18 +160,22 @@ unlocked, essence status, outcome, and the recovered list.
 ### 10. Cleanup
 
 ```js
-if (game.user.isGM && materials.length) {
-  try { await this.targetToken.delete(); } catch (err) { /* warn */ }
+if (materials.length) {
+  try { await targetToken.delete(); } catch (err) { /* warn */ }
 }
-this.close();
+HarvestMenu.closeAll();
+game.socket?.emit(`module.${MODULE_ID}`, { action: "closeHarvest" });
 ```
 
-Three deliberate conditions:
+Deliberate choices:
 
-- **GM-only** — players lack permission to delete tokens; attempting it throws.
+- **No `isGM` check needed** — this path only ever runs on the designated GM.
 - **Only if something was harvested** — a total failure leaves the corpse for a
   retry.
 - **Wrapped in try/catch** — a deletion failure must not lose the chat summary.
+- **Broadcast close** — the corpse is gone, so every client's menu now points at
+  a token that no longer exists. Leaving them open invites a resubmit that can
+  only fail.
 
 ## Rendering notes
 

@@ -82,7 +82,22 @@ Each helper adds full proficiency if trained, half (floored) if not.
 | `_getAvailableActors()` | Actor list weighted: active-owner PCs (1) → on-scene (2) → everything else (3) |
 | `getData()` | Template context |
 | `activateListeners(html)` | Delegated handlers for role assignment, loot ticks, harvest start |
-| `_startHarvest()` | The full harvest workflow — see [`MenuBreakdown.md`](MenuBreakdown.md) |
+| `_startHarvest()` | Validates, then **requests** a harvest from the designated GM |
+| `static executeHarvest(payload)` | Entry point for execution, with the per-token in-flight guard |
+| `static _runHarvest(payload, selectedLoot)` | The full workflow — see [`MenuBreakdown.md`](MenuBreakdown.md) |
+| `static closeAll()` | Closes every Harvest Menu open on this client |
+
+### Execution authority
+
+Execution is **GM-authoritative**. `_startHarvest` never harvests directly — it
+builds a payload and either runs it (if this client is the designated GM) or
+emits `requestHarvest` over the socket. Only the GM chosen by `pickExecutorId`
+acts on that message.
+
+This matters because the menu is broadcast to every connected client, so
+without a single designated executor each of them would grant the same loot.
+Execution is static and payload-driven because the GM's client may never have
+had the menu open, and therefore has none of the instance state.
 
 ### Role rules
 
@@ -110,10 +125,11 @@ two-roll total; creature difficulty is expressed through the CR-scaled
 
 ## Known gap
 
-`_startHarvest` runs on whichever client clicks the button. Because `index.js`
-broadcasts the menu to every connected user, more than one client can execute a
-harvest and grant items twice. Needs a GM-authoritative path — deferred, see
-the ROADMAP's *Known deferred issues*.
+Role selections are **not synced** between clients. The menu is broadcast on
+open, but assessor/harvester/helper assignments are local state, so each client
+fills in its own form. Harmless in practice — one person completes it and
+submits, and execution is GM-authoritative — but shared state belongs with the
+Phase 3 hub rework.
 
 ## Related
 

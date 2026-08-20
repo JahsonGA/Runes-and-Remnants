@@ -293,6 +293,33 @@ export function findCompendiumEntry(loot, itemName, creatureType) {
 }
 
 /* ---------------------------------------------
+   EXECUTION AUTHORITY
+--------------------------------------------- */
+
+/**
+ * Picks the single client responsible for executing a harvest.
+ *
+ * The menu is broadcast to every connected client, so without one designated
+ * executor any of them could run the harvest and grant the loot again. The
+ * rule is "the active GM with the lowest user id" — deterministic, so every
+ * client independently agrees on the same answer without needing to negotiate.
+ *
+ * Foundry exposes `game.users.activeGM`, but it is not present on every
+ * version, so this resolves the same rule from a plain user list.
+ *
+ * @param {Array<{id: string, active: boolean, isGM: boolean}>} users
+ * @returns {string|null} the executor's user id, or null if no GM is connected
+ */
+export function pickExecutorId(users = []) {
+  const gmIds = (users ?? [])
+    .filter(u => u?.active && u?.isGM && u?.id)
+    .map(u => u.id);
+
+  if (!gmIds.length) return null;
+  return gmIds.sort((a, b) => String(a).localeCompare(String(b)))[0];
+}
+
+/* ---------------------------------------------
    HARVEST TABLE LOOKUP
 --------------------------------------------- */
 

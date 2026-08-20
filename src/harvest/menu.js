@@ -14,6 +14,7 @@ import {
   getUnlockedMaterials,
   getEssenceByCR,
   harvestOutcome,
+  pickExecutorId,
   computeHelperBonus,
   findCompendiumEntry,
   HARVEST_SKILL_BY_TYPE
@@ -292,26 +293,116 @@ export class HarvestMenu extends Application {
   html.on("click", "[data-action='start-harvest']", async () => this._startHarvest());
 }
 
-  // ---------------------- Harvest Execution ----------------------
+  // ---------------------- Harvest Request ----------------------
+
+  /**
+   * Validates locally, then hands the harvest to the one client authorised to
+   * run it. The menu is open on every connected client, so executing here
+   * would let each of them grant the same loot again.
+   */
   async _startHarvest() {
+    if (this._submitting) return;
+
     if (!this.targetActor)
       return ui.notifications.warn("No target creature selected.");
 
     if (!this.assessor || !this.harvester)
       return ui.notifications.warn("Assign both an Assessor and a Harvester first.");
 
-    const helpers = this.helpers ?? [];
-    const { type, cr } = this._actorSummary(this.targetActor);
-    const sizeKey = this.targetActor?.system?.traits?.size ?? "med";
+    if (!this.targetToken?.uuid)
+      return ui.notifications.error("This target has no token on the canvas to harvest.");
+
+    const executorId = pickExecutorId(Array.from(game.users ?? []));
+    if (!executorId)
+      return ui.notifications.error("A GM must be connected to run a harvest.");
+
+    const payload = {
+      action: "requestHarvest",
+      requesterId: game.user.id,
+      tokenUuid: this.targetToken.uuid,
+      assessor: { actorId: this.assessor.actorId, name: this.assessor.name },
+      harvester: { actorId: this.harvester.actorId, name: this.harvester.name },
+      helpers: (this.helpers ?? []).map(h => ({ actorId: h.actorId, name: h.name })),
+      selectedLoot: Array.from(this.selectedLoot)
+    };
+
+    // Latch immediately — a double-click would otherwise send twice.
+    this._submitting = true;
+
+    try {
+      if (game.user.id === executorId) {
+        await HarvestMenu.executeHarvest(payload);
+      } else {
+        game.socket?.emit(`module.${MODULE_ID}`, payload);
+        ui.notifications.info("Harvest sent to the GM.");
+      }
+      this.close();
+    } finally {
+      this._submitting = false;
+    }
+  }
+
+  // ---------------------- Harvest Execution ----------------------
+
+  /**
+   * Runs a harvest to completion. Static and payload-driven because it runs on
+   * the designated GM's client, which may never have had the menu open and so
+   * has none of the instance state.
+   *
+   * Guarded against concurrent execution per target token: two players can
+   * submit the same corpse before the first request finishes.
+   */
+  static async executeHarvest(payload = {}) {
+    const { tokenUuid, selectedLoot = [] } = payload;
+    if (!tokenUuid) return;
+
+    if (HarvestMenu._inFlight.has(tokenUuid)) {
+      console.warn(`[${MODULE_ID}] Harvest already running for ${tokenUuid} — ignoring duplicate request.`);
+      return;
+    }
+    HarvestMenu._inFlight.add(tokenUuid);
+
+    try {
+      await HarvestMenu._runHarvest(payload, new Set(selectedLoot));
+    } catch (err) {
+      console.error(`[${MODULE_ID}] Harvest failed:`, err);
+      ui.notifications.error("The harvest failed — see the console for details.");
+    } finally {
+      HarvestMenu._inFlight.delete(tokenUuid);
+    }
+  }
+
+  static async _runHarvest(payload, selectedLoot) {
+    const targetToken = await fromUuid(payload.tokenUuid);
+    const targetActor = targetToken?.actor;
+    if (!targetActor)
+      return ui.notifications.error("The harvested creature could not be found.");
+
+    const helpers = payload.helpers ?? [];
+    const type = targetActor?.system?.details?.type?.value ?? targetActor?.system?.details?.type ?? "Unknown";
+    const cr   = targetActor?.system?.details?.cr ?? targetActor?.system?.details?.challenge ?? 0;
+    const sizeKey = targetActor?.system?.traits?.size ?? "med";
 
     const pack = game.packs.get("runes-and-remnants.harvest-items");
     if (!pack)
       return ui.notifications.error("Harvest Items compendium not found.");
 
-    const assessorActor = game.actors.get(this.assessor.actorId);
-    const harvesterActor = game.actors.get(this.harvester.actorId);
+    const idx = await pack.getIndex();
+    const loot = idx.contents ?? idx;
+
+    const assessorActor = game.actors.get(payload.assessor?.actorId);
+    const harvesterActor = game.actors.get(payload.harvester?.actorId);
     if (!assessorActor || !harvesterActor)
       return ui.notifications.error("One or more assigned actors could not be found.");
+
+    // This runs with GM permission, so a request from a player must be checked:
+    // otherwise anyone could ask the GM to grant loot to an actor they do not
+    // own. GMs may harvest to any actor.
+    const requester = game.users.get(payload.requesterId);
+    if (requester && !requester.isGM && !harvesterActor.testUserPermission(requester, "OWNER")) {
+      console.warn(`[${MODULE_ID}] ${requester.name} requested a harvest to an actor they do not own — rejected.`);
+      return ui.notifications.warn(`${requester.name} cannot harvest to ${harvesterActor.name}.`);
+    }
 
     // --- Handle same-actor disadvantage ---
     const sameActor = assessorActor.id === harvesterActor.id;
@@ -348,14 +439,14 @@ export class HarvestMenu extends Application {
     // --- Apply GM selection filter ---
     // If specific materials were ticked, grant only the intersection of
     // selected + unlocked. If nothing was ticked, grant everything unlocked.
-    const materials = this.selectedLoot.size > 0
-      ? unlockedNames.filter(n => this.selectedLoot.has(n))
+    const materials = selectedLoot.size > 0
+      ? unlockedNames.filter(n => selectedLoot.has(n))
       : unlockedNames;
 
     // --- Drop or Grant Materials ---
-    const dropPoint = this.targetToken?.object?.center ?? null;
+    const dropPoint = targetToken?.object?.center ?? null;
     for (const itemName of materials) {
-      const indexEntry = findCompendiumEntry(this.loot, itemName, typeKey);
+      const indexEntry = findCompendiumEntry(loot, itemName, typeKey);
       if (!indexEntry) {
         console.warn(`[${MODULE_ID}] No compendium entry for "${itemName}" — skipping.`);
         continue;
@@ -377,7 +468,7 @@ export class HarvestMenu extends Application {
 
     // --- Build Chat Output ---
     const disadvantageNote = sameActor
-      ? `<p class="warning">⚠️ ${this.assessor.name} performed both roles — both rolls at disadvantage.</p>`
+      ? `<p class="warning">⚠️ ${assessorActor.name} performed both roles — both rolls at disadvantage.</p>`
       : "";
 
     const chatContent = `
@@ -385,10 +476,10 @@ export class HarvestMenu extends Application {
       <hr>
       <h3><b>Harvest Summary</b></h3>
       ${disadvantageNote}
-      <p><b>Target:</b> ${this.targetActor.name} (CR ${cr}, ${type})</p>
+      <p><b>Target:</b> ${targetActor.name} (CR ${cr}, ${type})</p>
       <ul>
-        <li><b>Assessment:</b> ${this.assessor.name} — ${skillName} (INT) — rolled ${assess.total}</li>
-        <li><b>Carving:</b> ${this.harvester.name} — ${skillName} (DEX) — rolled ${carve.total}</li>
+        <li><b>Assessment:</b> ${assessorActor.name} — ${skillName} (INT) — rolled ${assess.total}</li>
+        <li><b>Carving:</b> ${harvesterActor.name} — ${skillName} (DEX) — rolled ${carve.total}</li>
         <li><b>Helpers:</b><ul>${helperList}</ul></li>
       </ul>
       <p><b>Roll Breakdown:</b> ${assess.total} + ${carve.total} + ${helperBonus} =
@@ -414,17 +505,32 @@ export class HarvestMenu extends Application {
     // Allow UI to update before token deletion
     await new Promise(r => setTimeout(r, 200));
 
-    // this.targetToken is already a TokenDocument (index.js passes
-    // hud.object.document / the result of fromUuid) — it has no .document.
-    // Only GMs may delete, and only if something was actually harvested.
-    if (game.user.isGM && materials.length) {
+    // targetToken is a TokenDocument (fromUuid returns the document) — it has
+    // no .document. This always runs on a GM client, and only deletes the
+    // corpse if something was actually recovered, so a total failure leaves it
+    // in place for another attempt.
+    if (materials.length) {
       try {
-        await this.targetToken.delete();
+        await targetToken.delete();
       } catch (err) {
         console.warn(`[${MODULE_ID}] Could not delete harvested token:`, err);
       }
     }
 
-    this.close();
+    // The corpse is gone, so every client's copy of the menu now points at a
+    // token that no longer exists. Close them all rather than leaving a stale
+    // window someone can submit again.
+    HarvestMenu.closeAll();
+    game.socket?.emit(`module.${MODULE_ID}`, { action: "closeHarvest" });
+  }
+
+  /** Closes every Harvest Menu open on this client. */
+  static closeAll() {
+    for (const app of Object.values(ui.windows ?? {})) {
+      if (app instanceof HarvestMenu) app.close();
+    }
   }
 }
+
+/** Target tokens with a harvest currently executing on this client. */
+HarvestMenu._inFlight = new Set();
