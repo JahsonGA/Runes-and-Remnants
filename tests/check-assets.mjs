@@ -8,7 +8,11 @@ const REQUIRED = [
   "src/harvest/logic.js",
   "src/harvest/menu.js",
   "styles/module.css",
-  "templates/harvest-dialog.html"
+  "src/hub/hub.js",
+  "templates/hub.html",
+  "templates/panels/harvest.html",
+  "templates/panels/crafting.html",
+  "templates/panels/enchanting.html"
 ];
 
 let missing = [];

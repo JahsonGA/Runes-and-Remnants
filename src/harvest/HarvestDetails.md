@@ -58,7 +58,7 @@ Each helper adds full proficiency if trained, half (floored) if not.
 ## `menu.js`
 
 `HarvestMenu extends Application`. Registered as `rnr-harvest-menu`, renders
-[`templates/harvest-dialog.html`](../../templates/harvest-dialog.html) at 700px wide.
+[`templates/panels/harvest.html`](../../templates/panels/harvest.html). Subclassed by [`RunesHub`](../hub/HubDetails.md), which renders it inside the tabbed shell.
 
 ### Instance state
 

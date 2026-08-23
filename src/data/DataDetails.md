@@ -7,7 +7,8 @@ dependency — safe to import from tests.
 
 | File | Purpose |
 |---|---|
-| [`harvest-table.js`](harvest-table.js) | Creature type → harvestable material tiers |
+| [`harvest-table.js`](harvest-table.js) | Creature type → harvestable components and their costs |
+| [`hub-tabs.js`](hub-tabs.js) | Hub tab definitions, icons, and `resolveTab` |
 
 ---
 

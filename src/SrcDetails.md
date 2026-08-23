@@ -7,6 +7,7 @@ Foundry entry point itself is [`index.js`](../index.js) at the project root.
 
 | Path | Purpose |
 |---|---|
+| [`hub/`](hub/HubDetails.md) | The hub shell — tab rail over the three systems |
 | [`harvest/`](harvest/HarvestDetails.md) | The Harvest System — UI application and pure game logic |
 | [`data/`](data/DataDetails.md) | Static game data tables (creature type → materials) |
 
@@ -30,9 +31,9 @@ pure functions plus a `menu.js`/application that calls into it.
 ## Data flow
 
 ```
-index.js  (Token HUD hook, socket listener, settings)
+index.js  (Token HUD hook, scene control, socket listener, settings)
    │
-   └─► HarvestMenu (src/harvest/menu.js)
+   └─► RunesHub (src/hub/hub.js)  ── extends ──► HarvestMenu (src/harvest/menu.js)
           │
           ├─► getHarvestOptions()      ─► src/data/harvest-table.js
           ├─► getEssenceByCR()         ─┐
@@ -45,7 +46,7 @@ index.js  (Token HUD hook, socket listener, settings)
           ├─► game.packs "runes-and-remnants.harvest-items"
           │       └─► packs/harvest-items.db
           │
-          └─► templates/harvest-dialog.html  +  styles/module.css
+          └─► templates/hub.html + templates/panels/*  +  styles/module.css
 ```
 
 ## Related

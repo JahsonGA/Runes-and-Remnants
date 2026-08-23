@@ -45,7 +45,9 @@ export class HarvestMenu extends Application {
     return foundry.utils.mergeObject(super.defaultOptions, {
       id: "rnr-harvest-menu",
       title: "Harvest Materials",
-      template: "modules/runes-and-remnants/templates/harvest-dialog.html",
+      // The harvest panel renders standalone as well as inside the hub, so a
+      // bare HarvestMenu still works for macros and older integrations.
+      template: "modules/runes-and-remnants/templates/panels/harvest.html",
       width: 700,
       height: "auto",
       classes: ["rnr-harvest", "grimdark"]

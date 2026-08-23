@@ -1,6 +1,6 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **103 tests across 7 files**,
+Vitest suite plus a standalone packaging check. **134 tests across 9 files**,
 all runnable without a Foundry runtime.
 
 ```bash
@@ -14,11 +14,12 @@ npm run check:assets  # standalone manifest/asset validation
 |---|---|---|
 | [`harvest.logic.test.js`](harvest.logic.test.js) | 3 | Legacy `computeHarvestDC` / `rollOutcome` |
 | [`harvest-essence.test.js`](harvest-essence.test.js) | 17 | `ESSENCE_TABLE` structure, `getEssenceByCR` ranges and boundaries |
-| [`harvest-table.test.js`](harvest-table.test.js) | 25 | `HARVEST_TABLE` coverage, tier shape, DC scale, item-name spot-checks |
-| [`harvest-options.test.js`](harvest-options.test.js) | 22 | `getHarvestOptions` coverage, fallback, case handling, additive tiers |
+| [`harvest-table.test.js`](harvest-table.test.js) | 20 | `HARVEST_TABLE` coverage, component-DC scale, source fidelity |
+| [`harvest-options.test.js`](harvest-options.test.js) | 21 | `getHarvestOptions` coverage, fallback, case handling, tier order |
 | [`harvest-unlock.test.js`](harvest-unlock.test.js) | 28 | `getComponentDC`, `buildHarvestList` cumulative DCs, `resolveHarvest`, ordering trade-off, `harvestOutcome` |
 | [`harvest-duplicates.test.js`](harvest-duplicates.test.js) | 11 | `findCompendiumEntry`, `DUPLICATE_RESOLVER` |
 | [`harvest-pack.test.js`](harvest-pack.test.js) | 7 | Shipped compendium integrity + table↔pack contract |
+| [`hub-tabs.test.js`](hub-tabs.test.js) | 16 | Hub tab config, core-asset icon paths, panel/partial wiring |
 | [`check-assets.mjs`](check-assets.mjs) | — | Not Vitest. Standalone packaging guard |
 
 ---
@@ -38,21 +39,36 @@ pack; every name in `HARVEST_TABLE` and `ESSENCE_TABLE` exists in the pack.
 
 ### `harvest-table.test.js`
 
-Structure plus a **DC-scale guard**: every tier DC must be 20, 30, or 40.
-Tier DCs are compared against a combined two-roll total, so an off-scale DC 15
-would be met automatically and stop gating anything.
+Structure plus a **component-DC scale guard**: every cost must be 5, 10, 15, 20
+or 25. Costs accumulate along the harvest list, so inflating them breaks the
+cumulative maths — a 25-cost component is meant to be affordable first and
+unreachable fourth. An earlier revision did exactly that, which is why the
+guard exists.
 
-Also spot-checks specific item names per type — these are the canary for a
-rename on either side of the join.
+Also spot-checks names per creature type against the source tables, and asserts
+no component appears at two different costs within one type.
 
 ### `harvest-unlock.test.js`
 
-Covers the current yield model: tier gating at, below, and above each DC;
-additivity; de-duplication; `other` fallback; essence withheld below its DC and
-granted exactly at it; essence selected by CR not type; and the fact that
-low-CR essence can be unlocked when no material tier was met.
+The core mechanic. Reproduces the source's worked example — teeth, two eyes,
+breath sac, essence giving Harvest DCs of 10/15/20/45/75, with a check of 37
+taking the first three and leaving the rest.
 
-Also asserts essence DCs rise with CR and stay inside the reachable 20–50 band.
+Covers order preservation (never sorted), duplicates, unknown components
+contributing zero rather than corrupting later DCs, exact-DC boundaries, the
+contiguous leading run, and the greedy-vs-cautious ordering trade-off that
+makes ordering a real decision.
+
+### `hub-tabs.test.js`
+
+Guards the hub's configuration: tab ids and uniqueness, `resolveTab` fallback
+behaviour, and that only Harvest is unlocked. Pins each tab's **icon path** —
+a typo there fails silently as a missing image — and asserts icons are Foundry
+core assets rather than bundled or remote.
+
+Also checks the wiring end to end: every tab has a panel template on disk,
+`hub.html` branches for it, every partial it uses is registered in `index.js`,
+and each locked panel actually says it is not automated yet.
 
 ### `harvest-duplicates.test.js`
 
@@ -92,11 +108,13 @@ grows.
 
 ## What is not covered
 
-`menu.js` has no tests — it needs `Application`, `game`, `canvas` and
-`ChatMessage`. Its testable math is extracted into `logic.js` precisely so the
-untested surface stays thin. The selection-filter logic in `_startHarvest` is
-currently the largest untested branch; extracting it would be the natural next
-step.
+`menu.js` and `hub.js` have no direct tests — both need `Application`, `game`,
+`canvas` and `ChatMessage` at import time. Testable logic is pulled out into
+`logic.js` and `src/data/` precisely so the untested surface stays thin: the
+hub's tab data lives in `src/data/hub-tabs.js` for exactly this reason.
+
+What remains untested is the Foundry glue — rendering, socket delivery, and
+item granting. Those need a live world.
 
 ## Related
 

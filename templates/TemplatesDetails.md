@@ -6,10 +6,15 @@ Handlebars templates rendered by Foundry `Application` classes.
 
 | File | Rendered by |
 |---|---|
-| [`harvest-dialog.html`](harvest-dialog.html) | `HarvestMenu` ([`src/harvest/menu.js`](../src/harvest/HarvestDetails.md)) |
+| [`hub.html`](hub.html) | `RunesHub` — tab rail + active panel |
+| [`panels/harvest.html`](panels/harvest.html) | Harvest panel; also renders standalone as `HarvestMenu` |
+| [`panels/crafting.html`](panels/crafting.html) | Crafting reference (Phase 4 placeholder) |
+| [`panels/enchanting.html`](panels/enchanting.html) | Enchanting reference (Phase 5 placeholder) |
 
-Referenced by Foundry path, not relative path:
-`modules/runes-and-remnants/templates/harvest-dialog.html`
+Referenced by Foundry path, not relative path, e.g.
+`modules/runes-and-remnants/templates/hub.html`. Panels are registered as
+Handlebars partials in `index.js` (`rnrHarvestPanel`, `rnrCraftingPanel`,
+`rnrEnchantingPanel`) so the hub can swap tabs without a second Application.
 
 ---
 

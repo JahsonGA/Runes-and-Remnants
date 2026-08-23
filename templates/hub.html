@@ -1,0 +1,32 @@
+<!-- =========================================================
+     Runes & Remnants — Hub shell
+     Tab rail + the active panel. Panels are registered as Handlebars
+     partials in index.js; see templates/panels/.
+     ========================================================= -->
+<div class="rnr-hub">
+
+  <!-- ================= TAB RAIL ================= -->
+  <nav class="rnr-tabs" role="tablist" aria-label="Runes and Remnants">
+    {{#each tabs}}
+      <button type="button"
+              class="rnr-tab {{#if this.active}}active{{/if}} {{#if this.locked}}locked{{/if}}"
+              role="tab"
+              aria-selected="{{#if this.active}}true{{else}}false{{/if}}"
+              data-action="switch-tab"
+              data-tab="{{this.id}}"
+              title="{{this.hint}}">
+        <img src="{{this.icon}}" alt="" class="rnr-tab-icon">
+        <span class="rnr-tab-label">{{this.label}}</span>
+        {{#if this.locked}}<span class="rnr-tab-badge">Planned</span>{{/if}}
+      </button>
+    {{/each}}
+  </nav>
+
+  <!-- ================= ACTIVE PANEL ================= -->
+  <div class="rnr-panel" role="tabpanel">
+    {{#if (eq activeTab "harvest")}}    {{> rnrHarvestPanel}}    {{/if}}
+    {{#if (eq activeTab "crafting")}}   {{> rnrCraftingPanel}}   {{/if}}
+    {{#if (eq activeTab "enchanting")}} {{> rnrEnchantingPanel}} {{/if}}
+  </div>
+
+</div>

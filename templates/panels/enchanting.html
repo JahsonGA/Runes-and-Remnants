@@ -1,0 +1,112 @@
+<!-- =========================================================
+     Enchanting panel — magic items, remnants, ancestral weapons
+     Reference view. Automation lands in Phase 5.
+     ========================================================= -->
+<section class="rnr-columns">
+
+  <!-- ================= THE PROCESS ================= -->
+  <div class="rnr-card">
+    <h3>Enchanting</h3>
+
+    <p class="muted rnr-hint">
+      Drawing the power out of monster parts and binding it into a mundane
+      item — grafted on, or transferred by a caster's will.
+    </p>
+
+    <ol class="rnr-steps">
+      <li>
+        <b>A mundane item</b>
+        <span>Manufactured or bought. You cannot enchant what does not exist
+        yet.</span>
+      </li>
+      <li>
+        <b>A monster component</b>
+        <span>Set by the recipe. The component decides what the item
+        <i>becomes</i>.</span>
+      </li>
+      <li>
+        <b>A remnant</b>
+        <span>The creature's essence or soul, gathered before it fades. This
+        decides how <i>strong</i> the item is. Use a rarer remnant than the
+        recipe asks and the item takes that higher rarity — along with its
+        longer time and steeper DC.</span>
+      </li>
+      <li>
+        <b>Enchanting check</b>
+        <span>Rolled at the end of the enchanting time. Only a spellcaster can
+        do it.</span>
+      </li>
+    </ol>
+
+    <div class="rnr-formula">
+      Enchanting check = 1d20 + spellcasting ability + skill for the
+      creature's type
+    </div>
+    <p class="muted rnr-hint">
+      A wizard enchanting with a dragon's remnant rolls Intelligence
+      (Survival) — the ability is the caster's, the skill is the corpse's.
+    </p>
+
+    <p class="rnr-status">
+      <b>On failure</b> the enchantment can still take hold, but the item
+      gains flaws in proportion to how badly the check missed. Miss by 13 or
+      more and it is destroyed. Either way, the remnant and component are
+      consumed.
+    </p>
+  </div>
+
+  <!-- ================= REFERENCE ================= -->
+  <div class="rnr-card">
+    <h3>Rarity &amp; Remnants</h3>
+
+    <div class="rnr-tier">
+      <div class="rnr-tier-header">Remnant → Rarity → Difficulty</div>
+      <table class="rnr-ref">
+        <tr class="rnr-ref-head">
+          <td>Remnant</td><td>Rarity</td><td class="rnr-num">DC</td><td class="rnr-num">Hours*</td>
+        </tr>
+        <tr><td>—</td><td>Common</td><td class="rnr-num">12</td><td class="rnr-num">1</td></tr>
+        <tr><td>Frail</td><td>Uncommon</td><td class="rnr-num">15</td><td class="rnr-num">10</td></tr>
+        <tr><td>Robust</td><td>Rare</td><td class="rnr-num">18</td><td class="rnr-num">40</td></tr>
+        <tr><td>Potent</td><td>Very Rare</td><td class="rnr-num">21</td><td class="rnr-num">160</td></tr>
+        <tr><td>Mythic</td><td>Legendary</td><td class="rnr-num">25</td><td class="rnr-num">640</td></tr>
+        <tr><td>Deific</td><td>Artifact</td><td class="rnr-num">30</td><td class="rnr-num">100,000</td></tr>
+      </table>
+      <p class="muted rnr-hint">*Non-attunement. Consumables are far quicker; attunement doubles it.</p>
+    </div>
+
+    <div class="rnr-tier">
+      <div class="rnr-tier-header">Flaws on a failed check</div>
+      <table class="rnr-ref">
+        <tr><td>0 or better</td><td>No flaws</td></tr>
+        <tr><td>−1 to −4</td><td>One flaw</td></tr>
+        <tr><td>−5 to −8</td><td>Two flaws</td></tr>
+        <tr><td>−9 to −12</td><td>Three flaws</td></tr>
+        <tr><td>−13 or worse</td><td class="rnr-danger">Item destroyed</td></tr>
+      </table>
+    </div>
+
+    <div class="rnr-tier rnr-tier-essence">
+      <div class="rnr-tier-header">Ancestral Weapons</div>
+      <p class="rnr-note">
+        One weapon per character, grown rather than replaced. Upgrades cost
+        <b>spirit points</b>, earned through deeds rather than harvested.
+      </p>
+      <p class="rnr-note">
+        A remnant may stand in for spirit points — but spend one that way and
+        the weapon can <b>never be enchanted again</b>. At 20 points it
+        awakens, takes 5 final points, and is finished.
+      </p>
+    </div>
+
+    <p class="rnr-status">
+      <b>Not yet automated.</b> Socketing, rarity scaling, flaws and weapon
+      progression arrive in Phase&nbsp;5.
+    </p>
+
+    <div class="actions">
+      <button type="button" data-action="switch-tab" data-tab="harvest">← Go gather remnants</button>
+    </div>
+  </div>
+
+</section>

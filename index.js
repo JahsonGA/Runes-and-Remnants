@@ -2,6 +2,7 @@
 
 // index.js
 import { HarvestMenu } from "./src/harvest/menu.js";
+import { RunesHub } from "./src/hub/hub.js";
 import { pickExecutorId } from "./src/harvest/logic.js";
 
 const MODULE_ID = "runes-and-remnants";
@@ -9,14 +10,14 @@ const MODULE_ID = "runes-and-remnants";
 Hooks.once("ready", () => console.log("Runes & Remnants ready!"));
 
 /**
- * World setting: who can open the Harvest Menu
+ * World setting: who can open the Hub
  * - true  => GM + Players can open
  * - false => GM-only can open
  */
 Hooks.once("init", () => {
   game.settings.register(MODULE_ID, "playersCanOpenHarvest", {
-    name: "Allow Players to Open Harvest Menu",
-    hint: "If enabled, players can open the Harvest Menu (it will appear to all active users). If disabled, only GMs can open it.",
+    name: "Allow Players to Open the Hub",
+    hint: "If enabled, players can open the Runes & Remnants hub (it will appear to all active users). If disabled, only GMs can open it.",
     scope: "world",
     config: true,
     type: Boolean,
@@ -28,6 +29,29 @@ Hooks.once("init", () => {
   Handlebars.registerHelper("eq", (a, b) => a === b);
 });
 
+/**
+ * Register the hub's panels as Handlebars partials so hub.html can swap
+ * between them without re-rendering a separate Application per tab.
+ */
+Hooks.once("init", async () => {
+  const base = `modules/${MODULE_ID}/templates/panels`;
+  const panels = {
+    rnrHarvestPanel:    `${base}/harvest.html`,
+    rnrCraftingPanel:   `${base}/crafting.html`,
+    rnrEnchantingPanel: `${base}/enchanting.html`
+  };
+
+  await loadTemplates(Object.values(panels));
+  for (const [name, path] of Object.entries(panels)) {
+    Handlebars.registerPartial(name, Handlebars.partials[path] ?? (await getTemplate(path)));
+  }
+});
+
+/** Public API — lets macros open the hub on a given tab. */
+Hooks.once("ready", () => {
+  const mod = game.modules.get(MODULE_ID);
+  if (mod) mod.api = { openHub: (opts) => RunesHub.open(opts), RunesHub, HarvestMenu };
+});
 
 /**
  * Socket listener.
@@ -47,7 +71,7 @@ Hooks.once("ready", () => {
     if (payload.action === "openHarvest") {
       const token = payload.tokenUuid ? await fromUuid(payload.tokenUuid) : null;
       const tokenDoc = token?.document ?? token ?? null;
-      new HarvestMenu(tokenDoc).render(true);
+      RunesHub.open({ tokenDoc, tab: "harvest" });
       return;
     }
 
@@ -64,8 +88,9 @@ Hooks.once("ready", () => {
 });
 
 /**
- * Add cleaver button to the Token HUD.
- * Who sees the button depends on the world setting above.
+ * Add the cleaver button to the Token HUD. It opens the hub on the Harvest
+ * tab with that token targeted, so the corpse you clicked is the corpse you
+ * carve — crafting and enchanting are then a tab away.
  *
  * Foundry v13 migrated TokenHUD to ApplicationV2, which passes a native
  * HTMLElement to render hooks; v11/v12 pass jQuery. Normalising here — and
@@ -81,7 +106,9 @@ Hooks.on("renderTokenHUD", (hud, html) => {
   const column = root?.querySelector(".col.right");
   if (!column) return;
 
-  const title = allowPlayers ? "Open Harvest (shows to all)" : "Open Harvest (GM-only opener)";
+  const title = allowPlayers
+    ? "Open Runes & Remnants (shows to all)"
+    : "Open Runes & Remnants (GM-only opener)";
 
   const btn = document.createElement("div");
   btn.className = "control-icon harvest-menu";
@@ -93,9 +120,47 @@ Hooks.on("renderTokenHUD", (hud, html) => {
 
   btn.addEventListener("click", () => {
     const tokenDoc = hud.object?.document ?? null;
-    new HarvestMenu(tokenDoc).render(true);
+    RunesHub.open({ tokenDoc, tab: "harvest" });
     game.socket?.emit(`module.${MODULE_ID}`, { action: "openHarvest", tokenUuid: tokenDoc?.uuid ?? null });
   });
 
   column.appendChild(btn);
+});
+
+/**
+ * Scene-controls button, so crafting and enchanting are reachable without a
+ * corpse selected.
+ *
+ * The control structure changed shape in v13 (array of groups -> keyed
+ * object), so both are handled and the whole thing is guarded — a failure
+ * here must never take the rest of the module down with it.
+ */
+Hooks.on("getSceneControlButtons", (controls) => {
+  try {
+    const allowPlayers = game.settings.get(MODULE_ID, "playersCanOpenHarvest");
+    if (!game.user.isGM && !allowPlayers) return;
+
+    const tool = {
+      name: "rnr-hub",
+      title: "Runes & Remnants",
+      icon: "fas fa-mortar-pestle",
+      button: true,
+      visible: true,
+      onClick: () => RunesHub.open({ tab: "harvest" }),
+      onChange: () => RunesHub.open({ tab: "harvest" })
+    };
+
+    // v11/v12: controls is an array of groups with a `tools` array.
+    if (Array.isArray(controls)) {
+      const tokens = controls.find(c => c.name === "token" || c.layer === "tokens");
+      if (tokens?.tools) tokens.tools.push(tool);
+      return;
+    }
+
+    // v13+: controls is an object keyed by control name, tools keyed by name.
+    const tokens = controls?.tokens ?? controls?.token;
+    if (tokens?.tools) tokens.tools[tool.name] = { ...tool, order: 99 };
+  } catch (err) {
+    console.warn(`[${MODULE_ID}] Could not add the scene-controls button:`, err);
+  }
 });
