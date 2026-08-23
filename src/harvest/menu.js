@@ -11,7 +11,8 @@ import {
   getHarvestOptions,
   rollAssessment,
   rollCarving,
-  getUnlockedMaterials,
+  buildHarvestList,
+  resolveHarvest,
   getEssenceByCR,
   harvestOutcome,
   pickExecutorId,
@@ -28,7 +29,11 @@ export class HarvestMenu extends Application {
 
     this.loot = [];
     this._lootLoaded = false;
-    this.selectedLoot = new Set();
+
+    // Ordered component names — the "harvest list". Order is the whole point:
+    // each entry's Harvest DC is the running total of everything before it.
+    // A plain array, not a Set, because a creature can yield duplicates.
+    this.harvestList = [];
 
     // Roles
     this.assessor = null;
@@ -56,48 +61,39 @@ export class HarvestMenu extends Application {
     if (!pack) return;
     const idx = await pack.getIndex();
     // Full compendium index, kept only to resolve item names to documents.
-    // What the player actually sees is built by _buildMaterialTiers().
+    // What the player actually sees is built by _buildComponentPool().
     this.loot = idx.contents ?? idx;
 
     this._lootLoaded = true;
   }
 
   /**
-   * Builds the tier-grouped material list for this creature type.
-   * Only materials this creature can actually yield are shown, each group
-   * labelled with the DC the party must reach.
+   * The pool of components this creature can yield, grouped by component DC.
+   * These are per-component costs, not thresholds — actual difficulty is the
+   * running total built in the harvest list.
    */
-  _buildMaterialTiers() {
+  _buildComponentPool() {
     if (!this.targetActor) return { tiers: [], essence: null };
 
     const { type, cr } = this._actorSummary(this.targetActor);
+    const typeKey = String(type).toLowerCase();
+    const countTaken = name => this.harvestList.filter(n => n === name).length;
+
     const tiers = getHarvestOptions(type).map(tier => ({
       dc: tier.dc,
       items: tier.items.map(name => ({
         name,
-        selected: this.selectedLoot.has(name),
-        missing: !findCompendiumEntry(this.loot, name, String(type).toLowerCase())
+        taken: countTaken(name),
+        missing: !findCompendiumEntry(this.loot, name, typeKey)
       }))
     }));
 
-    // Essence sits in its own group — it is gated by CR, not by the tier table.
+    // Essence is appended to every creature's table and priced by CR.
     const essence = getEssenceByCR(Number(cr) || 0);
     return {
       tiers,
-      essence: {
-        dc: essence.dc,
-        name: essence.name,
-        selected: this.selectedLoot.has(essence.name)
-      }
+      essence: { dc: essence.dc, name: essence.name, taken: countTaken(essence.name) }
     };
-  }
-
-  /** Every material name offered for the current target, essence included. */
-  _allMaterialNames() {
-    const { tiers, essence } = this._buildMaterialTiers();
-    const names = tiers.flatMap(t => t.items.map(i => i.name));
-    if (essence) names.push(essence.name);
-    return names;
   }
 
   _actorSummary(actor) {
@@ -181,15 +177,21 @@ export class HarvestMenu extends Application {
     const availableHelpers      = availableActors.filter(a => a.id !== assessorId && a.id !== harvesterId && !takenHelperIds.has(a.id));
 
 
-    const { tiers: materialTiers, essence } = this._buildMaterialTiers();
+    const { tiers: componentTiers, essence } = this._buildComponentPool();
+
+    // The ordered list, with each entry's running Harvest DC.
+    const harvestList = buildHarvestList(this.harvestList, type, Number(cr) || 0);
+    const lastEntry = harvestList[harvestList.length - 1];
 
     return {
       hasTarget: !!this.targetActor,
       targetName, targetImg, type, cr, sizeKey,
-      materialTiers,
+      componentTiers,
       essence,
-      hasMaterials: materialTiers.some(t => t.items.length > 0),
-      anySelected: this.selectedLoot.size > 0,
+      hasComponents: componentTiers.some(t => t.items.length > 0),
+      harvestList,
+      hasHarvestList: harvestList.length > 0,
+      finalDC: lastEntry?.harvestDC ?? 0,
       assessor: this.assessor,
       harvester: this.harvester,
       helpers: this.helpers,
@@ -269,23 +271,40 @@ export class HarvestMenu extends Application {
     this.render(true);
   });
 
-  // --- Loot Checkbox ---
-  // Keyed by item NAME: names are the join key between HARVEST_TABLE and the
-  // compendium, and pack entries have no stable _id to key on.
-  html.on("change", "input[name='lootChoice']", ev => {
-    const name = ev.currentTarget.value;
-    ev.currentTarget.checked ? this.selectedLoot.add(name) : this.selectedLoot.delete(name);
-    // No re-render — browser maintains checkbox state, re-render causes scroll reset.
-  });
-
-  // --- Select All / Clear ---
-  html.on("click", "[data-action='select-all-loot']", () => {
-    this._allMaterialNames().forEach(n => this.selectedLoot.add(n));
+  // --- Harvest List: add a component ---
+  // Appended, never sorted: the order the harvesters pick IS the order the
+  // cumulative Harvest DCs are built from. Duplicates are allowed because a
+  // creature can yield more than one of the same part.
+  html.on("click", "[data-action='add-component']", ev => {
+    this.harvestList.push(ev.currentTarget.dataset.name);
     this.render(true);
   });
 
-  html.on("click", "[data-action='clear-loot']", () => {
-    this.selectedLoot.clear();
+  html.on("click", "[data-action='remove-component']", ev => {
+    const i = Number(ev.currentTarget.closest("[data-index]")?.dataset.index);
+    if (Number.isInteger(i)) this.harvestList.splice(i, 1);
+    this.render(true);
+  });
+
+  // --- Harvest List: reorder ---
+  html.on("click", "[data-action='move-up']", ev => {
+    const i = Number(ev.currentTarget.closest("[data-index]")?.dataset.index);
+    if (i > 0) {
+      [this.harvestList[i - 1], this.harvestList[i]] = [this.harvestList[i], this.harvestList[i - 1]];
+      this.render(true);
+    }
+  });
+
+  html.on("click", "[data-action='move-down']", ev => {
+    const i = Number(ev.currentTarget.closest("[data-index]")?.dataset.index);
+    if (Number.isInteger(i) && i < this.harvestList.length - 1) {
+      [this.harvestList[i], this.harvestList[i + 1]] = [this.harvestList[i + 1], this.harvestList[i]];
+      this.render(true);
+    }
+  });
+
+  html.on("click", "[data-action='clear-list']", () => {
+    this.harvestList = [];
     this.render(true);
   });
 
@@ -312,6 +331,9 @@ export class HarvestMenu extends Application {
     if (!this.targetToken?.uuid)
       return ui.notifications.error("This target has no token on the canvas to harvest.");
 
+    if (!this.harvestList.length)
+      return ui.notifications.warn("Add at least one component to the harvest list first.");
+
     const executorId = pickExecutorId(Array.from(game.users ?? []));
     if (!executorId)
       return ui.notifications.error("A GM must be connected to run a harvest.");
@@ -323,7 +345,7 @@ export class HarvestMenu extends Application {
       assessor: { actorId: this.assessor.actorId, name: this.assessor.name },
       harvester: { actorId: this.harvester.actorId, name: this.harvester.name },
       helpers: (this.helpers ?? []).map(h => ({ actorId: h.actorId, name: h.name })),
-      selectedLoot: Array.from(this.selectedLoot)
+      harvestList: [...this.harvestList]
     };
 
     // Latch immediately — a double-click would otherwise send twice.
@@ -353,7 +375,7 @@ export class HarvestMenu extends Application {
    * submit the same corpse before the first request finishes.
    */
   static async executeHarvest(payload = {}) {
-    const { tokenUuid, selectedLoot = [] } = payload;
+    const { tokenUuid, harvestList = [] } = payload;
     if (!tokenUuid) return;
 
     if (HarvestMenu._inFlight.has(tokenUuid)) {
@@ -363,7 +385,7 @@ export class HarvestMenu extends Application {
     HarvestMenu._inFlight.add(tokenUuid);
 
     try {
-      await HarvestMenu._runHarvest(payload, new Set(selectedLoot));
+      await HarvestMenu._runHarvest(payload, harvestList);
     } catch (err) {
       console.error(`[${MODULE_ID}] Harvest failed:`, err);
       ui.notifications.error("The harvest failed — see the console for details.");
@@ -372,7 +394,7 @@ export class HarvestMenu extends Application {
     }
   }
 
-  static async _runHarvest(payload, selectedLoot) {
+  static async _runHarvest(payload, orderedNames) {
     const targetToken = await fromUuid(payload.tokenUuid);
     const targetActor = targetToken?.actor;
     if (!targetActor)
@@ -424,24 +446,16 @@ export class HarvestMenu extends Application {
 
     const totalRoll = harvestTotal + helperBonus;
 
-    // --- Resolve unlocked materials from the flat tier DCs ---
+    // --- Resolve the harvest list against the check ---
+    // Each entry's Harvest DC is the running total of every component before
+    // it, so the party extracts the leading run of their chosen order and
+    // loses everything from the first component the corpse beat them on.
     const typeKey = String(type || "other").toLowerCase();
-    const {
-      names: unlockedNames,
-      tierCount,
-      unlockedCount,
-      essence,
-      essenceUnlocked
-    } = getUnlockedMaterials(typeKey, totalRoll, Number(cr) || 0);
+    const harvestList = buildHarvestList(orderedNames, typeKey, Number(cr) || 0);
+    const { awarded, missed } = resolveHarvest(harvestList, totalRoll);
 
-    const result = harvestOutcome(unlockedCount, tierCount);
-
-    // --- Apply GM selection filter ---
-    // If specific materials were ticked, grant only the intersection of
-    // selected + unlocked. If nothing was ticked, grant everything unlocked.
-    const materials = selectedLoot.size > 0
-      ? unlockedNames.filter(n => selectedLoot.has(n))
-      : unlockedNames;
+    const result = harvestOutcome(awarded.length, harvestList.length);
+    const materials = awarded.map(e => e.name);
 
     // --- Drop or Grant Materials ---
     const dropPoint = targetToken?.object?.center ?? null;
@@ -471,6 +485,22 @@ export class HarvestMenu extends Application {
       ? `<p class="warning">⚠️ ${assessorActor.name} performed both roles — both rolls at disadvantage.</p>`
       : "";
 
+    // The harvest list in order, showing each running Harvest DC and where
+    // the check ran out. This is the part that makes the ordering legible.
+    const listRows = harvestList.map(e => {
+      const got = !e.unknown && totalRoll >= e.harvestDC;
+      const mark = e.unknown ? "⚠" : (got ? "✔" : "✘");
+      const style = e.unknown ? "color:#a08a6a;"
+                  : got ? "color:#80ff80;" : "color:#ff8080;opacity:.75;";
+      const dc = e.unknown ? "—" : `DC ${e.harvestDC}`;
+      const cost = e.unknown ? "not on this creature's table" : `+${e.componentDC}`;
+      return `<tr style="${style}">
+        <td>${e.order}.</td><td>${mark} ${e.name}</td>
+        <td style="text-align:right;">${cost}</td>
+        <td style="text-align:right;"><b>${dc}</b></td>
+      </tr>`;
+    }).join("");
+
     const chatContent = `
     <div class="rnr-harvest-summary">
       <hr>
@@ -482,17 +512,22 @@ export class HarvestMenu extends Application {
         <li><b>Carving:</b> ${harvesterActor.name} — ${skillName} (DEX) — rolled ${carve.total}</li>
         <li><b>Helpers:</b><ul>${helperList}</ul></li>
       </ul>
-      <p><b>Roll Breakdown:</b> ${assess.total} + ${carve.total} + ${helperBonus} =
+      <p><b>Harvesting check:</b> ${assess.total} + ${carve.total} + ${helperBonus} =
         <b style="color:#8ef;">${totalRoll}</b></p>
-      <p><b>Tiers Unlocked:</b> ${unlockedCount} of ${tierCount}</p>
-      <p><b>${essence.name}</b> (DC ${essence.dc}): ${essenceUnlocked ? "recovered" : "not recovered"}</p>
-      <p><b>Outcome:</b> <span style="color:${result.includes('success') ? '#80ff80' : '#ff8080'};">${result}</span></p>
+      <table style="width:100%;font-size:0.9em;">
+        <tr><th colspan="2" style="text-align:left;">Harvest List</th>
+            <th style="text-align:right;">Cost</th>
+            <th style="text-align:right;">Harvest DC</th></tr>
+        ${listRows}
+      </table>
+      <p><b>Outcome:</b> <span style="color:${result.includes('success') ? '#80ff80' : '#ff8080'};">${result}</span>
+        — ${awarded.length} of ${harvestList.length} recovered</p>
       <p><b>Recovered:</b> ${materials.join(', ') || 'Nothing recovered'}</p>
     </div>
     `;
 
     // --- Create Final Chat Message ---
-    console.log(`[${MODULE_ID}] Harvest summary posted`, { totalRoll, unlockedCount, tierCount, result });
+    console.log(`[${MODULE_ID}] Harvest summary posted`, { totalRoll, awarded: awarded.length, missed: missed.length, result });
 
     // Wait briefly so roll cards appear first
     await new Promise(r => setTimeout(r, 500));

@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { getHarvestOptions } from "../src/harvest/logic.js";
 
+// getHarvestOptions is the component-DC lookup for a creature type. It says
+// what a creature can yield and what each part costs; it does NOT decide what
+// is awarded — that is buildHarvestList / resolveHarvest, covered in
+// harvest-unlock.test.js.
+
 const ALL_TYPES = [
   "aberration", "beast",     "celestial", "construct", "dragon",
   "elemental",  "fey",       "fiend",     "giant",     "humanoid",
@@ -15,6 +20,15 @@ describe("getHarvestOptions — coverage", () => {
       const result = getHarvestOptions(type);
       expect(Array.isArray(result), `"${type}" did not return an array`).toBe(true);
       expect(result.length, `"${type}" returned empty tiers`).toBeGreaterThan(0);
+    }
+  });
+
+  it("every type offers a cheap entry component", () => {
+    // Without a low-cost component the first Harvest DC is already steep and
+    // the creature is effectively unharvestable.
+    for (const type of ALL_TYPES) {
+      const cheapest = Math.min(...getHarvestOptions(type).map(t => t.dc));
+      expect(cheapest, `"${type}" cheapest component costs ${cheapest}`).toBeLessThanOrEqual(10);
     }
   });
 });
@@ -62,45 +76,12 @@ describe("getHarvestOptions — tier structure", () => {
       }
     }
   });
-});
 
-// ─── Additive tier logic ──────────────────────────────────────────────────────
-
-describe("getHarvestOptions — additive tier logic", () => {
-  it("a roll of 35 on beast unlocks DC 20 and DC 30 tiers but not DC 40", () => {
-    const rollTotal = 35;
-    const tiers = getHarvestOptions("beast");
-
-    const unlocked = tiers
-      .filter(t => rollTotal >= t.dc)
-      .flatMap(t => t.items);
-
-    const locked = tiers
-      .filter(t => rollTotal < t.dc)
-      .flatMap(t => t.items);
-
-    expect(unlocked).toContain("Hide");   // DC 20
-    expect(unlocked).toContain("Heart");  // DC 30
-    expect(locked).toContain("Marrow");   // DC 40 — not yet unlocked
-  });
-
-  it("a roll of 20 on dragon unlocks only the first tier", () => {
-    const tiers = getHarvestOptions("dragon");
-    const unlocked = tiers.filter(t => 20 >= t.dc).flatMap(t => t.items);
-    const locked   = tiers.filter(t => 20 < t.dc).flatMap(t => t.items);
-
-    expect(unlocked).toContain("Pouch of Scales"); // DC 20
-    expect(locked).toContain("Breath Sac");        // DC 30
-    expect(locked).toContain("Horn");              // DC 40
-  });
-
-  it("a roll of 45 on undead unlocks all tiers", () => {
-    const tiers = getHarvestOptions("undead");
-    const unlocked = tiers.filter(t => 45 >= t.dc).flatMap(t => t.items);
-
-    expect(unlocked).toContain("Bone");                     // DC 20
-    expect(unlocked).toContain("Phial of Congealed Blood");  // DC 30
-    expect(unlocked).toContain("Soul");                      // DC 40
+  it("returns tiers in ascending cost order", () => {
+    for (const type of ALL_TYPES) {
+      const dcs = getHarvestOptions(type).map(t => t.dc);
+      expect(dcs, `"${type}" tiers are out of order`).toEqual([...dcs].sort((a, b) => a - b));
+    }
   });
 });
 
@@ -109,55 +90,57 @@ describe("getHarvestOptions — additive tier logic", () => {
 describe("getHarvestOptions — per-type spot-checks", () => {
   const find = (type, dc) => getHarvestOptions(type).find(t => t.dc === dc);
 
-  it("aberration DC 20 yields Tentacle and Eye", () => {
-    const items = find("aberration", 20)?.items ?? [];
-    expect(items).toContain("Tentacle");
+  it("aberration DC 5 yields Antenna and Eye", () => {
+    const items = find("aberration", 5)?.items ?? [];
+    expect(items).toContain("Antenna");
     expect(items).toContain("Eye");
   });
 
-  it("celestial DC 30 yields Lifespark", () => {
-    expect(find("celestial", 30)?.items).toContain("Lifespark");
+  it("celestial DC 25 yields Soul", () => {
+    expect(find("celestial", 25)?.items).toContain("Soul");
   });
 
-  it("construct DC 40 yields Phial of Oil", () => {
-    expect(find("construct", 40)?.items).toContain("Phial of Oil");
+  it("construct DC 5 yields Phial of Oil", () => {
+    expect(find("construct", 5)?.items).toContain("Phial of Oil");
   });
 
-  it("elemental DC 40 yields Ethereal Ichor", () => {
-    expect(find("elemental", 40)?.items).toContain("Ethereal Ichor");
+  it("dragon DC 25 yields Breath Sac", () => {
+    expect(find("dragon", 25)?.items).toContain("Breath Sac");
   });
 
-  it("fey DC 40 yields Psyche", () => {
-    expect(find("fey", 40)?.items).toContain("Psyche");
+  it("fey DC 25 yields Psyche", () => {
+    expect(find("fey", 25)?.items).toContain("Psyche");
   });
 
-  it("fiend DC 20 yields Rancid Fat", () => {
-    expect(find("fiend", 20)?.items).toContain("Rancid Fat");
+  it("fiend DC 10 yields Horn", () => {
+    expect(find("fiend", 10)?.items).toContain("Horn");
   });
 
-  it("giant DC 30 yields Marrow", () => {
-    expect(find("giant", 30)?.items).toContain("Marrow");
+  it("giant DC 15 yields Heart and Liver", () => {
+    const items = find("giant", 15)?.items ?? [];
+    expect(items).toContain("Heart");
+    expect(items).toContain("Liver");
   });
 
-  it("humanoid DC 40 yields Brain and Tongue", () => {
-    const items = find("humanoid", 40)?.items ?? [];
+  it("humanoid DC 20 yields Brain and Skin", () => {
+    const items = find("humanoid", 20)?.items ?? [];
     expect(items).toContain("Brain");
-    expect(items).toContain("Tongue");
+    expect(items).toContain("Skin");
   });
 
-  it("monstrosity DC 40 yields Poison Gland (Poison)", () => {
-    expect(find("monstrosity", 40)?.items).toContain("Poison Gland (Poison)");
+  it("monstrosity DC 15 yields Poison Gland (Material)", () => {
+    expect(find("monstrosity", 15)?.items).toContain("Poison Gland (Material)");
   });
 
-  it("ooze DC 30 yields Vesicle", () => {
-    expect(find("ooze", 30)?.items).toContain("Vesicle");
+  it("ooze DC 15 yields Vesicle", () => {
+    expect(find("ooze", 15)?.items).toContain("Vesicle");
   });
 
-  it("plant DC 30 yields Phial of Sap", () => {
-    expect(find("plant", 30)?.items).toContain("Phial of Sap");
+  it("plant DC 5 yields Phial of Sap", () => {
+    expect(find("plant", 5)?.items).toContain("Phial of Sap");
   });
 
-  it("undead DC 40 yields Undying Heart", () => {
-    expect(find("undead", 40)?.items).toContain("Undying Heart");
+  it("undead DC 20 yields Undying Heart", () => {
+    expect(find("undead", 20)?.items).toContain("Undying Heart");
   });
 });

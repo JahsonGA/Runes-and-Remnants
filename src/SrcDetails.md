@@ -36,7 +36,8 @@ index.js  (Token HUD hook, socket listener, settings)
           │
           ├─► getHarvestOptions()      ─► src/data/harvest-table.js
           ├─► getEssenceByCR()         ─┐
-          ├─► getUnlockedMaterials()   ─┼─► src/harvest/logic.js
+          ├─► buildHarvestList()       ─┼─► src/harvest/logic.js
+          ├─► resolveHarvest()         ─┤
           ├─► computeHelperBonus()     ─┤
           ├─► rollAssessment/rollCarving┤
           ├─► harvestOutcome()         ─┘

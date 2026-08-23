@@ -1,20 +1,31 @@
 // =========================================================
 // Runes & Remnants — Harvest Table
-// Maps each D&D 5e creature type to harvestable material tiers.
+// Maps each D&D 5e creature type to its harvestable components.
 //
-// Each tier is { dc, items[] } where:
-//   dc    — flat roll total the harvester must meet or exceed
+// Follows the harvest tables in Ryoko's Guide "Harvesting and Crafting Lite".
+//
+// Each entry is { dc, items[] } where:
+//   dc    — the COMPONENT DC: how hard that single component is to extract
 //   items — exact item names matching the harvest-items compendium
 //
-// Tiers are additive: meeting DC 30 also grants DC 20 items.
+// IMPORTANT — these are component DCs, not thresholds.
+// Harvesters pick the components they want AND the order they want them in.
+// The Harvest DC for each entry is the running total of every component DC
+// before it, so a list of cheap parts is reachable while a single expensive
+// one near the front pushes everything after it out of range:
 //
-// DCs are compared against the COMBINED harvest total:
-//   assessment (1d20 + INT + prof) + carving (1d20 + DEX + prof) + helper bonus
-// which spans roughly 12–50, so the 20/30/40 spread is meaningful.
-// These are flat by design — creature difficulty is expressed through the
-// CR-scaled essence DCs in ESSENCE_TABLE, not through the tier table.
+//   Pouch of Teeth  (10)  ->  Harvest DC 10
+//   Eye             ( 5)  ->  Harvest DC 15
+//   Breath Sac      (25)  ->  Harvest DC 40
 //
-// Essence drops are handled separately by getEssenceByCR() / getUnlockedMaterials().
+// The Harvesting check (assessment + carving + helpers) is compared against
+// those running totals. See getComponentDC / buildHarvestList in logic.js.
+//
+// Essence is appended to every table and gated by CR, not creature type —
+// see ESSENCE_TABLE in logic.js.
+//
+// Items marked "house" are not in the source tables; the source permits extra
+// components under its "Unusual Anatomy" and boss-component allowances.
 // =========================================================
 
 /**
@@ -25,164 +36,165 @@ export const HARVEST_TABLE = {
 
   // ----------------------------------------------------------
   // ABERRATION  |  Arcana
-  // Alien anatomy: warped organs, alien sensory tissue,
-  // psychic matter, and corrosive fluids.
   // ----------------------------------------------------------
   aberration: [
-    { dc: 20, items: ["Tentacle", "Eye", "Phial of Blood"] },
-    { dc: 30, items: ["Antenna", "Main Eye", "Ethereal Ichor"] },
-    { dc: 40, items: ["Brain", "Phial of Mucus"] }
+    { dc: 5,  items: ["Antenna", "Eye", "Flesh", "Phial of Blood"] },
+    { dc: 10, items: ["Bone", "Egg", "Fat", "Pouch of Claws", "Pouch of Teeth", "Tentacle"] },
+    { dc: 15, items: ["Heart", "Phial of Mucus", "Liver", "Stinger"] },
+    { dc: 20, items: ["Brain", "Chitin", "Hide", "Main Eye"] }
   ],
 
   // ----------------------------------------------------------
   // BEAST  |  Survival
-  // Natural animals: hides, bones, blood, and useful organs.
   // ----------------------------------------------------------
   beast: [
-    { dc: 20, items: ["Hide", "Flesh", "Bone", "Fin", "Fur"] },
-    { dc: 30, items: ["Pelt", "Phial of Blood", "Heart", "Pouch of Claws", "Egg"] },
-    { dc: 40, items: ["Marrow", "Liver", "Fat", "Antler"] }
+    { dc: 5,  items: ["Antenna", "Eye", "Flesh", "Hair", "Phial of Blood"] },
+    { dc: 10, items: ["Antler", "Beak", "Bone", "Egg", "Fat", "Fin", "Horn", "Pincer", "Pouch of Claws", "Pouch of Teeth", "Talon", "Tusk"] },
+    { dc: 15, items: ["Heart", "Liver", "Poison Gland (Material)", "Pouch of Feathers", "Pouch of Scales", "Stinger", "Tentacle"] },
+    { dc: 20, items: ["Chitin", "Pelt", "Fur"] } // Fur — house
   ],
 
   // ----------------------------------------------------------
   // CELESTIAL  |  Religion
-  // Divine flesh: radiant blood, sacred feathers, and
-  // pure essence.
   // ----------------------------------------------------------
   celestial: [
-    { dc: 20, items: ["Phial of Blood", "Pouch of Feathers", "Flesh"] },
-    { dc: 30, items: ["Lifespark", "Ethereal Ichor", "Heart"] },
-    { dc: 40, items: ["Soul", "Bone"] }
+    { dc: 5,  items: ["Eye", "Flesh", "Hair", "Phial of Blood", "Pouch of Dust"] },
+    { dc: 10, items: ["Bone", "Fat", "Horn", "Pouch of Teeth"] },
+    { dc: 15, items: ["Heart", "Liver", "Pouch of Feathers", "Pouch of Scales"] },
+    { dc: 20, items: ["Brain", "Skin"] },
+    { dc: 25, items: ["Soul"] }
   ],
 
   // ----------------------------------------------------------
   // CONSTRUCT  |  Investigation
-  // Mechanical assembly: gears, plating, and arcane
-  // schematics recovered from the frame.
   // ----------------------------------------------------------
   construct: [
-    { dc: 20, items: ["Gears", "Stone"] },
-    { dc: 30, items: ["Plating", "Instructions"] },
-    { dc: 40, items: ["Phial of Oil", "Lifespark"] }
+    { dc: 5,  items: ["Phial of Blood", "Phial of Oil"] },
+    { dc: 10, items: ["Flesh", "Plating", "Stone"] },
+    { dc: 15, items: ["Bone", "Heart", "Liver", "Gears"] },
+    { dc: 20, items: ["Brain", "Instructions"] },
+    { dc: 25, items: ["Lifespark"] }
   ],
 
   // ----------------------------------------------------------
   // DRAGON  |  Survival
-  // Apex predators: dense scale, volatile breath organs,
-  // and corrosive blood.
   // ----------------------------------------------------------
   dragon: [
-    { dc: 20, items: ["Pouch of Scales", "Bone", "Flesh"] },
-    { dc: 30, items: ["Talon", "Breath Sac", "Phial of Blood", "Phial of acid"] },
-    { dc: 40, items: ["Horn", "Heart", "Marrow"] }
+    { dc: 5,  items: ["Eye", "Flesh", "Phial of Blood"] },
+    { dc: 10, items: ["Bone", "Egg", "Fat", "Pouch of Claws", "Pouch of Teeth"] },
+    { dc: 15, items: ["Horn", "Liver", "Pouch of Scales"] },
+    { dc: 20, items: ["Heart"] },
+    { dc: 25, items: ["Breath Sac"] }
   ],
 
   // ----------------------------------------------------------
   // ELEMENTAL  |  Arcana
-  // Living elemental matter: volatile essence,
-  // raw stone, and pure energy residue.
+  // Source uses Primordial Dust (5), Volatile Mote (15) and Core (25);
+  // none exist in the compendium yet, so pack-available stand-ins are used.
+  // See docs/ROADMAP.md § 1.8.
   // ----------------------------------------------------------
   elemental: [
-    { dc: 20, items: ["Stone", "Phial of Blood"] },
-    { dc: 30, items: ["Lifespark", "Phial of acid"] },
-    { dc: 40, items: ["Ethereal Ichor", "Soul"] }
+    { dc: 5,  items: ["Eye", "Stone"] },
+    { dc: 10, items: ["Bone"] },
+    { dc: 15, items: ["Ethereal Ichor"] },
+    { dc: 25, items: ["Lifespark"] }
   ],
 
   // ----------------------------------------------------------
   // FEY  |  Arcana
-  // Otherworldly matter: dream-dust, volatile
-  // consciousness, and glamour-saturated tissue.
   // ----------------------------------------------------------
   fey: [
-    { dc: 20, items: ["Hair", "Pouch of Feathers", "Phial of Blood"] },
-    { dc: 30, items: ["Pouch of Dust", "Phial of Wax", "Skin"] },
-    { dc: 40, items: ["Psyche", "Eye"] }
+    { dc: 5,  items: ["Antenna", "Eye", "Flesh", "Hair", "Phial of Blood"] },
+    { dc: 10, items: ["Antler", "Beak", "Bone", "Egg", "Horn", "Pouch of Claws", "Pouch of Teeth", "Talon", "Tusk"] },
+    { dc: 15, items: ["Heart", "Fat", "Liver", "Poison Gland (Material)", "Pouch of Feathers", "Pouch of Scales", "Tentacle", "Tongue"] },
+    { dc: 20, items: ["Brain", "Skin", "Pelt"] },
+    { dc: 25, items: ["Psyche"] }
   ],
 
   // ----------------------------------------------------------
   // FIEND  |  Religion
-  // Infernal flesh: corrupted blood, hellbound souls,
-  // and calcified demonic bone.
   // ----------------------------------------------------------
   fiend: [
-    { dc: 20, items: ["Bone", "Phial of Blood", "Flesh", "Rancid Fat"] },
-    { dc: 30, items: ["Phial of Congealed Blood", "Hide", "Pouch of Teeth"] },
-    { dc: 40, items: ["Soul", "Heart", "Tusk"] }
+    { dc: 5,  items: ["Eye", "Flesh", "Hair", "Phial of Blood", "Pouch of Dust"] },
+    { dc: 10, items: ["Bone", "Horn", "Pouch of Claws", "Pouch of Teeth"] },
+    { dc: 15, items: ["Heart", "Fat", "Liver", "Poison Gland (Material)", "Pouch of Feathers", "Pouch of Scales"] },
+    { dc: 20, items: ["Brain", "Skin"] },
+    { dc: 25, items: ["Soul"] }
   ],
 
   // ----------------------------------------------------------
   // GIANT  |  Medicine
-  // Oversized humanoid anatomy: dense bone, massive
-  // organs, and thick tissue.
+  // Source lists "nail" (5) and "tooth" (10); neither is in the compendium,
+  // so Pouch of Teeth covers the DC 10 slot.
   // ----------------------------------------------------------
   giant: [
-    { dc: 20, items: ["Bone", "Flesh", "Fat"] },
-    { dc: 30, items: ["Tusk", "Horn", "Hair", "Marrow"] },
-    { dc: 40, items: ["Heart", "Liver", "Phial of Blood"] }
+    { dc: 5,  items: ["Flesh", "Phial of Blood"] },
+    { dc: 10, items: ["Bone", "Fat", "Pouch of Teeth"] },
+    { dc: 15, items: ["Heart", "Liver"] },
+    { dc: 20, items: ["Skin"] }
   ],
 
   // ----------------------------------------------------------
   // HUMANOID  |  Medicine
-  // Mortal anatomy: blood, soft tissue, nervous
-  // matter, and sensory organs.
   // ----------------------------------------------------------
   humanoid: [
-    { dc: 20, items: ["Bone", "Flesh", "Phial of Blood"] },
-    { dc: 30, items: ["Hair", "Skin", "Liver"] },
-    { dc: 40, items: ["Brain", "Heart", "Tongue"] }
+    { dc: 5,  items: ["Eye", "Phial of Blood"] },
+    { dc: 10, items: ["Bone", "Egg", "Pouch of Teeth"] },
+    { dc: 15, items: ["Heart", "Liver", "Pouch of Feathers", "Pouch of Scales"] },
+    { dc: 20, items: ["Brain", "Skin"] }
   ],
 
   // ----------------------------------------------------------
   // MONSTROSITY  |  Survival
-  // Unnatural predators: chitin, venom glands,
-  // silk organs, and biological weapons.
+  // Source mirrors the Beast table; Silk Sack, Spider Milk and the poison
+  // variant are house additions.
   // ----------------------------------------------------------
   monstrosity: [
-    { dc: 20, items: ["Hide", "Chitin", "Flesh", "Fin"] },
-    { dc: 30, items: ["Stinger", "Pincer", "Beak", "Poison Gland (Material)"] },
-    { dc: 40, items: ["Silk Sack", "Heart", "Poison Gland (Poison)", "Spider Milk"] }
+    { dc: 5,  items: ["Antenna", "Eye", "Flesh", "Hair", "Phial of Blood"] },
+    { dc: 10, items: ["Antler", "Beak", "Bone", "Egg", "Fat", "Fin", "Horn", "Pincer", "Pouch of Claws", "Pouch of Teeth", "Talon", "Tusk"] },
+    { dc: 15, items: ["Heart", "Liver", "Poison Gland (Material)", "Pouch of Feathers", "Pouch of Scales", "Stinger", "Tentacle"] },
+    { dc: 20, items: ["Chitin", "Pelt", "Silk Sack", "Spider Milk", "Poison Gland (Poison)"] } // house
   ],
 
   // ----------------------------------------------------------
   // OOZE  |  Nature
-  // Amorphous matter: caustic acids, unstable membranes,
-  // and congealed cellular residue.
   // ----------------------------------------------------------
   ooze: [
-    { dc: 20, items: ["Phial of Mucus", "Membrane (Ooze)"] },
-    { dc: 30, items: ["Vesicle", "Phial of acid"] },
-    { dc: 40, items: ["Phial of Blood", "Rancid Fat"] }
+    { dc: 5,  items: ["Phial of acid"] },
+    { dc: 10, items: ["Phial of Mucus"] },
+    { dc: 15, items: ["Vesicle"] },
+    { dc: 20, items: ["Membrane (Ooze)"] }
   ],
 
   // ----------------------------------------------------------
   // PLANT  |  Nature
-  // Vegetative anatomy: bark, sap, and reproductive
-  // spores or fungal structures.
+  // Source lists "bundle of roots" at DC 10; not yet in the compendium.
   // ----------------------------------------------------------
   plant: [
-    { dc: 20, items: ["Bark", "Pouch of Leaves"] },
-    { dc: 30, items: ["Phial of Sap", "Tuber", "Membrane (Plant)"] },
-    { dc: 40, items: ["Pouch of Pollen", "Pouch of Spore", "Pouch of Hyphae"] }
+    { dc: 5,  items: ["Phial of Sap", "Tuber"] },
+    { dc: 10, items: ["Phial of Wax", "Pouch of Hyphae", "Pouch of Leaves"] },
+    { dc: 15, items: ["Poison Gland (Material)", "Pouch of Pollen", "Pouch of Spore"] },
+    { dc: 20, items: ["Bark", "Membrane (Plant)"] }
   ],
 
   // ----------------------------------------------------------
   // UNDEAD  |  Medicine
-  // Animate corpse matter: necrotic tissue, congealed
-  // blood, and trapped souls.
   // ----------------------------------------------------------
   undead: [
-    { dc: 20, items: ["Bone", "Bone Shards", "Undying Flesh"] },
-    { dc: 30, items: ["Phial of Congealed Blood", "Marrow", "Rancid Fat"] },
-    { dc: 40, items: ["Undying Heart", "Soul", "Brain"] }
+    { dc: 5,  items: ["Eye", "Bone", "Phial of Congealed Blood"] },
+    { dc: 10, items: ["Marrow", "Pouch of Teeth", "Rancid Fat", "Bone Shards"] }, // Bone Shards — house
+    { dc: 15, items: ["Ethereal Ichor", "Undying Flesh"] },
+    { dc: 20, items: ["Undying Heart"] }
   ],
 
   // ----------------------------------------------------------
   // OTHER  |  Survival
-  // Fallback for unrecognized or unusual creature types.
+  // Not in the source — fallback for unrecognised or homebrew types.
   // ----------------------------------------------------------
   other: [
-    { dc: 20, items: ["Flesh", "Bone", "Phial of Blood"] },
-    { dc: 30, items: ["Hide", "Heart"] },
-    { dc: 40, items: ["Marrow"] }
+    { dc: 5,  items: ["Flesh", "Phial of Blood"] },
+    { dc: 10, items: ["Bone", "Fat"] },
+    { dc: 15, items: ["Heart", "Liver"] },
+    { dc: 20, items: ["Hide", "Skin"] }
   ]
 };

@@ -23,7 +23,41 @@ dies at the last step — after items are granted but before the token clears.
 Fix: call `.delete()` on the TokenDocument directly, guarded, and only after
 a successful harvest.
 
-### 1.2 — Unify the DC model
+### 1.2a — Correction: the DC model is cumulative *(supersedes § 1.2)*
+
+§ 1.2 below diagnosed the symptom correctly and prescribed the wrong cure.
+The source rules — Ryoko's Guide *Harvesting and Crafting Lite* — work like
+this:
+
+1. Harvesters choose the components they want **and the order to take them in**
+   (the *harvest list*).
+2. Each component has its own **component DC** (5/10/15/20/25).
+3. The **Harvest DC** for each entry is the running total of every component
+   before it.
+4. One Harvesting check (assessment + carving + helpers) is compared against
+   those running totals; you extract the leading run.
+
+So the original 5/10/15/20 values were right all along. The bug was that the
+tiers were never accumulated, which is why everything always unlocked.
+Rescaling to 20/30/40 papered over that; it has been reverted.
+
+Ordering is now the actual decision. Measured over 100k harvests, a level 5
+party against a CR 10 dragon:
+
+| Harvest list order | Avg recovered | Breath Sac |
+|---|---|---|
+| Prize first (Breath Sac → Essence → …) | 0.99 of 5 | 96% |
+| Cheap first (Eye → Bone → Teeth → …) | 3.23 of 5 | 0% |
+
+Take what you came for and go home light, or fill your bags and leave the
+trophy behind. That replaces the saturation problem noted in § 1.5b — the
+system no longer flattens out at high level, because a bigger check just means
+a longer affordable list.
+
+Implemented as `getComponentDC` → `buildHarvestList` → `resolveHarvest` in
+`logic.js`, with an ordered, reorderable list in the menu.
+
+### 1.2 — Unify the DC model *(superseded by § 1.2a — kept for the diagnosis)*
 This is the `TODO` at the top of `menu.js`. Two systems are fighting:
 
 | Model | Where | Problem |
@@ -109,6 +143,28 @@ unlocking more — the tier table alone can't express degrees of success.
 ### 1.6 — Tests
 Update `tests/harvest-options.test.js` and `tests/harvest-table.test.js` for the
 rescaled DCs, and add coverage for essence DC gating and outcome derivation.
+
+### 1.8 — Components missing from the compendium
+
+The source tables name six components the pack does not yet contain. Each is
+currently covered by a stand-in or omitted; add them in Foundry and update
+`src/data/harvest-table.js` to match the source exactly.
+
+| Component | Creature type | Source cost | Current handling |
+|---|---|---|---|
+| Primordial Dust | Elemental | 5 | `Stone` stands in |
+| Volatile Mote (air/earth/fire/water) | Elemental | 15 | `Ethereal Ichor` stands in |
+| Core (air/earth/fire/water) | Elemental | 25 | `Lifespark` stands in |
+| Nail | Giant | 5 | omitted |
+| Tooth | Giant | 10 | `Pouch of Teeth` stands in |
+| Bundle of Roots | Plant | 10 | omitted |
+
+Elemental is the weakest table until its three are added — it is the only type
+whose identity components are all substitutes.
+
+`tests/harvest-pack.test.js` enforces that every name in the table exists in
+the pack, so adding these is safe: reference them and the suite tells you
+immediately if the names don't match.
 
 ### 1.7 — Foundry version compatibility
 

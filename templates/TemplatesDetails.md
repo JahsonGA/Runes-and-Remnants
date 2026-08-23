@@ -22,10 +22,10 @@ Two-column layout (`.rnr-columns`) of two `.rnr-card` panels.
 **Target block** (`{{#if hasTarget}}`) — portrait, name, type, CR, size, and the
 computed max-helper count. Falls back to "No target selected."
 
-**Materials panel** (`{{#if hasMaterials}}`) — the tier-grouped list:
+**Component pool** (`{{#if hasComponents}}`) — clickable components grouped by cost, plus an ordered **Harvest List** below it showing each running Harvest DC:
 
 ```handlebars
-{{#each materialTiers}}
+{{#each componentTiers}}
   <div class="rnr-tier">
     <div class="rnr-tier-header">DC {{this.dc}}</div>
     ...checkbox per item...

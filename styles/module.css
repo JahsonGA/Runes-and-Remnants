@@ -120,10 +120,103 @@
   cursor: pointer;
 }
 /* Named in HARVEST_TABLE but absent from the compendium */
-.rnr-tier .rnr-list label.rnr-missing {
+.rnr-tier .rnr-list label.rnr-missing,
+.rnr-add.rnr-missing,
+tr.rnr-missing td {
   color: #a08a6a;
   text-decoration: line-through;
 }
+
+/* Component pool — click to append to the harvest list */
+.rnr-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.rnr-pool li { padding: 0; }
+.rnr-add {
+  background: #1a1010;
+  color: var(--rnr-text);
+  border: 1px solid var(--rnr-wood);
+  border-radius: 4px;
+  padding: 1px 7px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  width: auto;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rnr-add:hover {
+  border-color: var(--rnr-red);
+  color: #fff;
+  box-shadow: 0 0 5px rgba(178, 34, 34, 0.5);
+}
+.rnr-taken {
+  color: var(--rnr-red);
+  font-weight: bold;
+}
+
+/* Harvest list — ordered, with running Harvest DCs */
+.rnr-harvest-list {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+.rnr-harvest-list th {
+  text-align: left;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rnr-brown);
+  border-bottom: 1px solid var(--rnr-wood);
+  padding: 2px 4px;
+}
+.rnr-harvest-list td {
+  padding: 1px 4px;
+  border-bottom: 1px solid #1b1515;
+  vertical-align: middle;
+}
+.rnr-harvest-list .rnr-order {
+  color: var(--rnr-brown);
+  width: 1.4rem;
+}
+.rnr-harvest-list .rnr-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* The running total is the number that actually decides the outcome. */
+.rnr-harvest-list .rnr-dc {
+  color: #8ef;
+  font-weight: bold;
+}
+.rnr-row-actions {
+  text-align: right;
+  white-space: nowrap;
+  width: 4.5rem;
+}
+.rnr-row-actions button {
+  background: none;
+  border: none;
+  color: var(--rnr-text);
+  cursor: pointer;
+  padding: 0 2px;
+  width: auto;
+  font-size: 0.7rem;
+  line-height: 1;
+  opacity: 0.65;
+}
+.rnr-row-actions button:hover {
+  opacity: 1;
+  color: var(--rnr-red);
+}
+.rnr-final-dc {
+  margin: 4px 0 0;
+  text-align: right;
+  font-size: 0.78rem;
+  color: var(--rnr-text);
+}
+.rnr-final-dc b { color: #8ef; }
 
 /* Dropdowns */
 .rnr-dropdown {

@@ -1,125 +1,211 @@
 import { describe, it, expect } from "vitest";
-import { getUnlockedMaterials, harvestOutcome, getEssenceByCR } from "../src/harvest/logic.js";
+import {
+  getComponentDC,
+  buildHarvestList,
+  resolveHarvest,
+  harvestOutcome,
+  getEssenceByCR
+} from "../src/harvest/logic.js";
 
-// ─── getUnlockedMaterials — tier gating ───────────────────────────────────────
+// The harvest list is the core mechanic: harvesters pick components AND the
+// order to take them in, and each entry's Harvest DC is the running total of
+// every component before it. Ordering is therefore a real tactical decision,
+// and these tests pin that behaviour down.
 
-describe("getUnlockedMaterials — tier gating", () => {
-  it("unlocks nothing below the first tier DC", () => {
-    const r = getUnlockedMaterials("beast", 19, 1);
-    expect(r.unlockedCount).toBe(0);
-    expect(r.names).toEqual([]);
+// ─── getComponentDC ───────────────────────────────────────────────────────────
+
+describe("getComponentDC", () => {
+  it("finds a component's own DC from the creature's table", () => {
+    expect(getComponentDC("dragon", "Eye")).toBe(5);
+    expect(getComponentDC("dragon", "Breath Sac")).toBe(25);
   });
 
-  it("unlocks the first tier exactly at its DC", () => {
-    const r = getUnlockedMaterials("beast", 20, 1);
-    expect(r.unlockedCount).toBe(1);
-    expect(r.names).toContain("Hide");
-    expect(r.names).not.toContain("Marrow"); // DC 40
+  it("prices essence by CR rather than creature type", () => {
+    expect(getComponentDC("dragon", "Essence (Robust)", 10)).toBe(30);
+    expect(getComponentDC("beast", "Essence (Robust)", 10)).toBe(30);
   });
 
-  it("is additive — a DC 30 total also grants the DC 20 tier", () => {
-    const r = getUnlockedMaterials("beast", 30, 1);
-    expect(r.unlockedCount).toBe(2);
-    expect(r.names).toContain("Hide");  // DC 20
-    expect(r.names).toContain("Heart"); // DC 30
+  it("only matches the essence for the creature's own CR", () => {
+    // A CR 10 creature has robust essence; deific is not on its table.
+    expect(getComponentDC("dragon", "Essence (Deific)", 10)).toBeNull();
   });
 
-  it("unlocks every tier at a high total", () => {
-    const r = getUnlockedMaterials("beast", 45, 1);
-    expect(r.unlockedCount).toBe(r.tierCount);
-    expect(r.names).toContain("Marrow"); // DC 40
-  });
-
-  it("returns no duplicate names", () => {
-    const r = getUnlockedMaterials("undead", 50, 20);
-    expect(new Set(r.names).size).toBe(r.names.length);
+  it("returns null for a component the creature does not have", () => {
+    expect(getComponentDC("dragon", "Gears")).toBeNull();
   });
 
   it("falls back to the 'other' table for unknown creature types", () => {
-    const unknown = getUnlockedMaterials("swarm-of-wasps", 30, 1);
-    const other   = getUnlockedMaterials("other", 30, 1);
-    expect(unknown.names).toEqual(other.names);
+    expect(getComponentDC("swarm-of-wasps", "Flesh")).toBe(5);
   });
 });
 
-// ─── getUnlockedMaterials — essence gating ────────────────────────────────────
+// ─── buildHarvestList — cumulative DCs ────────────────────────────────────────
 
-describe("getUnlockedMaterials — essence gating", () => {
-  it("withholds essence below its CR-scaled DC", () => {
-    const essence = getEssenceByCR(20); // Essence (Mythic), DC 40
-    const r = getUnlockedMaterials("dragon", essence.dc - 1, 20);
-    expect(r.essenceUnlocked).toBe(false);
-    expect(r.names).not.toContain(essence.name);
+describe("buildHarvestList — cumulative DCs", () => {
+  it("reproduces the worked example from the source rules", () => {
+    // Pouch of teeth (10), Eye (5), Eye (5), Breath sac (25), essence (30)
+    // -> Harvest DCs 10, 15, 20, 45, 75
+    const list = buildHarvestList(
+      ["Pouch of Teeth", "Eye", "Eye", "Breath Sac", "Essence (Robust)"],
+      "dragon",
+      10
+    );
+    expect(list.map(e => e.harvestDC)).toEqual([10, 15, 20, 45, 75]);
   });
 
-  it("grants essence at exactly its DC", () => {
-    const essence = getEssenceByCR(20);
-    const r = getUnlockedMaterials("dragon", essence.dc, 20);
-    expect(r.essenceUnlocked).toBe(true);
-    expect(r.names).toContain(essence.name);
+  it("preserves the order given, never sorting by cost", () => {
+    const list = buildHarvestList(["Breath Sac", "Eye"], "dragon");
+    expect(list.map(e => e.name)).toEqual(["Breath Sac", "Eye"]);
+    expect(list.map(e => e.harvestDC)).toEqual([25, 30]);
   });
 
-  it("a Deific Essence (DC 50) stays out of reach of a mid total", () => {
-    const r = getUnlockedMaterials("fiend", 40, 30);
-    expect(r.essence.name).toBe("Essence (Deific)");
-    expect(r.essenceUnlocked).toBe(false);
+  it("makes order change the totals — the whole point of the mechanic", () => {
+    const cheapFirst = buildHarvestList(["Eye", "Breath Sac"], "dragon");
+    const dearFirst  = buildHarvestList(["Breath Sac", "Eye"], "dragon");
+
+    // The cheap component is reachable first, or pushed out of reach.
+    expect(cheapFirst[0].harvestDC).toBe(5);
+    expect(dearFirst[1].harvestDC).toBe(30);
+    // Both orderings cost the same in total.
+    expect(cheapFirst[1].harvestDC).toBe(dearFirst[1].harvestDC);
   });
 
-  it("essence is selected by CR, not by creature type", () => {
-    const a = getUnlockedMaterials("beast", 0, 8).essence.name;
-    const b = getUnlockedMaterials("dragon", 0, 8).essence.name;
-    expect(a).toBe(b);
-    expect(a).toBe("Essence (Robust)");
+  it("allows duplicates — a creature can yield two of the same part", () => {
+    const list = buildHarvestList(["Eye", "Eye", "Eye"], "dragon");
+    expect(list.map(e => e.harvestDC)).toEqual([5, 10, 15]);
   });
 
-  it("essence can be unlocked even when no material tier is met", () => {
-    // Low-CR fallback essence sits at DC 20, the same as tier one.
-    const r = getUnlockedMaterials("beast", 20, 0);
-    expect(r.essenceUnlocked).toBe(true);
-    expect(r.names).toContain("Essence (Frail)");
+  it("numbers entries from 1", () => {
+    const list = buildHarvestList(["Eye", "Bone"], "dragon");
+    expect(list.map(e => e.order)).toEqual([1, 2]);
+  });
+
+  it("returns an empty list for no selection", () => {
+    expect(buildHarvestList([], "dragon")).toEqual([]);
   });
 });
 
-// ─── Essence DC calibration ───────────────────────────────────────────────────
+// ─── buildHarvestList — unknown components ────────────────────────────────────
 
-describe("ESSENCE_TABLE calibration", () => {
-  it("essence DCs rise with CR", () => {
-    const dcs = [1, 4, 8, 14, 20, 30].map(cr => getEssenceByCR(cr).dc);
-    for (let i = 1; i < dcs.length; i++) {
-      expect(dcs[i], `essence DC fell at index ${i}: ${dcs}`).toBeGreaterThanOrEqual(dcs[i - 1]);
-    }
+describe("buildHarvestList — unknown components", () => {
+  it("flags a component the creature cannot yield", () => {
+    const list = buildHarvestList(["Eye", "Gears"], "dragon");
+    expect(list[1].unknown).toBe(true);
+    expect(list[1].componentDC).toBeNull();
   });
 
-  it("essence DCs sit inside the reachable combined-total band", () => {
-    // Combined total spans roughly 12–58; anything above that is unobtainable.
-    for (const cr of [0, 5, 10, 15, 20, 25, 40]) {
-      const { dc } = getEssenceByCR(cr);
-      expect(dc).toBeGreaterThanOrEqual(20);
-      expect(dc).toBeLessThanOrEqual(50);
-    }
+  it("an unknown component does not corrupt later Harvest DCs", () => {
+    const list = buildHarvestList(["Eye", "Gears", "Bone"], "dragon");
+    expect(list[0].harvestDC).toBe(5);   // Eye
+    expect(list[2].harvestDC).toBe(15);  // Eye + Bone, Gears contributed nothing
+  });
+});
+
+// ─── resolveHarvest ───────────────────────────────────────────────────────────
+
+describe("resolveHarvest", () => {
+  const list = () => buildHarvestList(
+    ["Pouch of Teeth", "Eye", "Eye", "Breath Sac", "Essence (Robust)"],
+    "dragon",
+    10
+  );
+
+  it("matches the source example — a 37 takes the teeth and both eyes", () => {
+    const { awarded, missed } = resolveHarvest(list(), 37);
+    expect(awarded.map(e => e.name)).toEqual(["Pouch of Teeth", "Eye", "Eye"]);
+    expect(missed.map(e => e.name)).toEqual(["Breath Sac", "Essence (Robust)"]);
+  });
+
+  it("awards a component when the check exactly equals its Harvest DC", () => {
+    expect(resolveHarvest(list(), 20).awarded).toHaveLength(3);
+    expect(resolveHarvest(list(), 19).awarded).toHaveLength(2);
+  });
+
+  it("awards nothing below the first Harvest DC", () => {
+    const { awarded, missed } = resolveHarvest(list(), 9);
+    expect(awarded).toHaveLength(0);
+    expect(missed).toHaveLength(5);
+  });
+
+  it("awards everything on a high enough check", () => {
+    expect(resolveHarvest(list(), 75).awarded).toHaveLength(5);
+  });
+
+  it("awards a contiguous leading run — never skips ahead", () => {
+    // DCs only ever increase, so a component can't be taken while an
+    // earlier, cheaper one was missed.
+    const { awarded } = resolveHarvest(list(), 44);
+    const names = awarded.map(e => e.name);
+    expect(names).toEqual(["Pouch of Teeth", "Eye", "Eye"]);
+  });
+
+  it("excludes unknown components from both awarded and missed", () => {
+    const withUnknown = buildHarvestList(["Eye", "Gears"], "dragon");
+    const { awarded, missed } = resolveHarvest(withUnknown, 100);
+    expect(awarded.map(e => e.name)).toEqual(["Eye"]);
+    expect(missed).toHaveLength(0);
+  });
+
+  it("handles an empty list", () => {
+    expect(resolveHarvest([], 50).awarded).toEqual([]);
+  });
+});
+
+// ─── Ordering trade-off ───────────────────────────────────────────────────────
+
+describe("ordering trade-off", () => {
+  it("taking the prize first sacrifices the cheap parts", () => {
+    const total = 30;
+    const greedy = resolveHarvest(
+      buildHarvestList(["Breath Sac", "Eye", "Bone"], "dragon"), total);
+    const cautious = resolveHarvest(
+      buildHarvestList(["Eye", "Bone", "Breath Sac"], "dragon"), total);
+
+    // Greedy gets the breath sac (25) and the eye (30), but not the bone (40).
+    expect(greedy.awarded.map(e => e.name)).toEqual(["Breath Sac", "Eye"]);
+    // Cautious gets the cheap parts (5, 15) and the sac just lands at 40 > 30.
+    expect(cautious.awarded.map(e => e.name)).toEqual(["Eye", "Bone"]);
+    expect(cautious.missed.map(e => e.name)).toEqual(["Breath Sac"]);
+  });
+});
+
+// ─── Essence ──────────────────────────────────────────────────────────────────
+
+describe("essence in the harvest list", () => {
+  it("essence is priced by CR and stacks like any other component", () => {
+    const essence = getEssenceByCR(20); // Mythic, cost 40
+    const list = buildHarvestList(["Eye", essence.name], "dragon", 20);
+    expect(list[1].componentDC).toBe(40);
+    expect(list[1].harvestDC).toBe(45); // 5 + 40
+  });
+
+  it("taking essence first makes it cheapest to reach", () => {
+    const essence = getEssenceByCR(5); // Frail, cost 25
+    const first = buildHarvestList([essence.name, "Eye"], "dragon", 5);
+    expect(first[0].harvestDC).toBe(25);
   });
 });
 
 // ─── harvestOutcome ───────────────────────────────────────────────────────────
 
 describe("harvestOutcome", () => {
-  it("no tiers unlocked is a failure", () => {
-    expect(harvestOutcome(0, 3)).toBe("failure");
+  it("nothing recovered is a failure", () => {
+    expect(harvestOutcome(0, 4)).toBe("failure");
   });
 
-  it("one tier of several is partial", () => {
-    expect(harvestOutcome(1, 3)).toBe("partial");
+  it("one of several is partial", () => {
+    expect(harvestOutcome(1, 4)).toBe("partial");
   });
 
-  it("some but not all tiers is a success", () => {
-    expect(harvestOutcome(2, 3)).toBe("success");
+  it("some but not all is a success", () => {
+    expect(harvestOutcome(3, 4)).toBe("success");
   });
 
-  it("every tier is a critical success", () => {
-    expect(harvestOutcome(3, 3)).toBe("critical-success");
+  it("the whole list is a critical success", () => {
+    expect(harvestOutcome(4, 4)).toBe("critical-success");
   });
 
-  it("treats negative counts as failure", () => {
-    expect(harvestOutcome(-1, 3)).toBe("failure");
+  it("an empty list is a failure, not a critical success", () => {
+    expect(harvestOutcome(0, 0)).toBe("failure");
   });
 });

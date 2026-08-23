@@ -111,28 +111,20 @@ range is roughly 12–58, which is what the 20/30/40 tier scale is calibrated fo
 ### 6. Resolution
 
 ```js
-const { names, tierCount, unlockedCount, essence, essenceUnlocked } =
-  getUnlockedMaterials(typeKey, totalRoll, Number(cr) || 0);
+const harvestList = buildHarvestList(orderedNames, typeKey, Number(cr) || 0);
+const { awarded, missed } = resolveHarvest(harvestList, totalRoll);
 
-const result = harvestOutcome(unlockedCount, tierCount);
+const result = harvestOutcome(awarded.length, harvestList.length);
+const materials = awarded.map(e => e.name);
 ```
 
-All yield logic lives in `getUnlockedMaterials` — see
+The harvest list is rebuilt here from the payload rather than trusted from the
+client, so the DCs are always recomputed from the table on the executing GM's
+machine. All yield logic lives in `buildHarvestList` / `resolveHarvest` — see
 [`LogicBreakdown.md`](LogicBreakdown.md).
 
-### 7. Selection filter
-
-```js
-const materials = this.selectedLoot.size > 0
-  ? unlockedNames.filter(n => this.selectedLoot.has(n))
-  : unlockedNames;
-```
-
-Two modes:
-
-- **Nothing ticked** → take everything the roll unlocked.
-- **Something ticked** → take the intersection of ticked ∩ unlocked. Ticking an
-  item does **not** bypass its DC, and essence is no longer force-added.
+There is no separate selection filter any more. The list *is* the selection,
+and each entry stands or falls on its own running Harvest DC.
 
 ### 8. Granting
 
@@ -179,12 +171,10 @@ Deliberate choices:
 
 ## Rendering notes
 
-**Loot ticks do not re-render.** The `change` handler mutates `selectedLoot` and
-returns; the browser keeps the checkbox state. Re-rendering here would reset the
-panel's scroll position mid-selection.
-
-Every other interaction (role assign/remove, Select All, Clear) *does* call
-`this.render(true)`, because those change what the template must draw.
+**Every harvest-list interaction re-renders.** Adding, removing or reordering a
+component changes every running Harvest DC below it, so the table has to be
+redrawn — unlike the old checkbox panel, there is no state the browser can keep
+for us.
 
 **Listeners are delegated** via `html.on("click", "[data-action=…]")` rather
 than bound per element, so they survive re-renders.

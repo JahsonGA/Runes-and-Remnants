@@ -23,28 +23,22 @@
     <hr>
 
     <div class="rnr-loot-header">
-      <h3>Materials Available</h3>
-      {{#if hasMaterials}}
-        <div class="rnr-loot-controls">
-          <button type="button" data-action="select-all-loot">Select All</button>
-          <button type="button" data-action="clear-loot">Clear</button>
-        </div>
-      {{/if}}
+      <h3>Components</h3>
     </div>
-    {{#if hasMaterials}}
-      <p class="muted rnr-hint">Leave everything unticked to take whatever the roll unlocks.</p>
+    {{#if hasComponents}}
+      <p class="muted rnr-hint">Click to add. Numbers are each component's own cost.</p>
 
-      {{#each materialTiers}}
+      {{#each componentTiers}}
         <div class="rnr-tier">
-          <div class="rnr-tier-header">DC {{this.dc}}</div>
-          <ul class="rnr-list">
+          <div class="rnr-tier-header">Cost {{this.dc}}</div>
+          <ul class="rnr-list rnr-pool">
             {{#each this.items}}
               <li>
-                <label class="{{#if this.missing}}rnr-missing{{/if}}"
-                       {{#if this.missing}}title="Not found in the Harvest Items compendium"{{/if}}>
-                  <input type="checkbox" name="lootChoice" value="{{this.name}}" {{#if this.selected}}checked{{/if}}>
-                  {{this.name}}{{#if this.missing}} ⚠{{/if}}
-                </label>
+                <button type="button" class="rnr-add {{#if this.missing}}rnr-missing{{/if}}"
+                        data-action="add-component" data-name="{{this.name}}"
+                        {{#if this.missing}}title="Not found in the Harvest Items compendium"{{/if}}>
+                  {{this.name}}{{#if this.missing}} ⚠{{/if}}{{#if this.taken}} <span class="rnr-taken">×{{this.taken}}</span>{{/if}}
+                </button>
               </li>
             {{/each}}
           </ul>
@@ -53,19 +47,60 @@
 
       {{#if essence}}
         <div class="rnr-tier rnr-tier-essence">
-          <div class="rnr-tier-header">DC {{essence.dc}} — Essence</div>
-          <ul class="rnr-list">
+          <div class="rnr-tier-header">Cost {{essence.dc}} — Essence</div>
+          <ul class="rnr-list rnr-pool">
             <li>
-              <label>
-                <input type="checkbox" name="lootChoice" value="{{essence.name}}" {{#if essence.selected}}checked{{/if}}>
-                {{essence.name}}
-              </label>
+              <button type="button" class="rnr-add" data-action="add-component" data-name="{{essence.name}}">
+                {{essence.name}}{{#if essence.taken}} <span class="rnr-taken">×{{essence.taken}}</span>{{/if}}
+              </button>
             </li>
           </ul>
         </div>
       {{/if}}
     {{else}}
       <p class="muted">Loading compendium (Harvest Items)…</p>
+    {{/if}}
+
+    <hr>
+
+    <!-- ================= HARVEST LIST ================= -->
+    <div class="rnr-loot-header">
+      <h3>Harvest List</h3>
+      {{#if hasHarvestList}}
+        <div class="rnr-loot-controls">
+          <button type="button" data-action="clear-list">Clear</button>
+        </div>
+      {{/if}}
+    </div>
+
+    {{#if hasHarvestList}}
+      <p class="muted rnr-hint">
+        Order matters — each Harvest DC includes everything above it.
+        Take what you want most first.
+      </p>
+      <table class="rnr-harvest-list">
+        <thead>
+          <tr><th></th><th>Component</th><th>Cost</th><th>Harvest DC</th><th></th></tr>
+        </thead>
+        <tbody>
+          {{#each harvestList}}
+            <tr data-index="{{@index}}" class="{{#if this.unknown}}rnr-missing{{/if}}">
+              <td class="rnr-order">{{this.order}}</td>
+              <td>{{this.name}}{{#if this.unknown}} ⚠{{/if}}</td>
+              <td class="rnr-num">{{#if this.unknown}}—{{else}}+{{this.componentDC}}{{/if}}</td>
+              <td class="rnr-num rnr-dc">{{#unless this.unknown}}{{this.harvestDC}}{{/unless}}</td>
+              <td class="rnr-row-actions">
+                <button type="button" data-action="move-up" title="Move up">▲</button>
+                <button type="button" data-action="move-down" title="Move down">▼</button>
+                <button type="button" data-action="remove-component" title="Remove">✕</button>
+              </td>
+            </tr>
+          {{/each}}
+        </tbody>
+      </table>
+      <p class="rnr-final-dc">Full list needs <b>{{finalDC}}</b></p>
+    {{else}}
+      <p class="muted">Nothing selected — add components above to build the harvest list.</p>
     {{/if}}
   </div>
 

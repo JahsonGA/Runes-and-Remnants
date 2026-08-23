@@ -16,7 +16,7 @@ npm run check:assets  # standalone manifest/asset validation
 | [`harvest-essence.test.js`](harvest-essence.test.js) | 17 | `ESSENCE_TABLE` structure, `getEssenceByCR` ranges and boundaries |
 | [`harvest-table.test.js`](harvest-table.test.js) | 25 | `HARVEST_TABLE` coverage, tier shape, DC scale, item-name spot-checks |
 | [`harvest-options.test.js`](harvest-options.test.js) | 22 | `getHarvestOptions` coverage, fallback, case handling, additive tiers |
-| [`harvest-unlock.test.js`](harvest-unlock.test.js) | 18 | `getUnlockedMaterials`, essence gating, `harvestOutcome` |
+| [`harvest-unlock.test.js`](harvest-unlock.test.js) | 28 | `getComponentDC`, `buildHarvestList` cumulative DCs, `resolveHarvest`, ordering trade-off, `harvestOutcome` |
 | [`harvest-duplicates.test.js`](harvest-duplicates.test.js) | 11 | `findCompendiumEntry`, `DUPLICATE_RESOLVER` |
 | [`harvest-pack.test.js`](harvest-pack.test.js) | 7 | Shipped compendium integrity + table↔pack contract |
 | [`check-assets.mjs`](check-assets.mjs) | — | Not Vitest. Standalone packaging guard |

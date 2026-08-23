@@ -72,9 +72,9 @@ export function getEssenceByCR(cr) {
  * Computes a CR/type/rarity-scaled DC.
  *
  * NOTE: This is **not** used by the harvest workflow. Harvesting is gated by
- * the flat tier DCs in HARVEST_TABLE (see getUnlockedMaterials) and by the
- * CR-scaled essence DCs in ESSENCE_TABLE. This helper remains exported for
- * macros and third-party callers that want a scaled difficulty number.
+ * the cumulative Harvest DCs built from per-component costs — see
+ * buildHarvestList. This helper remains exported for macros and third-party
+ * callers that want a single scaled difficulty number.
  */
 export function computeHarvestDC({
   cr = 0,
@@ -334,42 +334,80 @@ export function getHarvestOptions(type) {
 }
 
 /* ---------------------------------------------
-   MATERIAL UNLOCKING
+   HARVEST LIST  (cumulative DCs)
 --------------------------------------------- */
 
 /**
- * Resolves which materials a harvest total unlocks for a creature type.
+ * Looks up the component DC for a single component name.
  *
- * Tiers are additive: meeting the DC 30 tier also grants the DC 20 tier.
- * Essence is gated separately by its own CR-scaled DC — a Deific Essence
- * (DC 50) should be genuinely out of reach for most parties.
+ * Essence is not in HARVEST_TABLE — it is appended to every creature's table
+ * and priced by CR instead, so it is resolved separately.
  *
- * @param {string} type   creature type
- * @param {number} total  combined assessment + carving + helper total
- * @param {number} cr     challenge rating, for essence selection
- * @returns {{ names: string[], tiers: HarvestTier[], tierCount: number,
- *             unlockedCount: number, essence: object, essenceUnlocked: boolean }}
+ * @returns {number|null} null when the name belongs to neither source
  */
-export function getUnlockedMaterials(type, total, cr = 0) {
-  const tiers = getHarvestOptions(type);
-  const unlocked = tiers.filter(t => total >= t.dc);
-
-  const names = [];
-  for (const tier of unlocked) {
-    for (const n of tier.items) if (!names.includes(n)) names.push(n);
-  }
-
+export function getComponentDC(type, name, cr = 0) {
   const essence = getEssenceByCR(Number(cr) || 0);
-  const essenceUnlocked = total >= essence.dc;
-  if (essenceUnlocked && !names.includes(essence.name)) names.push(essence.name);
+  if (name === essence.name) return essence.dc;
 
+  for (const tier of getHarvestOptions(type)) {
+    if (tier.items.includes(name)) return tier.dc;
+  }
+  return null;
+}
+
+/**
+ * Builds the harvest list: the chosen components in the harvesters' chosen
+ * order, each carrying its own component DC and the running Harvest DC that
+ * must be met to extract it.
+ *
+ * The running total is what makes ordering a real decision — putting an
+ * expensive component early pushes everything after it out of reach, so a
+ * party trades breadth against the one part they actually came for.
+ *
+ * Order is preserved exactly as given; components may repeat, since a
+ * creature can yield more than one of the same part.
+ *
+ * @param {string[]} orderedNames  components in the order they'll be taken
+ * @param {string}   type          creature type, for component DC lookup
+ * @param {number}   cr            challenge rating, for essence pricing
+ * @returns {Array<{name, componentDC, harvestDC, order, unknown}>}
+ */
+export function buildHarvestList(orderedNames = [], type = "other", cr = 0) {
+  let running = 0;
+
+  return orderedNames.map((name, i) => {
+    const componentDC = getComponentDC(type, name, cr);
+    const known = componentDC !== null;
+
+    // An unrecognised name would silently corrupt every later Harvest DC,
+    // so it contributes nothing and is flagged instead.
+    if (known) running += componentDC;
+
+    return {
+      name,
+      order: i + 1,
+      componentDC: known ? componentDC : null,
+      harvestDC: running,
+      unknown: !known
+    };
+  });
+}
+
+/**
+ * Resolves a harvest list against a Harvesting check result.
+ *
+ * A component is extracted if the check met or exceeded its Harvest DC.
+ * Because the running total only ever increases, this is the leading run of
+ * the list — the party gets everything up to the point the corpse beat them.
+ *
+ * @returns {{ awarded: object[], missed: object[], total: number }}
+ */
+export function resolveHarvest(harvestList = [], checkTotal = 0) {
+  const usable = harvestList.filter(e => !e.unknown);
   return {
-    names,
-    tiers: unlocked,
-    tierCount: tiers.length,
-    unlockedCount: unlocked.length,
-    essence,
-    essenceUnlocked
+    awarded: usable.filter(e => checkTotal >= e.harvestDC),
+    missed:  usable.filter(e => checkTotal <  e.harvestDC),
+    total: checkTotal
   };
 }
 
@@ -378,17 +416,16 @@ export function getUnlockedMaterials(type, total, cr = 0) {
 --------------------------------------------- */
 
 /**
- * Derives an outcome label from how much of the tier table was unlocked.
- * Replaces the old single pass/fail DC check — the tier table is now the
- * only authority on harvest difficulty.
+ * Derives an outcome label from how much of the harvest list was extracted.
  *
- * @param {number} unlockedCount  tiers met
- * @param {number} tierCount      tiers available for this creature type
+ * @param {number} awardedCount  components successfully extracted
+ * @param {number} listLength    components the harvesters asked for
  */
-export function harvestOutcome(unlockedCount, tierCount) {
-  if (unlockedCount <= 0) return "failure";
-  if (unlockedCount >= tierCount) return "critical-success";
-  if (unlockedCount === 1) return "partial";
+export function harvestOutcome(awardedCount, listLength) {
+  if (listLength <= 0) return "failure";
+  if (awardedCount <= 0) return "failure";
+  if (awardedCount >= listLength) return "critical-success";
+  if (awardedCount === 1) return "partial";
   return "success";
 }
 

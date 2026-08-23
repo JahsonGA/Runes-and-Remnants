@@ -52,11 +52,12 @@ describe("HARVEST_TABLE — tier shape", () => {
     }
   });
 
-  it("every tier DC is drawn from the calibrated 20/30/40 scale", () => {
-    // Tier DCs are compared against a COMBINED two-roll total (~12–50).
-    // A stray DC 10 or 15 tier would be met automatically and silently
-    // stop gating anything — see docs/ROADMAP.md § 1.2.
-    const ALLOWED = [20, 30, 40];
+  it("every component DC is on the source's 5/10/15/20/25 scale", () => {
+    // These are per-component costs that accumulate along the harvest list,
+    // not thresholds. Inflating them (as an earlier revision did) breaks the
+    // cumulative maths — a 25-cost component is meant to be affordable first
+    // and unreachable fourth.
+    const ALLOWED = [5, 10, 15, 20, 25];
     for (const [type, tiers] of Object.entries(HARVEST_TABLE)) {
       for (const tier of tiers) {
         expect(ALLOWED, `"${type}" has off-scale DC ${tier.dc}`).toContain(tier.dc);
@@ -74,93 +75,100 @@ describe("HARVEST_TABLE — tier shape", () => {
       }
     }
   });
+
+  it("no component appears at two different costs within one type", () => {
+    for (const [type, tiers] of Object.entries(HARVEST_TABLE)) {
+      const seen = new Map();
+      for (const tier of tiers) {
+        for (const item of tier.items) {
+          expect(
+            seen.has(item),
+            `"${type}" lists "${item}" at both DC ${seen.get(item)} and DC ${tier.dc}`
+          ).toBe(false);
+          seen.set(item, tier.dc);
+        }
+      }
+    }
+  });
 });
 
-// ─── Spot-checks (compendium item name accuracy) ──────────────────────────────
+// ─── Source fidelity spot-checks ──────────────────────────────────────────────
+// Values taken from the harvest tables in Ryoko's Guide
+// "Harvesting and Crafting Lite".
 
-describe("HARVEST_TABLE — spot-checks", () => {
+describe("HARVEST_TABLE — source fidelity", () => {
   const find = (type, dc) => HARVEST_TABLE[type]?.find(t => t.dc === dc);
 
-  it("aberration DC 30 includes Main Eye", () => {
-    expect(find("aberration", 30)?.items).toContain("Main Eye");
+  it("dragon matches the source's worked example", () => {
+    expect(find("dragon", 5)?.items).toContain("Eye");
+    expect(find("dragon", 10)?.items).toContain("Pouch of Teeth");
+    expect(find("dragon", 15)?.items).toContain("Horn");
+    expect(find("dragon", 20)?.items).toContain("Heart");
+    expect(find("dragon", 25)?.items).toContain("Breath Sac");
   });
 
-  it("beast DC 20 includes Hide", () => {
-    expect(find("beast", 20)?.items).toContain("Hide");
+  it("aberration DC 20 holds Brain, Chitin, Hide and Main Eye", () => {
+    const items = find("aberration", 20)?.items ?? [];
+    for (const n of ["Brain", "Chitin", "Hide", "Main Eye"]) {
+      expect(items).toContain(n);
+    }
   });
 
-  it("celestial DC 40 includes Soul", () => {
-    expect(find("celestial", 40)?.items).toContain("Soul");
+  it("beast DC 20 holds Chitin and Pelt", () => {
+    expect(find("beast", 20)?.items).toContain("Chitin");
+    expect(find("beast", 20)?.items).toContain("Pelt");
   });
 
-  it("construct DC 20 includes Gears", () => {
-    expect(find("construct", 20)?.items).toContain("Gears");
+  it("celestial and fiend both cap at Soul (25)", () => {
+    expect(find("celestial", 25)?.items).toContain("Soul");
+    expect(find("fiend", 25)?.items).toContain("Soul");
   });
 
-  it("construct DC 30 includes Instructions", () => {
-    expect(find("construct", 30)?.items).toContain("Instructions");
+  it("construct caps at Lifespark (25)", () => {
+    expect(find("construct", 25)?.items).toContain("Lifespark");
   });
 
-  it("dragon DC 30 includes Breath Sac", () => {
-    expect(find("dragon", 30)?.items).toContain("Breath Sac");
+  it("fey caps at Psyche (25)", () => {
+    expect(find("fey", 25)?.items).toContain("Psyche");
   });
 
-  it("dragon DC 30 includes Phial of acid", () => {
-    // Exact compendium name — lowercase 'a' is intentional.
-    expect(find("dragon", 30)?.items).toContain("Phial of acid");
+  it("ooze is a single component per cost", () => {
+    expect(find("ooze", 5)?.items).toEqual(["Phial of acid"]);
+    expect(find("ooze", 10)?.items).toEqual(["Phial of Mucus"]);
+    expect(find("ooze", 15)?.items).toEqual(["Vesicle"]);
+    expect(find("ooze", 20)?.items).toEqual(["Membrane (Ooze)"]);
   });
 
-  it("elemental DC 30 includes Lifespark", () => {
-    expect(find("elemental", 30)?.items).toContain("Lifespark");
+  it("undead DC 5 holds Eye, Bone and congealed blood", () => {
+    const items = find("undead", 5)?.items ?? [];
+    for (const n of ["Eye", "Bone", "Phial of Congealed Blood"]) {
+      expect(items).toContain(n);
+    }
   });
 
-  it("fey DC 40 includes Psyche", () => {
-    expect(find("fey", 40)?.items).toContain("Psyche");
+  it("undead caps at Undying Heart (20)", () => {
+    expect(find("undead", 20)?.items).toContain("Undying Heart");
   });
 
-  it("fiend DC 40 includes Soul", () => {
-    expect(find("fiend", 40)?.items).toContain("Soul");
+  it("monstrosity mirrors beast on the shared source tiers", () => {
+    for (const dc of [5, 10, 15]) {
+      const beast = find("beast", dc)?.items ?? [];
+      const mons  = find("monstrosity", dc)?.items ?? [];
+      for (const n of beast) {
+        // Beast DC 20 carries a house addition, so only shared tiers compare.
+        expect(mons, `monstrosity DC ${dc} missing "${n}"`).toContain(n);
+      }
+    }
   });
 
-  it("giant DC 30 includes Tusk and Horn", () => {
-    const items = find("giant", 30)?.items ?? [];
-    expect(items).toContain("Tusk");
-    expect(items).toContain("Horn");
+  it("plant DC 20 holds Bark and the plant membrane", () => {
+    const items = find("plant", 20)?.items ?? [];
+    expect(items).toContain("Bark");
+    expect(items).toContain("Membrane (Plant)");
   });
 
-  it("humanoid DC 40 includes Brain and Tongue", () => {
-    const items = find("humanoid", 40)?.items ?? [];
-    expect(items).toContain("Brain");
-    expect(items).toContain("Tongue");
-  });
-
-  it("monstrosity DC 30 includes Poison Gland (Material)", () => {
-    expect(find("monstrosity", 30)?.items).toContain("Poison Gland (Material)");
-  });
-
-  it("monstrosity DC 40 includes Silk Sack and Spider Milk", () => {
-    const items = find("monstrosity", 40)?.items ?? [];
-    expect(items).toContain("Silk Sack");
-    expect(items).toContain("Spider Milk");
-  });
-
-  it("ooze DC 20 includes Phial of Mucus", () => {
-    expect(find("ooze", 20)?.items).toContain("Phial of Mucus");
-  });
-
-  it("plant DC 40 includes Pouch of Spore and Pouch of Hyphae", () => {
-    const items = find("plant", 40)?.items ?? [];
-    expect(items).toContain("Pouch of Spore");
-    expect(items).toContain("Pouch of Hyphae");
-  });
-
-  it("undead DC 20 includes Undying Flesh", () => {
-    expect(find("undead", 20)?.items).toContain("Undying Flesh");
-  });
-
-  it("undead DC 40 includes Undying Heart and Soul", () => {
-    const items = find("undead", 40)?.items ?? [];
-    expect(items).toContain("Undying Heart");
-    expect(items).toContain("Soul");
+  it("keeps the lowercase 'Phial of acid' compendium spelling", () => {
+    // Exact compendium name — the lowercase 'a' is intentional.
+    expect(find("ooze", 5)?.items).toContain("Phial of acid");
   });
 });

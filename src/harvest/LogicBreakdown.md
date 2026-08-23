@@ -5,70 +5,101 @@ of the file is table lookups and thin Foundry wrappers.
 
 ## The DC model
 
-One number is compared against every DC in the system:
+One number is produced:
 
 ```
-totalRoll = assessment (1d20 + INT + prof)
-          + carving    (1d20 + DEX + prof)
-          + helper bonus
+Harvesting check = assessment (1d20 + INT + prof)
+                 + carving    (1d20 + DEX + prof)
+                 + helper bonus
 ```
 
-Two independent gates consume it:
+It is compared against **cumulative Harvest DCs** built from per-component
+costs. Each component carries its own cost (5/10/15/20/25 from
+`HARVEST_TABLE`, or 25–50 by CR for essence), and the Harvest DC for a position
+in the list is the running total of everything before it:
 
-| Gate | DCs | Source | Scales with |
-|---|---|---|---|
-| **Material tiers** | 20 / 30 / 40 | `HARVEST_TABLE` | nothing — flat by design |
-| **Essence** | 25 / 30 / 35 / 40 / 50 | `ESSENCE_TABLE` | creature CR |
+```
+Pouch of Teeth  cost 10  ->  Harvest DC 10
+Eye             cost  5  ->  Harvest DC 15
+Eye             cost  5  ->  Harvest DC 20
+Breath Sac      cost 25  ->  Harvest DC 45
+Robust Essence  cost 30  ->  Harvest DC 75
+```
 
-Creature difficulty is expressed **only** through essence. A CR 1 rat and a CR
-20 dragon are equally easy to skin; only the dragon's essence is hard to pull.
-This was a deliberate design decision — see [ROADMAP § 1.2](../../docs/ROADMAP.md).
+A check of 37 takes the teeth and both eyes, and leaves the rest on the corpse.
 
-### Why the DCs were rescaled
+### Why ordering is the mechanic
 
-The tier DCs were originally 10/15/20, which reads as a normal 5e DC — but they
-were being compared against a *two-roll* total averaging ~31, so every tier
-unlocked on every harvest and the gate did nothing. Rescaling to 20/30/40 puts
-them inside the actual distribution.
+Because the totals accumulate, *where* you put a component decides whether you
+can afford it. Over 100k simulated harvests, a level 5 party against a CR 10
+dragon:
 
-[`tests/harvest-table.test.js`](../../tests/TestDetails.md) enforces the 20/30/40
-scale, because a stray DC 15 tier would silently stop gating.
+| Order | Avg recovered | Breath Sac |
+|---|---|---|
+| Prize first | 0.99 of 5 | 96% |
+| Cheap first | 3.23 of 5 | 0% |
 
-## `getUnlockedMaterials(type, total, cr)`
+Neither is wrong — that is the decision the system exists to pose.
 
-The single point where "what did we get?" is answered.
+### A correction worth knowing
+
+An earlier revision rescaled the component costs to 20/30/40, having found that
+every tier always unlocked. The diagnosis was right and the fix was wrong: the
+tiers always unlocked because they were never *accumulated*, not because the
+numbers were too small. The source values are restored, and
+[`tests/harvest-table.test.js`](../../tests/TestDetails.md) now pins the
+5/10/15/20/25 scale so it cannot drift again.
+
+## `buildHarvestList(orderedNames, type, cr)`
+
+Turns the harvesters' ordered choice into entries carrying a running cost.
 
 ```js
-const tiers    = getHarvestOptions(type);      // falls back to `other`
-const unlocked = tiers.filter(t => total >= t.dc);
+let running = 0;
+// per name:
+running += componentDC;
+return { name, order, componentDC, harvestDC: running, unknown };
 ```
 
-**Tiers are additive.** They are filtered independently rather than indexed, so
-meeting DC 30 also grants the DC 20 tier without any ordering assumption.
+**Order is preserved exactly** — never sorted. That is the mechanic: an
+expensive component early pushes everything after it out of reach.
 
-Names are collected with an explicit `includes` guard, so an item appearing in
-two tiers is never granted twice.
+**Duplicates are allowed.** A dragon has two eyes; the list can hold `Eye`
+twice, and the second costs the same as the first on top of the running total.
 
-Essence is then resolved separately:
+**Unknown names contribute zero** and are flagged. A name that isn't on the
+creature's table would otherwise silently inflate every later Harvest DC.
 
-```js
-const essence         = getEssenceByCR(cr);
-const essenceUnlocked = total >= essence.dc;
-```
-
-### Return shape
+### Return shape (per entry)
 
 | Field | Meaning |
 |---|---|
-| `names` | Flat, de-duplicated list of everything unlocked, essence included when earned |
-| `tiers` | The unlocked tier objects |
-| `tierCount` | Total tiers available for this creature type |
-| `unlockedCount` | How many were met |
-| `essence` | The CR-appropriate essence `{ name, rarity, dc }`, whether or not it was earned |
-| `essenceUnlocked` | Whether the total met the essence DC |
+| `name` | Component name — the compendium join key |
+| `order` | 1-based position in the list |
+| `componentDC` | This component's own cost, or `null` if unknown |
+| `harvestDC` | Running total: what the check must beat to get this far |
+| `unknown` | True when the creature cannot yield this component |
 
-`essence` is always returned so the UI can show *what you failed to get*, which
-is what makes the DC legible to players.
+## `resolveHarvest(harvestList, checkTotal)`
+
+```js
+awarded: usable.filter(e => checkTotal >= e.harvestDC)
+missed:  usable.filter(e => checkTotal <  e.harvestDC)
+```
+
+Because the running total only increases, `awarded` is always the leading run —
+you cannot skip a component you couldn't afford and still get the next one.
+Filtering (rather than slicing) matches the rule text literally and produces
+the same result.
+
+## `getComponentDC(type, name, cr)`
+
+Essence is checked first, since it is appended to every creature's table and
+priced by CR rather than by type. Then the creature's own tiers. Returns `null`
+when the component belongs to neither, which is what sets the `unknown` flag.
+
+Note it only matches the essence for *that* CR — the source is explicit that a
+creature has exactly one essence, the one its CR dictates.
 
 ## `harvestOutcome(unlockedCount, tierCount)`
 
@@ -102,8 +133,8 @@ first tier but at DC 20 instead of 25, making low-CR essence reliably obtainable
 | 18–24 | Mythic | 40 |
 | 25+ | Deific | 50 |
 
-Names match compendium entries exactly — `getUnlockedMaterials` puts
-`essence.name` straight into the grant list.
+Names match compendium entries exactly — `getComponentDC` matches on
+`essence.name`, and the name goes straight into the grant list.
 
 ## `computeHelperBonus(helpers, skillKey, sizeKey)`
 

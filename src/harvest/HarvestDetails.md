@@ -43,8 +43,10 @@ No Foundry dependency at module scope, so every export below is unit-testable.
 | `grantMaterial` | `async ({ item, qty, toActor, dropAt })` | Item-Piles-aware granting, falls back to `createEmbeddedDocuments` |
 | `findCompendiumEntry` | `(loot[], itemName, creatureType) → entry\|null` | Name lookup with duplicate-variant disambiguation |
 | `getHarvestOptions` | `(type) → HarvestTier[]` | Reads `HARVEST_TABLE`; falls back to `other` |
-| `getUnlockedMaterials` | `(type, total, cr) → {...}` | **Single resolution point** for what a harvest yields |
-| `harvestOutcome` | `(unlockedCount, tierCount) → string` | Derives the outcome label from tiers met |
+| `getComponentDC` | `(type, name, cr) → number|null` | One component's own cost |
+| `buildHarvestList` | `(orderedNames, type, cr) → entries[]` | Ordered list with running Harvest DCs |
+| `resolveHarvest` | `(harvestList, total) → { awarded, missed }` | What the check actually extracted |
+| `harvestOutcome` | `(awardedCount, listLength) → string` | Derives the outcome label from how much of the list was extracted |
 | `finalHarvestResult` | `(dc, total) → string` | Legacy single-DC classifier. Retained for macros |
 | `rollOutcome` | `({ rollTotal, dc }) → string` | Legacy alias of `finalHarvestResult` |
 
@@ -65,7 +67,7 @@ Each helper adds full proficiency if trained, half (floored) if not.
 | `targetToken` | The `TokenDocument` being harvested (**not** a `Token` placeable) |
 | `targetActor` | `targetToken.actor` |
 | `loot` | Full compendium index — used only to resolve names to documents |
-| `selectedLoot` | `Set<string>` of item **names**, not IDs |
+| `harvestList` | Ordered **array** of component names — order is the mechanic, duplicates allowed |
 | `assessor` / `harvester` | `{ actorId, name, img }` or `null` |
 | `helpers` | Array of the same shape |
 
@@ -74,8 +76,7 @@ Each helper adds full proficiency if trained, half (floored) if not.
 | Method | Purpose |
 |---|---|
 | `_ensureLootIndex()` | Loads and caches the compendium index once |
-| `_buildMaterialTiers()` | Builds the tier-grouped panel for the current creature type. Returns `{ tiers: [], essence: null }` when there is no target |
-| `_allMaterialNames()` | Flattens the panel to names, for Select All |
+| `_buildComponentPool()` | Component pool grouped by cost. Returns `{ tiers: [], essence: null }` when there is no target |
 | `_actorSummary(actor)` | Extracts `{ type, cr }` across dnd5e schema shapes |
 | `_getPortrait(actor)` | Portrait with `mystery-man.svg` fallback |
 | `_skillKeyForType(type)` | Skill name → 3-letter dnd5e skill key |
@@ -84,7 +85,7 @@ Each helper adds full proficiency if trained, half (floored) if not.
 | `activateListeners(html)` | Delegated handlers for role assignment, loot ticks, harvest start |
 | `_startHarvest()` | Validates, then **requests** a harvest from the designated GM |
 | `static executeHarvest(payload)` | Entry point for execution, with the per-token in-flight guard |
-| `static _runHarvest(payload, selectedLoot)` | The full workflow — see [`MenuBreakdown.md`](MenuBreakdown.md) |
+| `static _runHarvest(payload, orderedNames)` | The full workflow — see [`MenuBreakdown.md`](MenuBreakdown.md) |
 | `static closeAll()` | Closes every Harvest Menu open on this client |
 
 ### Execution authority
@@ -119,9 +120,12 @@ or misspelled names are correctness bugs rather than cosmetic ones, and why
 and are regenerated per install if missing; names are stable across the table
 and the pack.
 
-**One DC model.** Material tiers use flat DCs (20/30/40) against the *combined*
-two-roll total; creature difficulty is expressed through the CR-scaled
-`ESSENCE_TABLE`. See [ROADMAP § 1.2](../../docs/ROADMAP.md).
+**Cumulative DCs, chosen order.** Components carry their own cost
+(5/10/15/20/25); the Harvest DC at each position is the running total of
+everything before it, so ordering decides what you can afford. Essence is
+appended to every table and priced by CR. See
+[ROADMAP § 1.2a](../../docs/ROADMAP.md) and
+[`LogicBreakdown.md`](LogicBreakdown.md).
 
 ## Known gap
 
