@@ -6,7 +6,22 @@
 // =========================================================
 
 /**
- * @typedef {{ id: string, label: string, icon: string, hint: string, locked: boolean }} HubTab
+ * How far along a system is. Three states, not a binary lock, because
+ * crafting is genuinely in between: its catalogue, DCs, tools and times are
+ * live, but rolling the check and consuming components is not built yet.
+ *
+ *   live    — fully playable
+ *   partial — usable as reference; not fully automated
+ *   planned — nothing but a design sketch
+ */
+export const STATUS_LABEL = {
+  live: "",
+  partial: "Reference",
+  planned: "Planned"
+};
+
+/**
+ * @typedef {{ id, label, icon, hint, status }} HubTab
  * @type {HubTab[]}
  */
 export const HUB_TABS = [
@@ -15,23 +30,28 @@ export const HUB_TABS = [
     label: "Harvest",
     icon: "icons/tools/cooking/knife-cleaver-steel-grey.webp",
     hint: "Strip a corpse for components",
-    locked: false
+    status: "live"
   },
   {
     id: "crafting",
     label: "Crafting",
     icon: "icons/skills/trades/academics-merchant-scribe.webp",
-    hint: "Work raw materials into mundane gear",
-    locked: true
+    hint: "Work raw materials into mundane gear, potions and poisons",
+    status: "partial"
   },
   {
     id: "enchanting",
     label: "Enchanting",
     icon: "icons/skills/trades/academics-book-study-purple.webp",
     hint: "Bind monster parts and remnants into magic items",
-    locked: true
+    status: "planned"
   }
-];
+].map(tab => ({
+  ...tab,
+  // Drives icon dimming and the badge; derived so the two never disagree.
+  locked: tab.status !== "live",
+  badge: STATUS_LABEL[tab.status]
+}));
 
 /** Tab ids, for validating what a caller asked to open. */
 export const HUB_TAB_IDS = new Set(HUB_TABS.map(t => t.id));

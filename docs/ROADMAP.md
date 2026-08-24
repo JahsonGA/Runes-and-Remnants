@@ -216,9 +216,45 @@ Harvest moves into it as the first tab.
 
 ## Phase 4 — Crafting System
 
-Recipes stored compendium-side (matching the harvest data pattern), inventory
-validation against held materials, crafting checks with tool/station
-requirements, and rarity-scaled difficulty.
+Two systems under one tab: **Manufacturing** (mundane weapons, armour,
+ammunition, gear) and **Alchemy** (potions, poisons, enchantment brews).
+
+### 4.1 — Data and logic  ✅ *done*
+
+- `src/data/manufacturing.js` — ~60 recipes with tool, ability, hours, DC and a
+  material yardstick, plus a `TOOL_ABILITY` map covering 19 artisan tools.
+- `src/data/alchemy.js` — ~40 ingredients with role, DC modifier, terrain and
+  effect.
+- `src/craft/logic.js` — pure logic. `planManufacture` resolves tool, ability
+  and the unproficient-disadvantage case; `computeAlchemyDC` is
+  `10 + Σ ingredient modifiers`; `analyseConcoction` validates a mix and
+  returns every violation rather than the first.
+- `src/craft/panel.js` + `templates/panels/crafting.html` — a two-mode
+  catalogue (Gear / Alchemy) with a workbench, delegated from the hub.
+- 68 tests, reproducing the source's worked examples.
+
+### 4.2 — Execution  ⬅ **next**
+
+The panel is **reference-grade, not automated** — hence the tab's `partial`
+status. Remaining:
+
+- roll the manufacturing / alchemy check against the computed DC, with
+  advantage/disadvantage from tool proficiency
+- consume the components and ingredients the build used
+- grant the finished item, GM-authoritative over the socket like harvest
+- track elapsed crafting hours across sessions
+
+### 4.3 — Third-party content
+
+`getExtraRecipes()` is referenced but unimplemented. It will read recipes from a
+world compendium the table populates themselves.
+
+**This is a licensing boundary, not a convenience.** Game mechanics — DCs,
+times, formulas — are not copyrightable, and SRD 5.1 item names are CC-BY, so
+those ship. Grim Hollow, Ryoko's and Heliana's stat blocks and descriptions are
+commercial copyrighted content and **must not ship inside a publicly listed
+module**. A table that owns those books loads them locally; the published
+package stays clean.
 
 ---
 

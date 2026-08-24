@@ -17,7 +17,7 @@
               title="{{this.hint}}">
         <img src="{{this.icon}}" alt="" class="rnr-tab-icon">
         <span class="rnr-tab-label">{{this.label}}</span>
-        {{#if this.locked}}<span class="rnr-tab-badge">Planned</span>{{/if}}
+        {{#if this.badge}}<span class="rnr-tab-badge">{{this.badge}}</span>{{/if}}
       </button>
     {{/each}}
   </nav>

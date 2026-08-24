@@ -23,8 +23,8 @@ decisions are recorded there with their reasoning.
 |---|---|---|
 | 1 — Stabilize Harvest | current | Crash fix, unified DC model, type-filtered loot, compendium integrity |
 | 2 — Item Metadata | planned | Category/rarity/source/crafting-tag flags on every item |
-| 3 — Main Hub UI | planned | Unified Harvest / Crafting / Enchanting shell |
-| 4 — Crafting | planned | Compendium-stored recipes, inventory validation, stations |
+| 3 — Main Hub UI | done | Unified Harvest / Crafting / Enchanting shell |
+| 4 — Crafting | partial | Recipes, DCs and alchemy maths live; execution and third-party loading next |
 | 5 — Runes / Enchantment | planned | Socketing, evolution, corruption |
 | 6 — Ancestral Weapons | planned | Unlock trees, rune infusion, milestone evolution |
 

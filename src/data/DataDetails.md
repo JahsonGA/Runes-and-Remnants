@@ -8,7 +8,9 @@ dependency — safe to import from tests.
 | File | Purpose |
 |---|---|
 | [`harvest-table.js`](harvest-table.js) | Creature type → harvestable components and their costs |
-| [`hub-tabs.js`](hub-tabs.js) | Hub tab definitions, icons, and `resolveTab` |
+| [`hub-tabs.js`](hub-tabs.js) | Hub tab definitions, icons, status, and `resolveTab` |
+| [`manufacturing.js`](manufacturing.js) | Mundane item recipes: tool, ability, time, DC |
+| [`alchemy.js`](alchemy.js) | Alchemy ingredients: role, DC modifier, terrain, effect |
 
 ---
 

@@ -9,13 +9,20 @@ describe("HUB_TABS — structure", () => {
     expect(HUB_TABS.map(t => t.id)).toEqual(["harvest", "crafting", "enchanting"]);
   });
 
-  it("every tab has an id, label, icon and hint", () => {
+  it("every tab has an id, label, icon, hint and status", () => {
     for (const tab of HUB_TABS) {
-      for (const field of ["id", "label", "icon", "hint"]) {
+      for (const field of ["id", "label", "icon", "hint", "status"]) {
         expect(typeof tab[field], `"${tab.id}" is missing ${field}`).toBe("string");
         expect(tab[field].trim().length, `"${tab.id}" has an empty ${field}`).toBeGreaterThan(0);
       }
+      expect(["live", "partial", "planned"], `"${tab.id}" has odd status`).toContain(tab.status);
       expect(typeof tab.locked, `"${tab.id}" is missing locked`).toBe("boolean");
+    }
+  });
+
+  it("locked is derived from status, so the two cannot disagree", () => {
+    for (const tab of HUB_TABS) {
+      expect(tab.locked, `"${tab.id}"`).toBe(tab.status !== "live");
     }
   });
 
@@ -23,9 +30,14 @@ describe("HUB_TABS — structure", () => {
     expect(HUB_TAB_IDS.size).toBe(HUB_TABS.length);
   });
 
-  it("only harvest is unlocked — crafting and enchanting are not built yet", () => {
-    const unlocked = HUB_TABS.filter(t => !t.locked).map(t => t.id);
-    expect(unlocked).toEqual(["harvest"]);
+  it("harvest is the only fully live system", () => {
+    expect(HUB_TABS.filter(t => t.status === "live").map(t => t.id)).toEqual(["harvest"]);
+  });
+
+  it("crafting is reference-grade and enchanting is still a sketch", () => {
+    const byId = Object.fromEntries(HUB_TABS.map(t => [t.id, t.status]));
+    expect(byId.crafting).toBe("partial");
+    expect(byId.enchanting).toBe("planned");
   });
 });
 
@@ -106,11 +118,14 @@ describe("hub panels", () => {
     }
   });
 
-  it("locked panels say so, rather than looking broken", () => {
-    for (const tab of HUB_TABS.filter(t => t.locked)) {
+  it("unfinished panels say where they stop, rather than looking broken", () => {
+    // A panel that silently does less than it appears to is worse than one
+    // that names its own limit, so every non-live panel must carry a status
+    // note. The wording differs — "planned" and "reference only" are not the
+    // same promise — so this checks for the marker class, not a phrase.
+    for (const tab of HUB_TABS.filter(t => t.status !== "live")) {
       const body = fs.readFileSync(`templates/panels/${tab.id}.html`, "utf8");
-      expect(body, `"${tab.id}" panel should state it is not automated yet`)
-        .toMatch(/not yet automated/i);
+      expect(body, `"${tab.id}" panel is missing its status note`).toContain("rnr-status");
     }
   });
 });

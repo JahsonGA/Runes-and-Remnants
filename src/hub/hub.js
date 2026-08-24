@@ -14,6 +14,7 @@
 
 import { HarvestMenu } from "../harvest/menu.js";
 import { HUB_TABS, HUB_TAB_IDS, resolveTab } from "../data/hub-tabs.js";
+import { CraftPanel } from "../craft/panel.js";
 
 export { HUB_TABS };
 
@@ -21,6 +22,10 @@ export class RunesHub extends HarvestMenu {
   constructor(initialTokenDoc = null, options = {}) {
     super(initialTokenDoc, options);
     this.activeTab = resolveTab(options.tab);
+
+    // Crafting keeps its own state in its own controller. Harvest still lives
+    // in the base class; it moves here too once it is worth the churn.
+    this.craft = new CraftPanel();
   }
 
   static get defaultOptions() {
@@ -63,13 +68,42 @@ export class RunesHub extends HarvestMenu {
 
     return {
       ...data,
+      ...this.craft.getData(this._crafter()),
       activeTab: this.activeTab,
       tabs: HUB_TABS.map(t => ({ ...t, active: t.id === this.activeTab }))
     };
   }
 
+  /**
+   * Who is at the workbench. Reuses the harvester if one is assigned, so a
+   * party that just carved a corpse can cost out a build with the same
+   * character's hands. Null until then — the panel shows requirements
+   * rather than pretending nobody is proficient.
+   */
+  _crafter() {
+    const actor = game.actors?.get(this.harvester?.actorId);
+    if (!actor) return null;
+
+    const abilities = {};
+    for (const [key, data] of Object.entries(actor.system?.abilities ?? {})) {
+      abilities[key] = data?.mod ?? 0;
+    }
+
+    // dnd5e stores tool proficiencies as keys; the labels are what the
+    // manufacturing table names, so match loosely on the label text.
+    const toolProf = actor.system?.traits?.toolProf?.value ?? new Set();
+    const tools = Array.from(toolProf).map(String);
+
+    return {
+      abilities,
+      tools,
+      proficiency: actor.system?.attributes?.prof ?? 2
+    };
+  }
+
   activateListeners(html) {
     super.activateListeners(html);
+    this.craft.activateListeners(html, () => this.render(true));
 
     // Delegated, so the in-panel "go harvest" shortcuts work too.
     html.on("click", "[data-action='switch-tab']", ev => {

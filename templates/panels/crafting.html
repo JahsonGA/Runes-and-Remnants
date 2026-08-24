@@ -1,96 +1,155 @@
 <!-- =========================================================
-     Crafting panel — Manufacturing (mundane items)
-     Reference view. Automation lands in Phase 4; until then this is the
-     table the GM would otherwise be flipping to mid-session.
+     Crafting panel — Manufacturing (mundane) + Alchemy (potions/poisons)
+     Data comes from src/data/manufacturing.js and src/data/alchemy.js.
      ========================================================= -->
 <section class="rnr-columns">
 
-  <!-- ================= THE PROCESS ================= -->
+  <!-- ================= MANUFACTURING ================= -->
   <div class="rnr-card">
-    <h3>Manufacturing</h3>
-
-    <p class="muted rnr-hint">
-      Turning raw materials into a mundane item. You need three things:
-      materials, a tool, and time.
-    </p>
-
-    <ol class="rnr-steps">
-      <li>
-        <b>Materials</b>
-        <span>Roughly <b>⅓ of the item's value</b>. In this campaign the gold
-        cost is replaced by the monster parts and equipment the modification
-        actually needs — the table is a guideline, not a price list.</span>
-      </li>
-      <li>
-        <b>Tool</b>
-        <span>Each item type needs a tool, and each tool uses a set ability.
-        No proficiency? You can still try, at <b>disadvantage</b> — unless a
-        book or a proficient companion guides you.</span>
-      </li>
-      <li>
-        <b>Time</b>
-        <span>Spent on the item, though it need not be continuous.</span>
-      </li>
-      <li>
-        <b>Manufacturing check</b>
-        <span>Rolled at the <i>end</i> of the crafting time. Success completes
-        the item; failure yields a non-functioning one, or a working one with
-        flaws.</span>
-      </li>
-    </ol>
-
-    <div class="rnr-formula">
-      Manufacturing check = 1d20 + tool ability + proficiency <i>(if any)</i>
+    <div class="rnr-loot-header">
+      <h3>Manufacturing</h3>
+      <div class="rnr-loot-controls">
+        <button type="button" data-action="craft-mode" data-mode="manufacturing"
+                class="{{#if (eq craftMode "manufacturing")}}active{{/if}}">Gear</button>
+        <button type="button" data-action="craft-mode" data-mode="alchemy"
+                class="{{#if (eq craftMode "alchemy")}}active{{/if}}">Alchemy</button>
+      </div>
     </div>
+
+    {{#if (eq craftMode "manufacturing")}}
+      <p class="muted rnr-hint">
+        Materials, a tool, and time. Gold cost is a yardstick — swap in the
+        monster parts the build actually needs.
+      </p>
+
+      {{#each recipeGroups}}
+        <div class="rnr-tier">
+          <div class="rnr-tier-header">{{this.category}}</div>
+          <ul class="rnr-list rnr-pool">
+            {{#each this.recipes}}
+              <li>
+                <button type="button" class="rnr-add {{#if this.selected}}rnr-picked{{/if}}"
+                        data-action="pick-recipe" data-name="{{this.name}}"
+                        title="DC {{this.dc}} · {{this.hours}} hrs">
+                  {{this.name}}
+                </button>
+              </li>
+            {{/each}}
+          </ul>
+        </div>
+      {{/each}}
+    {{else}}
+      <p class="muted rnr-hint">
+        One effect as the base, then up to three modifiers. Each ingredient
+        raises the DC — only Lavender Sprig lowers it.
+      </p>
+
+      {{#each ingredientGroups}}
+        <div class="rnr-tier {{#if this.isEnchant}}rnr-tier-essence{{/if}}">
+          <div class="rnr-tier-header">{{this.label}}</div>
+          <ul class="rnr-list rnr-pool">
+            {{#each this.items}}
+              <li>
+                <button type="button" class="rnr-add {{#if this.picked}}rnr-picked{{/if}}"
+                        data-action="pick-ingredient" data-name="{{this.name}}"
+                        title="{{this.effect}}">
+                  {{this.name}} <span class="rnr-dcmod">{{this.sign}}{{this.dc}}</span>
+                </button>
+              </li>
+            {{/each}}
+          </ul>
+        </div>
+      {{/each}}
+    {{/if}}
   </div>
 
-  <!-- ================= REFERENCE ================= -->
+  <!-- ================= THE BENCH ================= -->
   <div class="rnr-card">
-    <h3>Tools &amp; Difficulty</h3>
-
-    <div class="rnr-tier">
-      <div class="rnr-tier-header">Tool → Ability</div>
-      <table class="rnr-ref">
-        <tr><td>Alchemist's supplies</td><td>Intelligence</td></tr>
-        <tr><td>Brewer's supplies</td><td>Constitution</td></tr>
-        <tr><td>Calligrapher's supplies</td><td>Dexterity</td></tr>
-        <tr><td>Carpenter's tools</td><td>Dex or Str</td></tr>
-        <tr><td>Cook's utensils</td><td>Constitution</td></tr>
-        <tr><td>Glassblower's tools</td><td>Con or Dex</td></tr>
-        <tr><td>Herbalism kit</td><td>Intelligence</td></tr>
-        <tr><td>Jeweller's tools</td><td>Dexterity</td></tr>
-        <tr><td>Leatherworker's tools</td><td>Dexterity</td></tr>
-        <tr><td>Mason's tools</td><td>Strength</td></tr>
-        <tr><td>Poisoner's kit</td><td>Dex or Int</td></tr>
-        <tr><td>Smith's tools</td><td>Con or Str</td></tr>
-        <tr><td>Tinker's tools</td><td>Dexterity</td></tr>
-        <tr><td>Weaver's tools</td><td>Con or Dex</td></tr>
-        <tr><td>Woodcarver's tools</td><td>Dex or Str</td></tr>
-      </table>
+    <div class="rnr-loot-header">
+      <h3>Workbench</h3>
+      {{#if hasBench}}
+        <div class="rnr-loot-controls">
+          <button type="button" data-action="clear-bench">Clear</button>
+        </div>
+      {{/if}}
     </div>
 
-    <div class="rnr-tier">
-      <div class="rnr-tier-header">Typical DC &amp; Time</div>
-      <table class="rnr-ref">
-        <tr><td>Adventuring gear</td><td class="rnr-num">DC 11</td><td class="rnr-num">2 hrs</td></tr>
-        <tr><td>Ammunition</td><td class="rnr-num">DC 13</td><td class="rnr-num">1 hr</td></tr>
-        <tr><td>Simple weapon</td><td class="rnr-num">DC 14</td><td class="rnr-num">0.25–4 hrs</td></tr>
-        <tr><td>Light / medium armour</td><td class="rnr-num">DC 13–19</td><td class="rnr-num">8–80 hrs</td></tr>
-        <tr><td>Martial weapon</td><td class="rnr-num">DC 17</td><td class="rnr-num">1–24 hrs</td></tr>
-        <tr><td>Heavy armour</td><td class="rnr-num">DC 15–20</td><td class="rnr-num">16–200 hrs</td></tr>
-        <tr><td>Magitech firearm</td><td class="rnr-num">DC 19</td><td class="rnr-num">36–120 hrs</td></tr>
-        <tr><td>Potion / scroll base</td><td class="rnr-num">DC 15</td><td class="rnr-num">2 hrs</td></tr>
-      </table>
-    </div>
+    {{#if (eq craftMode "manufacturing")}}
+      {{#if plan}}
+        <div class="rnr-tier">
+          <div class="rnr-tier-header">{{plan.item}}</div>
+          <table class="rnr-ref">
+            <tr><td>Check</td><td class="rnr-num rnr-dc">DC {{plan.dc}}</td></tr>
+            <tr><td>Ability</td><td class="rnr-num">{{plan.abilityLabel}} {{plan.bonusLabel}}</td></tr>
+            <tr><td>Tool</td><td class="rnr-num">{{plan.tool}}</td></tr>
+            <tr><td>Time</td><td class="rnr-num">{{plan.hours}} hrs</td></tr>
+            <tr><td>Materials</td><td class="rnr-num">{{plan.materialLabel}}</td></tr>
+          </table>
+        </div>
+
+        {{#if plan.disadvantage}}
+          <p class="warning">
+            ⚠️ Not proficient with {{plan.tool}} — the check is made at
+            disadvantage unless a book or a proficient companion guides you.
+          </p>
+        {{/if}}
+
+        <div class="rnr-formula">
+          1d20 + {{plan.abilityLabel}}{{#if plan.proficient}} + proficiency{{/if}}
+          vs DC {{plan.dc}}
+        </div>
+      {{else}}
+        <p class="muted">Pick an item on the left to see what it takes to build.</p>
+      {{/if}}
+    {{else}}
+      {{#if hasBench}}
+        <table class="rnr-harvest-list">
+          <thead>
+            <tr><th></th><th>Ingredient</th><th>Role</th><th>DC</th><th></th></tr>
+          </thead>
+          <tbody>
+            {{#each bench}}
+              <tr data-index="{{@index}}" class="{{#if this.unknown}}rnr-missing{{/if}}">
+                <td class="rnr-order">{{this.order}}</td>
+                <td>{{this.name}}</td>
+                <td class="muted">{{this.roleLabel}}</td>
+                <td class="rnr-num">{{this.sign}}{{this.dc}}</td>
+                <td class="rnr-row-actions">
+                  <button type="button" data-action="remove-ingredient" title="Remove">✕</button>
+                </td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+
+        <p class="rnr-final-dc">
+          {{concoction.kindLabel}} — Alchemy Attempt <b>DC {{concoction.dc}}</b>
+        </p>
+
+        {{#if concoction.errors.length}}
+          <ul class="rnr-list rnr-errors">
+            {{#each concoction.errors}}<li class="rnr-danger">{{this}}</li>{{/each}}
+          </ul>
+        {{else}}
+          <div class="rnr-formula">
+            Tool: {{concoction.toolLabel}} · 10 minutes · yields one vial
+          </div>
+        {{/if}}
+      {{else}}
+        <p class="muted">
+          Add an effect ingredient to begin. Wild Sageroot heals, Wyrmtongue
+          Petals poison, Elemental Water carries an enchantment.
+        </p>
+      {{/if}}
+    {{/if}}
 
     <p class="rnr-status">
-      <b>Not yet automated.</b> Recipes, inventory validation and the crafting
-      check arrive in Phase&nbsp;4. Harvest your components now — they are the
-      inputs this will consume.
+      <b>Reference only for now.</b> The catalogue, DCs, tools and times are
+      live; rolling the check and consuming components lands next.
     </p>
 
     <div class="actions">
-      <button type="button" data-action="switch-tab" data-tab="harvest">← Go harvest components</button>
+      <button type="button" data-action="switch-tab" data-tab="harvest">← Harvest components</button>
     </div>
   </div>
 

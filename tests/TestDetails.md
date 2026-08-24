@@ -1,6 +1,6 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **134 tests across 9 files**,
+Vitest suite plus a standalone packaging check. **204 tests across 11 files**,
 all runnable without a Foundry runtime.
 
 ```bash
@@ -19,7 +19,9 @@ npm run check:assets  # standalone manifest/asset validation
 | [`harvest-unlock.test.js`](harvest-unlock.test.js) | 28 | `getComponentDC`, `buildHarvestList` cumulative DCs, `resolveHarvest`, ordering trade-off, `harvestOutcome` |
 | [`harvest-duplicates.test.js`](harvest-duplicates.test.js) | 11 | `findCompendiumEntry`, `DUPLICATE_RESOLVER` |
 | [`harvest-pack.test.js`](harvest-pack.test.js) | 7 | Shipped compendium integrity + table↔pack contract |
-| [`hub-tabs.test.js`](hub-tabs.test.js) | 16 | Hub tab config, core-asset icon paths, panel/partial wiring |
+| [`hub-tabs.test.js`](hub-tabs.test.js) | 18 | Hub tab config, status states, icon paths, panel/partial wiring |
+| [`craft-manufacturing.test.js`](craft-manufacturing.test.js) | 28 | Recipe table integrity, tool/ability resolution, proficiency and disadvantage |
+| [`craft-alchemy.test.js`](craft-alchemy.test.js) | 40 | Ingredient table, DC arithmetic against the source's worked examples, concoction rules |
 | [`check-assets.mjs`](check-assets.mjs) | — | Not Vitest. Standalone packaging guard |
 
 ---
@@ -62,13 +64,42 @@ makes ordering a real decision.
 ### `hub-tabs.test.js`
 
 Guards the hub's configuration: tab ids and uniqueness, `resolveTab` fallback
-behaviour, and that only Harvest is unlocked. Pins each tab's **icon path** —
-a typo there fails silently as a missing image — and asserts icons are Foundry
-core assets rather than bundled or remote.
+behaviour, and each tab's **status**. Status is three-state — `live`, `partial`,
+`planned` — because crafting is genuinely in between: catalogue and DCs are
+usable, execution is not. `locked` is derived from `status`, and a test asserts
+the derivation so the two can never drift apart.
+
+Pins each tab's **icon path** — a typo there fails silently as a missing image —
+and asserts icons are Foundry core assets rather than bundled or remote.
 
 Also checks the wiring end to end: every tab has a panel template on disk,
 `hub.html` branches for it, every partial it uses is registered in `index.js`,
-and each locked panel actually says it is not automated yet.
+and every non-`live` panel carries an `rnr-status` note. That last one checks
+for the marker class rather than a phrase, since "planned" and "reference only"
+are different promises and shouldn't be forced into identical wording.
+
+### `craft-manufacturing.test.js`
+
+Recipe-table integrity — unique names, known categories, known tools, positive
+hours and DCs — plus tool→ability resolution and the **disadvantage rule**: an
+unproficient crafter still rolls, so `planManufacture` must report
+`disadvantage: true` rather than refusing the attempt.
+
+Also guards the material yardstick's one-third fallback, and that the gp figure
+is never presented as a price (the house rule replaces it with monster parts).
+
+### `craft-alchemy.test.js`
+
+Ingredient-table integrity plus the DC arithmetic, checked against the source's
+own worked examples: Potion of Delayed Potent Healing = DC 14, Death's Bite =
+DC 18. **Widow Venom is printed as DC 17 but computes to 16** — a source
+erratum; the test asserts 16 and its name says why.
+
+Then the concoction rules: one effect base (Bloodgrass excepted), at most three
+modifiers, modifier type matching its base, `locked` ingredients refusing
+modification, and the separate enchantment path (Elemental Water base, exactly
+one enchantment, no modifiers). `analyseConcoction` returns *every* violation,
+not just the first, and the tests assert that.
 
 ### `harvest-duplicates.test.js`
 
@@ -89,9 +120,10 @@ drift while callers may still depend on it.
 ### `check-assets.mjs`
 
 Not a Vitest file — a standalone Node script run by CI as `npm run check:assets`.
-Verifies required files exist (`module.json`, `index.js`, both `src/harvest/`
-files, the stylesheet, the template) and that `module.json` carries `id`,
-`title`, `version`, `esmodules` and `url`. Exits non-zero on failure.
+Verifies required files exist (`module.json`, `index.js`, the harvest, hub,
+craft and data modules, the stylesheet, and every panel template) and that
+`module.json` carries `id`, `title`, `version`, `esmodules` and `url`. Exits
+non-zero on failure.
 
 Its `REQUIRED` list is hardcoded — add new must-ship files there when the module
 grows.

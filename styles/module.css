@@ -167,6 +167,29 @@
 }
 .rnr-status b { color: var(--rnr-brown); }
 
+/* Crafting bench */
+.rnr-add.rnr-picked {
+  border-color: var(--rnr-red);
+  background: #241616;
+  color: #fff;
+}
+.rnr-dcmod {
+  color: var(--rnr-brown);
+  font-variant-numeric: tabular-nums;
+}
+.rnr-loot-controls button.active {
+  border-color: var(--rnr-red);
+  background: #241616;
+  color: #fff;
+}
+.rnr-errors {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  font-size: 0.75rem;
+}
+.rnr-errors li { padding: 1px 0; }
+
 /* Layout */
 .rnr-columns {
   display: grid;
