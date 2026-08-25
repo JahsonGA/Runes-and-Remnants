@@ -23,8 +23,9 @@ import { HUB_TABS } from "../../src/data/hub-tabs.js";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = rel => fs.readFileSync(path.join(ROOT, rel), "utf8");
 
-/** The width the hub actually opens at. See RunesHub.defaultOptions. */
+/** The size the hub actually opens at. See RunesHub.defaultOptions. */
 export const HUB_WIDTH = 760;
+export const HUB_HEIGHT = 720;
 
 let registered = false;
 function registerOnce() {
@@ -82,18 +83,30 @@ export function hubPage({ tab = "crafting", recipe = null, bench = [], mode = nu
   /* Stand-in for Foundry's own window chrome. Only the frame — everything
      inside comes from the module's real stylesheet. */
   body { margin: 0; background: #2b2a29; font-family: "Signika", sans-serif; }
+  /* Fixed size, matching the real window. An auto-height frame here would
+     let the catalogue grow to fit and hide the very overflow being tested. */
   .app-window {
     width: ${HUB_WIDTH}px;
+    height: ${HUB_HEIGHT}px;
     margin: 0;
     background: #191813;
     border: 1px solid #000;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
   }
-  .window-content { padding: 8px; box-sizing: border-box; }
+  .window-content {
+    padding: 8px;
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
 ${read("styles/module.css")}
 </style></head>
 <body>
-  <div class="app-window" id="app">
+  <div class="app-window rnr-hub-app" id="app">
     <div class="window-content">${Handlebars.compile(read("templates/hub.html"))(data)}</div>
   </div>
 </body></html>`;

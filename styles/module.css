@@ -64,7 +64,27 @@
   color: var(--rnr-text);
 }
 .rnr-hub *, .rnr-panel * { min-width: 0; }
-.rnr-panel { max-width: 100%; }
+
+/* The hub fills its window so the catalogue can scroll inside it. Without
+   this chain the inner overflow:auto has no height to work against and the
+   list grows the window instead of scrolling. */
+.rnr-hub-app .window-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+/* min-height must be 0 as well as min-width: a flex item defaults to
+   min-height:auto, which refuses to shrink below its content and hands the
+   overflow up to the window instead of down to the scroll container. */
+.rnr-hub { flex: 1 1 auto; min-height: 0; }
+.rnr-panel {
+  max-width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rnr-panel > .rnr-columns { flex: 1 1 auto; min-height: 0; }
 
 .rnr-tabs {
   display: flex;
@@ -222,15 +242,60 @@
 /* Layout */
 .rnr-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  /* A grid row defaults to sizing itself to its content. minmax(0, 1fr) lets
+     it shrink to the space available so the cards inside can scroll. */
+  grid-template-rows: minmax(0, 1fr);
   gap: 14px;
+  align-items: stretch;
+  min-height: 0;
 }
 .rnr-card {
   background: #171315;
   border: 1px solid var(--rnr-wood);
   border-radius: 10px;
   padding: 10px;
+  /* Cards are their own scroll context; nothing inside grows the window. */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
+
+/* The scrolling half of the catalogue card. The header and filter above it
+   stay put while the list moves, so the search box is always reachable. */
+.rnr-catalogue {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+/* The workbench scrolls independently of the catalogue beside it. */
+.rnr-card > .rnr-bench-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.rnr-filter {
+  width: 100%;
+  box-sizing: border-box;
+  background: #0f0d0e;
+  color: var(--rnr-text);
+  border: 1px solid var(--rnr-wood);
+  border-radius: 5px;
+  padding: 3px 8px;
+  margin-bottom: 6px;
+  font-size: 0.78rem;
+  flex: none;
+}
+.rnr-filter:focus {
+  outline: none;
+  border-color: var(--rnr-brown-lit);
+  box-shadow: 0 0 5px rgba(181, 124, 34, 0.4);
+}
+.rnr-filter::placeholder { color: #8a7a66; }
 .rnr-card h3 { margin-top: 0; color: var(--rnr-brown-lit); }
 
 /* Loot header row (title + Select All / Clear) */
@@ -238,7 +303,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  /* The mode switches sat hard against the card edge and clipped. */
+  flex-wrap: wrap;
+  gap: 6px;
   margin-bottom: 0.25rem;
+  flex: none;
 }
 .rnr-loot-header h3 { margin: 0; }
 
@@ -279,7 +348,10 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  /* "Structural or Fibrous or Viscous" plus a running total does not fit on
+     one line at this width; let the total drop rather than crowd the label. */
+  flex-wrap: wrap;
+  gap: 2px 8px;
   padding: 2px 8px;
   font-size: 0.72rem;
   font-weight: bold;

@@ -5,6 +5,7 @@ import { HarvestMenu } from "./src/harvest/menu.js";
 import { RunesHub } from "./src/hub/hub.js";
 import { pickExecutorId } from "./src/harvest/logic.js";
 import { registerExtraSettings, loadExtraRecipes } from "./src/craft/extras.js";
+import { executeCraft, isCraftExecutor } from "./src/craft/execute.js";
 
 const MODULE_ID = "runes-and-remnants";
 
@@ -81,6 +82,13 @@ Hooks.once("ready", () => {
       const token = payload.tokenUuid ? await fromUuid(payload.tokenUuid) : null;
       const tokenDoc = token?.document ?? token ?? null;
       RunesHub.open({ tokenDoc, tab: "harvest" });
+      return;
+    }
+
+    if (payload.action === "requestCraft") {
+      // Exactly one GM acts, or every connected GM crafts the same item.
+      if (!isCraftExecutor()) return;
+      await executeCraft(payload);
       return;
     }
 

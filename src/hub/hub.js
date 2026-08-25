@@ -16,6 +16,7 @@ import { HarvestMenu } from "../harvest/menu.js";
 import { HUB_TABS, HUB_TAB_IDS, resolveTab } from "../data/hub-tabs.js";
 import { CraftPanel } from "../craft/panel.js";
 import { partsFromActor } from "../craft/logic.js";
+import { requestCraft } from "../craft/execute.js";
 
 export { HUB_TABS };
 
@@ -35,7 +36,12 @@ export class RunesHub extends HarvestMenu {
       title: "Runes & Remnants",
       template: "modules/runes-and-remnants/templates/hub.html",
       width: 760,
-      height: "auto",
+      // Not "auto". The crafting catalogue runs to a hundred entries, and an
+      // auto-height window grows to fit all of them — off the bottom of the
+      // screen. A fixed frame with the catalogue scrolling inside it keeps
+      // the workbench visible while you browse.
+      height: 720,
+      resizable: true,
       classes: ["rnr-harvest", "grimdark", "rnr-hub-app"]
     });
   }
@@ -108,6 +114,19 @@ export class RunesHub extends HarvestMenu {
   activateListeners(html) {
     super.activateListeners(html);
     this.craft.activateListeners(html, () => this.render(true));
+
+    // Crafting needs the actor, which the panel deliberately does not know
+    // about — it is handed shaped data, not documents. So the hub owns this.
+    html.on("click", "[data-action='do-craft']", async () => {
+      const actorId = this.harvester?.actorId;
+      if (!actorId) return ui.notifications?.warn("Assign a harvester first.");
+
+      await requestCraft(this.craft.mode === "alchemy"
+        ? { actorId, bench: [...this.craft.bench] }
+        : { actorId, recipe: this.craft.recipe });
+
+      this.render(true);   // inventory changed; the bench must catch up
+    });
 
     // Delegated, so the in-panel "go harvest" shortcuts work too.
     html.on("click", "[data-action='switch-tab']", ev => {

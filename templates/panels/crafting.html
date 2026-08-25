@@ -7,7 +7,7 @@
   <!-- ================= MANUFACTURING ================= -->
   <div class="rnr-card">
     <div class="rnr-loot-header">
-      <h3>Manufacturing</h3>
+      <h3>{{modeLabel}}</h3>
       <div class="rnr-loot-controls">
         <button type="button" data-action="craft-mode" data-mode="manufacturing"
                 class="{{#if (eq craftMode "manufacturing")}}active{{/if}}">Gear</button>
@@ -16,6 +16,11 @@
       </div>
     </div>
 
+    <input type="search" class="rnr-filter" data-action="filter"
+           placeholder="Filter {{filterNoun}}…" value="{{filter}}"
+           aria-label="Filter the catalogue">
+
+    <div class="rnr-catalogue">
     {{#if (eq craftMode "manufacturing")}}
       <p class="muted rnr-hint">
         Materials, a tool, and time. Gold cost is a yardstick — swap in the
@@ -62,6 +67,9 @@
         </div>
       {{/each}}
     {{/if}}
+
+    <p class="muted rnr-hint rnr-no-matches" hidden>Nothing matches that.</p>
+    </div>
   </div>
 
   <!-- ================= THE BENCH ================= -->
@@ -74,6 +82,8 @@
         </div>
       {{/if}}
     </div>
+
+    <div class="rnr-bench-body">
 
     {{#if (eq craftMode "manufacturing")}}
       {{#if plan}}
@@ -210,14 +220,22 @@
       {{/if}}
     {{/if}}
 
-    <p class="rnr-status">
-      <b>Reference only for now.</b> The catalogue, DCs, tools and times are
-      live; rolling the check and consuming components lands next.
-    </p>
+    </div><!-- /rnr-bench-body -->
 
-    <div class="actions">
+    <div class="actions rnr-craft-actions">
+      {{#if canCraft}}
+        <button type="button" class="rnr-craft-go" data-action="do-craft"
+                {{#if craftBlocked}}disabled{{/if}}
+                title="{{craftHint}}">
+          {{craftLabel}}
+        </button>
+      {{/if}}
       <button type="button" data-action="switch-tab" data-tab="harvest">← Harvest components</button>
     </div>
+
+    {{#if craftHint}}
+      <p class="muted rnr-hint rnr-craft-hint">{{craftHint}}</p>
+    {{/if}}
   </div>
 
 </section>

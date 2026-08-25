@@ -383,6 +383,59 @@ export function partsFromActor(actor) {
 }
 
 /**
+ * Choose which parts actually get spent.
+ *
+ * `checkReagents` reports everything that *could* count; this picks the
+ * subset that will be consumed. That distinction matters — spending a
+ * player's entire stock of matching parts to make one dagger would be theft.
+ *
+ * Cheapest first, so a hunter burns scraps and keeps trophies. One themed
+ * part is taken first when available, because it buys 2 off the DC and would
+ * otherwise never be reached: a giant's heart sorts to the expensive end.
+ *
+ * @param {object}   recipe
+ * @param {object[]} parts
+ * @returns {{parts: object[], potency: number, met: boolean, shortfall: number}}
+ */
+export function selectReagents(recipe, parts = []) {
+  const check = checkReagents(recipe, parts);
+  if (!check.required) return { parts: [], potency: 0, met: true, shortfall: 0 };
+
+  const theme = check.theme ?? [];
+  const isThemed = p => theme.includes(String(p.creatureType ?? "").toLowerCase());
+
+  // Work in single units, not stacks. A stack of four bones is worth four
+  // bones of potency but must cost four bones to spend — crediting the stack
+  // and then deducting one item would let it be spent over and over.
+  const units = check.used.flatMap(part => {
+    const held = Math.max(1, Number(part.quantity) || 1);
+    const each = componentPotency({ ...part, quantity: 1 });
+    // `held` records the stack this unit came out of, so consumption knows
+    // whether taking two of four is a decrement or a delete.
+    return Array.from({ length: held }, () => ({ ...part, quantity: 1, held, potency: each }));
+  });
+
+  const pool = units.sort((a, b) => a.potency - b.potency);
+  const themed = theme.length ? pool.find(isThemed) : null;
+  const ordered = themed ? [themed, ...pool.filter(p => p !== themed)] : pool;
+
+  const chosen = [];
+  let potency = 0;
+  for (const part of ordered) {
+    if (potency >= check.needed) break;
+    chosen.push(part);
+    potency += part.potency;
+  }
+
+  return {
+    parts: chosen,
+    potency,
+    met: potency >= check.needed,
+    shortfall: Math.max(0, check.needed - potency)
+  };
+}
+
+/**
  * Every component in the harvest table that would satisfy a requirement.
  * Feeds the "what should I be hunting?" hint in the panel.
  *

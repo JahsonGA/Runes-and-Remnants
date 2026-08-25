@@ -258,17 +258,32 @@ Harvest stamps origin (`creatureType`, `cr`, `dc`, `essence`) onto every
 granted part, since potency cannot be recovered afterwards. Unstamped parts
 fall back to the lowest DC that component is ever worth.
 
-### 4.2 — Execution  ⬅ **next**
+### 4.2 — Execution  ✅ *done*
 
-The panel is **reference-grade, not automated** — hence the tab's `partial`
-status. Remaining:
+Crafting rolls, spends and grants. The tab is `live`.
 
-- roll the manufacturing / alchemy check against the computed DC, with
-  advantage/disadvantage from tool proficiency
-- consume the reagents and ingredients the build used (the requirement is
-  checked today, but nothing is spent yet)
-- grant the finished item, GM-authoritative over the socket like harvest
-- track elapsed crafting hours across sessions
+- **The roll** — `1d20 + ability + proficiency` against the computed DC, at
+  disadvantage (`2d20kl1`) without the tool. The kept d20 drives crits, so a
+  natural 20 on a disadvantaged roll still reads right.
+- **Graded failure**, in `src/craft/outcome.js`. Losing everything on a miss
+  is the obvious rule and the wrong one: a legendary potion wants a CR 21
+  essence and a thousand hours, and wiping that on one d20 makes crafting
+  something nobody attempts. A **near miss (within 5) costs the hours but
+  spares the materials**; a bad miss spoils them; a natural 1 ruins the lot.
+  The materials are the harvest the party earned, and taking them back too
+  readily punishes the wrong half of the loop.
+- **Spending** — `selectReagents` picks the *minimum* that meets the budget,
+  cheapest first, so a hunter burns scraps and keeps trophies. One themed
+  part is taken first when present, since it buys 2 off the DC and would
+  otherwise never be reached. Stacks are spent **unit by unit**: four bones
+  are worth four bones and cost four bones.
+- **GM-authoritative** over the socket, same shape as harvest — otherwise
+  every connected client crafts the same item.
+- The panel names what will be spent *before* the click.
+
+Still open: alchemy consumes no plant stock (it is not tracked as items yet;
+the chat card says so rather than leaving it to be discovered), and elapsed
+crafting hours are not carried across sessions.
 
 ### 4.3 — Third-party content
 

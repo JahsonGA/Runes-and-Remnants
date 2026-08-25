@@ -30,13 +30,10 @@ describe("HUB_TABS — structure", () => {
     expect(HUB_TAB_IDS.size).toBe(HUB_TABS.length);
   });
 
-  it("harvest is the only fully live system", () => {
-    expect(HUB_TABS.filter(t => t.status === "live").map(t => t.id)).toEqual(["harvest"]);
-  });
-
-  it("crafting is reference-grade and enchanting is still a sketch", () => {
+  it("harvest and crafting both roll and grant; enchanting is still a sketch", () => {
     const byId = Object.fromEntries(HUB_TABS.map(t => [t.id, t.status]));
-    expect(byId.crafting).toBe("partial");
+    expect(byId.harvest).toBe("live");
+    expect(byId.crafting).toBe("live");
     expect(byId.enchanting).toBe("planned");
   });
 });

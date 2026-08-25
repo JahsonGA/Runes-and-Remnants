@@ -20,7 +20,8 @@ import {
   analyseConcoction,
   checkReagents,
   reagentRequirement,
-  componentsWithProperty
+  componentsWithProperty,
+  selectReagents
 } from "./logic.js";
 import { ENCHANTMENT_BASE } from "../data/alchemy.js";
 import { TOOL_ABILITY } from "../data/manufacturing.js";
@@ -81,6 +82,8 @@ export class CraftPanel {
     this.recipe = null;
     /** Ordered ingredient names on the alchemy bench. */
     this.bench = [];
+    /** Catalogue filter text. A hundred recipes is too many to scan. */
+    this.filter = "";
   }
 
   /**
@@ -91,12 +94,72 @@ export class CraftPanel {
   getData(crafter = null) {
     return {
       craftMode: this.mode,
+      // The card used to be headed "Manufacturing" in both modes, which read
+      // as a bug even when the contents below it were right.
+      modeLabel: this.mode === "alchemy" ? "Alchemy" : "Manufacturing",
+      filterNoun: this.mode === "alchemy" ? "ingredients" : "recipes",
+      filter: this.filter,
       recipeGroups: this._recipeGroups(),
       ingredientGroups: this._ingredientGroups(),
       plan: this._plan(crafter),
       bench: this._bench(),
       concoction: this._concoction(),
-      hasBench: this.bench.length > 0
+      hasBench: this.bench.length > 0,
+      ...this._craftAction(crafter)
+    };
+  }
+
+  /**
+   * State of the Craft button.
+   *
+   * Disabled rather than hidden when something is missing, with the reason in
+   * the tooltip and below the button — a control that vanishes leaves the
+   * player guessing what they did wrong.
+   */
+  _craftAction(crafter) {
+    if (this.mode === "alchemy") {
+      const concoction = this._concoction();
+      if (!this.bench.length) return { canCraft: false };
+      return {
+        canCraft: true,
+        craftLabel: "Brew it",
+        craftBlocked: !concoction?.valid,
+        craftHint: concoction?.valid
+          ? `One Alchemy check against DC ${concoction.dc}.`
+          : (concoction?.errors?.[0] ?? "That mixture will not hold together.")
+      };
+    }
+
+    const recipe = getRecipe(this.recipe);
+    if (!recipe) return { canCraft: false };
+    if (!crafter) {
+      return {
+        canCraft: true,
+        craftLabel: "Craft it",
+        craftBlocked: true,
+        craftHint: "Assign a harvester first — crafting needs someone's hands and their pack."
+      };
+    }
+
+    const plan = planManufacture(recipe, crafter, crafter.parts ?? []);
+    if (plan.blocked) {
+      return {
+        canCraft: true,
+        craftLabel: "Craft it",
+        craftBlocked: true,
+        craftHint: `Short ${plan.reagents.shortfall} potency of `
+                 + `${plan.reagents.properties.map(p => PROPERTY_LABELS[p] ?? p).join(" or ")} parts.`
+      };
+    }
+
+    const selection = selectReagents(recipe, crafter.parts ?? []);
+    return {
+      canCraft: true,
+      craftLabel: "Craft it",
+      craftBlocked: false,
+      // Naming what will be spent before the click, not after.
+      craftHint: `Spends ${selection.parts.map(p => p.name).join(", ")}`
+               + `${plan.disadvantage ? " · at disadvantage, no tool proficiency" : ""}.`
     };
   }
 
@@ -136,6 +199,47 @@ export class CraftPanel {
       this.recipe = null;
       rerender();
     });
+
+    // Filtering happens in the DOM rather than through a re-render. Foundry
+    // rebuilds the whole application on render, which would drop focus and
+    // the caret on every keystroke.
+    html.on("input", "[data-action='filter']", ev => {
+      this.filter = ev.currentTarget.value;
+      this.applyFilter(ev.currentTarget.closest(".rnr-card"));
+    });
+
+    // Re-apply after a render, so picking a recipe does not silently clear
+    // the filter the player is working within.
+    const root = html instanceof HTMLElement ? html : html?.[0];
+    const card = root?.querySelector?.(".rnr-filter")?.closest(".rnr-card");
+    if (card && this.filter) this.applyFilter(card);
+  }
+
+  /**
+   * Show only entries matching the filter, and hide any group left empty.
+   * @param {HTMLElement} card the catalogue card
+   */
+  applyFilter(card) {
+    if (!card) return;
+    const needle = this.filter.trim().toLowerCase();
+    let shown = 0;
+
+    for (const group of card.querySelectorAll(".rnr-catalogue .rnr-tier")) {
+      let visible = 0;
+      for (const li of group.querySelectorAll("li")) {
+        const name = (li.querySelector("[data-name]")?.dataset.name ?? li.textContent)
+          .toLowerCase();
+        const hit = !needle || name.includes(needle);
+        li.hidden = !hit;
+        if (hit) visible++;
+      }
+      // A category header with nothing under it is just noise.
+      group.hidden = visible === 0;
+      shown += visible;
+    }
+
+    const empty = card.querySelector(".rnr-no-matches");
+    if (empty) empty.hidden = shown > 0;
   }
 
   // ---------------------- shaping ----------------------

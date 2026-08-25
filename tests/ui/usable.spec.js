@@ -40,9 +40,10 @@ test.describe("the controls are there and work", () => {
 
   test("each tab carries its status badge", async ({ page }) => {
     await page.setContent(hubPage({ tab: "harvest" }));
-    await expect(page.locator('[data-tab="crafting"] .rnr-tab-badge')).toHaveText("Reference");
+    // Live systems carry no badge; only the unbuilt one announces itself.
     await expect(page.locator('[data-tab="enchanting"] .rnr-tab-badge')).toHaveText("Planned");
     await expect(page.locator('[data-tab="harvest"] .rnr-tab-badge')).toHaveCount(0);
+    await expect(page.locator('[data-tab="crafting"] .rnr-tab-badge')).toHaveCount(0);
   });
 
   test("every tab icon actually resolves to a path", async ({ page }) => {
@@ -121,8 +122,8 @@ test.describe("the controls are there and work", () => {
     const unfocusable = await page.evaluate(() => {
       const out = [];
       for (const el of document.querySelectorAll("[data-action]")) {
-        const focusable = el.tagName === "BUTTON" || el.tagName === "A" ||
-                          el.hasAttribute("tabindex");
+        const focusable = ["BUTTON", "A", "INPUT", "SELECT", "TEXTAREA"].includes(el.tagName)
+                          || el.hasAttribute("tabindex");
         if (!focusable) out.push({ tag: el.tagName, action: el.dataset.action });
       }
       return out;
@@ -162,5 +163,74 @@ test.describe("the controls are there and work", () => {
       return out;
     });
     expect(lowContrast, "text too close in colour to its background").toEqual([]);
+  });
+});
+
+test.describe("the catalogue is navigable", () => {
+  test("the card is headed by the mode it is showing", async ({ page }) => {
+    // It read "Manufacturing" in both modes, which looked like a bug even
+    // when the list below it was right.
+    await page.setContent(hubPage({ tab: "crafting", mode: "manufacturing" }));
+    await expect(page.locator(".rnr-card h3").first()).toHaveText("Manufacturing");
+
+    await page.setContent(hubPage({ tab: "crafting", mode: "alchemy" }));
+    await expect(page.locator(".rnr-card h3").first()).toHaveText("Alchemy");
+  });
+
+  test("the catalogue scrolls inside the card instead of growing the window", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "crafting" }));
+    const overflows = await page.evaluate(() => {
+      const el = document.querySelector(".rnr-catalogue");
+      return { scrollable: getComputedStyle(el).overflowY, taller: el.scrollHeight > el.clientHeight };
+    });
+    expect(overflows.scrollable).toBe("auto");
+    expect(overflows.taller, "a hundred recipes should not fit without scrolling").toBe(true);
+  });
+
+  test("the filter box is present, labelled and typeable", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "crafting" }));
+    const filter = page.locator("[data-action='filter']");
+    await expect(filter).toBeVisible();
+    await expect(filter).toHaveAttribute("aria-label", /filter/i);
+    await filter.fill("giant");
+    await expect(filter).toHaveValue("giant");
+  });
+
+  test("the filter stays put while the list scrolls under it", async ({ page }) => {
+    // A search box that scrolls away is a search box you cannot correct.
+    await page.setContent(hubPage({ tab: "crafting" }));
+    const before = await page.locator("[data-action='filter']").boundingBox();
+    await page.locator(".rnr-catalogue").evaluate(el => el.scrollTop = 400);
+    const after = await page.locator("[data-action='filter']").boundingBox();
+    expect(after.y).toBe(before.y);
+  });
+
+  test("the mode switches are not clipped by the card edge", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "crafting", mode: "alchemy" }));
+    const button = page.locator('[data-action="craft-mode"][data-mode="alchemy"]');
+    const card = page.locator(".rnr-card").first();
+    const b = await button.boundingBox();
+    const c = await card.boundingBox();
+    expect(b.x + b.width, "the Alchemy switch runs past the card").toBeLessThanOrEqual(c.x + c.width);
+  });
+
+  test("the craft button says what it will spend", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "crafting", recipe: "Dagger",
+      crafter: fullCrafter([{ name: "Talon", dc: 10, id: "t1", stamped: true }])
+    }));
+    const go = page.locator("[data-action='do-craft']");
+    await expect(go).toBeVisible();
+    await expect(go).toBeEnabled();
+    await expect(page.locator(".rnr-craft-hint")).toContainText("Talon");
+  });
+
+  test("the craft button is disabled, not hidden, when materials are short", async ({ page }) => {
+    // A control that vanishes leaves the player guessing what they did wrong.
+    await page.setContent(hubPage({ tab: "crafting", recipe: "Plate", crafter: fullCrafter([]) }));
+    const go = page.locator("[data-action='do-craft']");
+    await expect(go).toBeVisible();
+    await expect(go).toBeDisabled();
+    await expect(page.locator(".rnr-craft-hint")).toContainText("Short");
   });
 });

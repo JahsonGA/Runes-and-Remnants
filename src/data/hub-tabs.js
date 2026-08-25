@@ -37,7 +37,7 @@ export const HUB_TABS = [
     label: "Crafting",
     icon: "icons/skills/trades/academics-merchant-scribe.webp",
     hint: "Work raw materials into mundane gear, potions and poisons",
-    status: "partial"
+    status: "live"
   },
   {
     id: "enchanting",

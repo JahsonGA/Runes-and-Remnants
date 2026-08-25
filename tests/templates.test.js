@@ -128,8 +128,8 @@ describe("hub shell renders", () => {
     });
 
     expect(html).toContain("Harvest");
-    expect(html).toContain("Reference");   // crafting's status badge
-    expect(html).toContain("Planned");     // enchanting's
+    expect(html).toContain("Crafting");
+    expect(html).toContain("Planned");     // enchanting's badge; the live tabs carry none
     expect(html).not.toMatch(/\{\{/);
   });
 });

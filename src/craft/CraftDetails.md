@@ -16,7 +16,9 @@ not here.
 |---|---|
 | [`logic.js`](logic.js) | Pure logic: recipe lookup, DC arithmetic, concoction validation, the third-party registry |
 | [`panel.js`](panel.js) | `CraftPanel` — the crafting tab's state and template shaping |
-| [`extras.js`](extras.js) | The only Foundry-touching file here: reads third-party recipes from the world's compendiums |
+| [`outcome.js`](outcome.js) | What a roll means and what it costs. Pure |
+| [`extras.js`](extras.js) | Reads third-party recipes from the world's compendiums |
+| [`execute.js`](execute.js) | Rolls, spends, grants. GM-authoritative |
 
 Data lives in [`src/data/manufacturing.js`](../data/DataDetails.md) and
 [`src/data/alchemy.js`](../data/DataDetails.md).
@@ -157,6 +159,60 @@ The supplement prints three worked examples. Two check out against its own
 ingredient table (DC 14 and DC 18). **Widow Venom is printed as DC 17 but
 computes to 16** — an erratum in the source. `tests/craft-alchemy.test.js`
 asserts 16 and says why.
+
+## Execution
+
+`execute.js` rolls the check, spends the materials and grants the item,
+GM-authoritative over the socket — the same shape harvest uses, because
+otherwise every connected client crafts the same thing.
+
+The check is `1d20 + ability + proficiency`, or `2d20kl1` without the tool.
+Crits read off the *kept* d20, so a natural 20 on a disadvantaged roll still
+counts.
+
+### Failure is graded
+
+Losing everything on a miss is the obvious rule and the wrong one. A
+legendary potion wants a CR 21 essence and a thousand hours; wiping that on
+one bad d20 makes crafting something nobody attempts. The materials are the
+*harvest* the party earned, and taking them back too readily punishes the
+wrong half of the loop.
+
+| Result | Item | Materials | Hours |
+|---|---|---|---|
+| Natural 20, or beat the DC by 10 | yes | spent | spent |
+| Meet the DC | yes | spent | spent |
+| Miss by less than 5 | no | **kept** | spent |
+| Miss by 5 or more | no | spoiled | spent |
+| Natural 1 | no | spoiled | spent |
+
+A natural 20 succeeds however low the total, so a first-level character can
+still get lucky and the ceiling of what they can attempt keeps moving.
+
+### What gets spent
+
+`checkReagents` reports what *could* count; `selectReagents` picks what
+actually goes in. Spending a player's whole stock of matching parts to make
+one dagger would be theft, so it takes the **minimum that meets the budget,
+cheapest first** — burn scraps, keep trophies.
+
+One themed part is taken first when there is one, because it buys 2 off the
+DC and a cheapest-first rule would never reach it: a giant's heart sorts to
+the expensive end.
+
+Stacks are spent **unit by unit**. A stack of four bones is worth four bones
+of potency and must cost four bones to spend — crediting the stack while
+deducting one item would let the same bones be spent over and over.
+`consumptionPlan` carries the original stack size on each unit so it knows
+whether taking two of four is a decrement or a delete.
+
+The panel names what will be spent *before* the click.
+
+### Not yet
+
+Alchemy consumes no plant stock — those ingredients are not tracked as items
+yet, and the chat card says so rather than leaving it to be discovered.
+Elapsed crafting hours are not carried across sessions.
 
 ## Licensing
 

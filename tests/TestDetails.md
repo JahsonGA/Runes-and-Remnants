@@ -1,9 +1,9 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **295 tests across 14 files**,
+Vitest suite plus a standalone packaging check. **317 tests across 15 files**,
 all runnable without a Foundry runtime.
 
-A second suite runs in a real browser. **18 Playwright tests** render the
+A second suite runs in a real browser. **25 Playwright tests** render the
 module's own templates and stylesheet and check that the result is usable —
 the class of bug string assertions cannot see.
 
@@ -34,6 +34,7 @@ collects the Playwright files and fails on the missing runner.
 | [`craft-alchemy.test.js`](craft-alchemy.test.js) | 40 | Ingredient table, DC arithmetic against the source's worked examples, concoction rules |
 | [`craft-catalogue.test.js`](craft-catalogue.test.js) | 26 | Category coverage, consumables, rarity-derived potions, third-party loading |
 | [`craft-reagents.test.js`](craft-reagents.test.js) | 52 | Component tagging coverage, potency scale, gear and potion budgets, origin stamping |
+| [`craft-outcome.test.js`](craft-outcome.test.js) | 22 | Roll grading, graded failure, reagent selection, stack consumption |
 | [`templates.test.js`](templates.test.js) | 13 | Handlebars templates compile and render against real panel data |
 | [`check-assets.mjs`](check-assets.mjs) | — | Not Vitest. Standalone packaging guard |
 
@@ -78,9 +79,10 @@ makes ordering a real decision.
 
 Guards the hub's configuration: tab ids and uniqueness, `resolveTab` fallback
 behaviour, and each tab's **status**. Status is three-state — `live`, `partial`,
-`planned` — because crafting is genuinely in between: catalogue and DCs are
-usable, execution is not. `locked` is derived from `status`, and a test asserts
-the derivation so the two can never drift apart.
+`planned` — because a system can be genuinely in between; crafting sat at
+`partial` while its catalogue was usable but its execution was not. `locked`
+is derived from `status`, and a test asserts the derivation so the two can
+never drift apart.
 
 Pins each tab's **icon path** — a typo there fails silently as a missing image —
 and asserts icons are Foundry core assets rather than bundled or remote.
@@ -133,6 +135,26 @@ theme discounts that never substitute for potency, and origin stamping —
 including the conservative fallback, where an unstamped part is valued at the
 *lowest* DC it could be so scraps cannot be laundered into legendary reagents.
 
+### `craft-outcome.test.js`
+
+The rules for what a roll means and what it costs.
+
+Pins the **graded failure** design so nobody quietly "simplifies" it back to
+all-or-nothing: a near miss keeps the materials, a bad miss spoils them, a
+natural 20 succeeds however low the total and a natural 1 ruins it however
+high. The band boundaries are checked explicitly, since that is where a
+refactor silently shifts things.
+
+Then `selectReagents` — that it spends the *minimum* rather than everything
+matching, burns scraps before trophies, and still reaches for a themed part
+despite cheapest-first ordering.
+
+The sharpest test here covers **stack accounting**. A stack of four bones is
+worth four bones of potency and must cost four bones; an earlier cut credited
+the whole stack and deducted a single item, which would have let the same
+bones be spent indefinitely. Caught by reading a screenshot, not by a test —
+so there is one now.
+
 ### `craft-catalogue.test.js`
 
 Coverage of the four things a hunter makes — weapons, armour, consumables,
@@ -158,7 +180,7 @@ off-screen. Every existing test passed. It read as four empty rows.
 |---|---|---|
 | [`ui/harness.js`](ui/harness.js) | — | Builds a full page for one hub state |
 | [`ui/layout.spec.js`](ui/layout.spec.js) | 8 | Overflow, clipping, narrow windows |
-| [`ui/usable.spec.js`](ui/usable.spec.js) | 10 | Controls present, hittable, keyboard-reachable, legible |
+| [`ui/usable.spec.js`](ui/usable.spec.js) | 17 | Controls present, hittable, keyboard-reachable, legible; catalogue scroll and filter |
 
 **The layout sweep renders every recipe in two states** — with a crafter and
 without. That matters: with one, `planManufacture` resolves the single tool

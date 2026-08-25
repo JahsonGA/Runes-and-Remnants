@@ -12,6 +12,8 @@ const REQUIRED = [
   "src/craft/logic.js",
   "src/craft/panel.js",
   "src/craft/extras.js",
+  "src/craft/outcome.js",
+  "src/craft/execute.js",
   "src/data/harvest-table.js",
   "src/data/hub-tabs.js",
   "src/data/manufacturing.js",
