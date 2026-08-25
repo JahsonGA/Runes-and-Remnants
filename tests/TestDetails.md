@@ -3,10 +3,20 @@
 Vitest suite plus a standalone packaging check. **295 tests across 14 files**,
 all runnable without a Foundry runtime.
 
+A second suite runs in a real browser. **18 Playwright tests** render the
+module's own templates and stylesheet and check that the result is usable —
+the class of bug string assertions cannot see.
+
 ```bash
-npm test              # vitest run
+npm test              # vitest run — logic and data
+npm run test:ui       # playwright — layout and usability
 npm run check:assets  # standalone manifest/asset validation
+npm run test:all      # all three
 ```
+
+Vitest is configured to exclude `tests/ui/`. Its default include picks up
+`*.spec.js` as well as `*.test.js`, so without that exclusion `npm test`
+collects the Playwright files and fails on the missing runner.
 
 ## Files
 
@@ -131,6 +141,39 @@ can drift) and the third-party registry: world recipes override shipped ones
 rather than duplicating them, re-registering never doubles up, and an invented
 category is shown after the known ones rather than dropped.
 
+### `ui/` — Playwright
+
+Renders the real templates with the real stylesheet inside a shell that
+mimics a Foundry application window, via `page.setContent`. No server, no
+copied fixtures: if the panel renders differently in the module, it renders
+differently here.
+
+This exists because of a bug no string assertion could catch. The workbench
+showed "Adventuring gear (generic)" with all nineteen artisan tools joined
+into one `nowrap` cell — 386 characters — which sized the table to its
+content and pushed Check, Ability, Time and Materials thousands of pixels
+off-screen. Every existing test passed. It read as four empty rows.
+
+| File | Tests | Covers |
+|---|---|---|
+| [`ui/harness.js`](ui/harness.js) | — | Builds a full page for one hub state |
+| [`ui/layout.spec.js`](ui/layout.spec.js) | 8 | Overflow, clipping, narrow windows |
+| [`ui/usable.spec.js`](ui/usable.spec.js) | 10 | Controls present, hittable, keyboard-reachable, legible |
+
+**The layout sweep renders every recipe in two states** — with a crafter and
+without. That matters: with one, `planManufacture` resolves the single tool
+they can use and the long string never appears. An earlier version checked
+only that state and sailed past the very bug it was written for.
+
+The suite was verified by reverting the fix and confirming it fails, which is
+the only way to know a layout test is worth having. It reported *"3 of 200
+states overflow"*.
+
+`usable.spec.js` also carries a **contrast check** at WCAG AA (4.5:1). It
+found worse than the wrapping did: `--rnr-brown` on the panel ground is
+2.5:1, and it was carrying the row labels, tier headers and active tab. The
+palette now separates border tones from text tones.
+
 ### `harvest-duplicates.test.js`
 
 `DUPLICATE_RESOLVER` now ships **empty** — the pack's former duplicate names
@@ -162,7 +205,8 @@ grows.
 
 ## Conventions
 
-- Plain Vitest, no Foundry mocks or DOM environment. This works because
+- Plain Vitest for logic; Playwright only where a browser is genuinely needed.
+- No Foundry mocks or DOM environment in the Vitest suite. This works because
   `logic.js` and `harvest-table.js` avoid Foundry globals at module scope.
 - Assertions carry **custom failure messages** naming the offending type or
   item, so a failure identifies the bad data without a debugger.
@@ -175,8 +219,9 @@ grows.
 `logic.js` and `src/data/` precisely so the untested surface stays thin: the
 hub's tab data lives in `src/data/hub-tabs.js` for exactly this reason.
 
-What remains untested is the Foundry glue — rendering, socket delivery, and
-item granting. Those need a live world.
+The Foundry glue — socket delivery, item granting, actor reads — still needs a
+live world. Rendering is no longer in that list: `templates.test.js` renders
+the templates in Node, and `tests/ui/` renders them in a browser.
 
 ## Related
 
