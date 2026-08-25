@@ -35,6 +35,9 @@ export const PROPERTY_LABELS = {
   fibrous:    "Fibrous"
 };
 
+/** Every property a component can carry. */
+export const ALL_PROPERTIES = Object.keys(PROPERTY_LABELS);
+
 export const PROPERTY_HINTS = {
   vital:      "Organs and blood — the seat of a creature's life",
   virulent:   "Venom, acid, spore and rot",
@@ -207,6 +210,83 @@ export const POTION_PROPERTY = {
   "Potion of Storm Giant Strength":    { property: "vital",      theme: ["giant"] }
 };
 
+/* ---------------------------------------------
+   GEAR — weapons, armour, ammunition, focuses
+
+   Steel is not the material here. A hunter's kit is built out of the things
+   they killed: chitin plate, hide coats, a blade knapped from a talon, a
+   wand cut from an eye stalk. That is the whole premise of Ryoko's and of
+   Grim Hollow's crafting, and the reason the house rule replaced gold with
+   monster parts in the first place.
+
+   Gear differs from potions in two ways. It accepts *any of* several
+   properties, because a blade can be talon or bone or chitin and an
+   arbitrary single choice would be wrong most of the time. And its budget
+   comes from the material yardstick rather than a rarity, since armour has
+   no rarity but plainly takes more hide than a dagger does.
+--------------------------------------------- */
+
+/**
+ * Material yardstick (gp) → potency. A rough ladder rather than arithmetic:
+ * the gp figures span three orders of magnitude and a linear conversion
+ * would demand a hundred hearts for a breastplate.
+ */
+export const MATERIAL_POTENCY = [
+  { maxGp: 1,        potency: 2  },   // arrowheads, a flask
+  { maxGp: 5,        potency: 3  },   // dagger, shield, leathers
+  { maxGp: 20,       potency: 5  },   // longsword, chain shirt
+  { maxGp: 60,       potency: 7  },   // longbow, scale mail
+  { maxGp: 150,      potency: 10 },   // breastplate
+  { maxGp: Infinity, potency: 14 }    // half plate, plate
+];
+
+/**
+ * What an unpriced recipe costs. Rings, rods and wondrous items carry no gp
+ * figure because the book leaves them to the GM; a mid-ladder default keeps
+ * them craftable without pretending to a precision the source never had.
+ */
+export const UNPRICED_POTENCY = 7;
+
+/**
+ * Category → the properties its builds can be made from.
+ * Any one of them satisfies the requirement; they are alternatives, not a
+ * shopping list.
+ */
+export const CATEGORY_REAGENT = {
+  "Simple Melee":     ["structural"],
+  "Martial Melee":    ["structural"],
+  "Simple Ranged":    ["structural", "fibrous"],
+  "Martial Ranged":   ["structural", "fibrous"],
+  "Ammunition":       ["structural"],
+  "Armour":           ["structural", "fibrous"],
+  "Focus & Wondrous": ["arcane", "perceptive", "structural"],
+  "Consumable Base":  ["structural", "viscous"],
+  "Gear":             ["structural", "fibrous", "viscous"]
+};
+
+/**
+ * Per-item overrides, where the category default would be plainly wrong.
+ * Padded armour is quilted, not plated; a net is woven; a wand wants
+ * something that carried the creature's magic or its sight.
+ */
+export const ITEM_REAGENT = {
+  "Padded":            ["fibrous"],
+  "Hide":              ["structural", "fibrous"],
+  "Leather":           ["structural"],
+  "Studded Leather":   ["structural"],
+  "Net":               ["fibrous"],
+  "Whip":              ["fibrous", "structural"],
+  "Sling":             ["fibrous"],
+  "Blowgun needles (50)": ["structural"],
+  "Rod, staff, wand":  ["arcane", "perceptive", "structural"],
+  "Ring":              ["structural", "arcane"],
+  "Instrument":        ["structural", "fibrous"],
+  // A wondrous item is whatever the GM says it is, so it takes anything.
+  "Wondrous item":     ALL_PROPERTIES,
+  "Potion base":       ["structural", "viscous"],
+  "Spell scroll base": ["fibrous", "structural"]
+};
+
 /**
  * Mundane consumables carry their own requirement rather than a rarity
  * scale — they are not magic, so nothing about them keys off rarity.
@@ -220,6 +300,3 @@ export const CONSUMABLE_REAGENT = {
   "Poison, Basic (vial)":     { property: "virulent",   potency: 7,  theme: ["monstrosity"] },
   "Healer's Kit":             { property: "vital",      potency: 2 }
 };
-
-/** Every property a component in the harvest table can have. */
-export const ALL_PROPERTIES = Object.keys(PROPERTY_LABELS);

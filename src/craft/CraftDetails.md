@@ -26,9 +26,16 @@ Data lives in [`src/data/manufacturing.js`](../data/DataDetails.md) and
 ## Reagents — the Harvest ➜ Craft join
 
 Without this, Harvest and Craft merely share a window. With it, **what you
-hunted decides what you can brew.** Every potion and mundane consumable
-demands monster parts; weapons and armour do not, since steel is not a
-monster part.
+hunted decides what you can make.** Everything in the catalogue demands
+monster parts — that is the house rule that replaced gold with monster parts
+in the first place. A hunter's kit is built out of what they killed: chitin
+plate, a hide coat, a blade knapped from a talon, a wand cut from an eye
+stalk. That is Ryoko's and Grim Hollow's premise, not a garnish on it.
+
+> The first cut of this system exempted weapons and armour on the reasoning
+> that "steel is not a monster part." That was backwards, and the test named
+> *"asks for monster parts from gear too"* exists to keep it from creeping
+> back.
 
 Three ideas, layered:
 
@@ -41,6 +48,10 @@ one property, so many monsters satisfy any given recipe and a party is never
 locked out for want of one creature. A test asserts every property is carried
 by at least five components, for exactly that reason.
 
+Gear accepts **any of several** properties, because a blade can be talon or
+bone or chitin and fixing on one would be wrong most of the time. Potions ask
+for exactly one, since what a brew does depends on what went into it.
+
 **Potency.** How impressive the kill was, read off the part's harvest DC —
 5/10/15/20/25 → 2/5/7/10/12, essences 12–25 by CR. Nothing new to author. The
 curve steepens on purpose: harvest DCs are *cumulative*, so reaching the fifth
@@ -51,11 +62,38 @@ the same way or nobody would ever reach for the hard components.
 phials of blood brew what one dragon's heart brews. A low-level party grinds;
 a high-level one takes a single trophy.
 
+Potions take their budget from **rarity**; gear takes it from the **material
+yardstick**, since armour has no rarity but plainly wants more hide than a
+dagger does. The gp figures span three orders of magnitude, so it is a ladder
+rather than arithmetic — a linear conversion would demand a hundred hearts for
+a breastplate.
+
+| Material yardstick | Potency | Typical build |
+|---|---|---|
+| ≤ 1 gp | 2 | arrowheads, a flask |
+| ≤ 5 gp | 3 | dagger, shield, leathers |
+| ≤ 20 gp | 5 | longsword, chain shirt |
+| ≤ 60 gp | 7 | longbow, scale mail |
+| ≤ 150 gp | 10 | breastplate |
+| above | 14 | half plate, plate |
+
+Unpriced items — rings, rods, wondrous items, which the book leaves to the GM
+— sit mid-ladder at 7 rather than pretending to a precision the source never
+had.
+
 ```
 Potion of Superior Healing (rare) — needs [vital], potency 10
   Dragon Heart      DC 20 → 10  ✓
   Liver             DC 15 →  7  ✗ short by 3
   Phial of Blood ×5 DC  5 → 10  ✓
+
+Plate — needs [structural or fibrous], potency 14
+  Chitin  DC 20 → 10
+  Hide    DC 20 → 10   ✓ 20 of 14
+  Heart   DC 20 → —    ✗ organs are not armour
+
+Rod, staff, wand — needs [arcane, perceptive or structural], potency 7
+  Main Eye  DC 20 → 10  ✓  an eye stalk makes a wand
 ```
 
 **Creature theme is a bonus, never a gate.** A giant's heart in a Potion of

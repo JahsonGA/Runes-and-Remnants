@@ -100,9 +100,13 @@
           <div class="rnr-tier rnr-reagents {{#unless plan.reagents.met}}rnr-tier-short{{/unless}}">
             <div class="rnr-tier-header">
               Reagents — {{plan.reagents.propertyLabel}}
-              <span class="rnr-num {{#if plan.reagents.met}}rnr-ok{{else}}rnr-danger{{/if}}">
-                {{plan.reagents.potency}} / {{plan.reagents.needed}}
-              </span>
+              {{#if plan.reagents.unknownStock}}
+                <span class="rnr-num muted">needs {{plan.reagents.needed}}</span>
+              {{else}}
+                <span class="rnr-num {{#if plan.reagents.met}}rnr-ok{{else}}rnr-danger{{/if}}">
+                  {{plan.reagents.potency}} / {{plan.reagents.needed}}
+                </span>
+              {{/if}}
             </div>
             <p class="muted rnr-hint">{{plan.reagents.hint}}</p>
 
@@ -119,7 +123,12 @@
               </ul>
             {{/if}}
 
-            {{#if plan.reagents.met}}
+            {{#if plan.reagents.unknownStock}}
+              <p class="muted rnr-hint">
+                Assign a harvester to weigh what they are carrying.
+                Made from: {{#each plan.reagents.suggestions}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}…
+              </p>
+            {{else if plan.reagents.met}}
               {{#if plan.reagents.themed}}
                 <p class="rnr-ok">
                   Fitting quarry — a {{plan.reagents.themeLabel}} part suits this brew.

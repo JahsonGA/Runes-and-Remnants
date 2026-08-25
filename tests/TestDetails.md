@@ -1,6 +1,6 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **272 tests across 13 files**,
+Vitest suite plus a standalone packaging check. **295 tests across 14 files**,
 all runnable without a Foundry runtime.
 
 ```bash
@@ -23,7 +23,8 @@ npm run check:assets  # standalone manifest/asset validation
 | [`craft-manufacturing.test.js`](craft-manufacturing.test.js) | 28 | Recipe table integrity, tool/ability resolution, proficiency and disadvantage |
 | [`craft-alchemy.test.js`](craft-alchemy.test.js) | 40 | Ingredient table, DC arithmetic against the source's worked examples, concoction rules |
 | [`craft-catalogue.test.js`](craft-catalogue.test.js) | 26 | Category coverage, consumables, rarity-derived potions, third-party loading |
-| [`craft-reagents.test.js`](craft-reagents.test.js) | 42 | Component tagging coverage, potency scale, reagent budgets, origin stamping |
+| [`craft-reagents.test.js`](craft-reagents.test.js) | 52 | Component tagging coverage, potency scale, gear and potion budgets, origin stamping |
+| [`templates.test.js`](templates.test.js) | 13 | Handlebars templates compile and render against real panel data |
 | [`check-assets.mjs`](check-assets.mjs) | — | Not Vitest. Standalone packaging guard |
 
 ---

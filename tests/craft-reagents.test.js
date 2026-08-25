@@ -9,15 +9,19 @@ import {
   RARITY_POTENCY,
   POTION_PROPERTY,
   CONSUMABLE_REAGENT,
+  CATEGORY_REAGENT,
+  ITEM_REAGENT,
+  UNPRICED_POTENCY,
   ALL_PROPERTIES
 } from "../src/data/reagents.js";
-import { POTION_TABLE } from "../src/data/manufacturing.js";
+import { POTION_TABLE, MANUFACTURING_TABLE } from "../src/data/manufacturing.js";
 import {
   getRecipe,
   componentProperties,
   componentPotency,
   componentsWithProperty,
   reagentRequirement,
+  materialPotency,
   checkReagents,
   partFromItem,
   partsFromActor,
@@ -119,6 +123,13 @@ describe("componentPotency", () => {
     expect(essence).toBeGreaterThan(componentPotency({ name: "Breath Sac", dc: 25 }));
   });
 
+  it("values a part handed over without a DC at the least it could be worth", () => {
+    // The same conservative rule partFromItem applies, enforced here too so
+    // a caller cannot bypass it by skipping that step.
+    expect(componentPotency({ name: "Heart" })).toBe(POTENCY_BY_DC[lowestComponentDC("Heart")]);
+    expect(componentPotency({ name: "Heart" })).toBeLessThan(componentPotency({ name: "Heart", dc: 20 }));
+  });
+
   it("is worth nothing for an off-scale DC or no part at all", () => {
     expect(componentPotency({ name: "Odd", dc: 7 })).toBe(0);
     expect(componentPotency(null)).toBe(0);
@@ -159,9 +170,57 @@ describe("reagentRequirement", () => {
     expect(reagentRequirement(getRecipe("Poison, Basic (vial)")).potency).toBe(7);
   });
 
-  it("asks nothing of a sword — steel is not a monster part", () => {
-    expect(reagentRequirement(getRecipe("Longsword"))).toBeNull();
-    expect(reagentRequirement(getRecipe("Plate"))).toBeNull();
+  it("asks for monster parts from gear too — steel is not the material here", () => {
+    // A hunter's kit is built out of what they killed. This was wrong in the
+    // first cut of the system, which exempted weapons and armour.
+    expect(reagentRequirement(getRecipe("Longsword")).properties).toContain("structural");
+    expect(reagentRequirement(getRecipe("Plate")).properties).toContain("structural");
+  });
+
+  it("lets gear be made of any of several things, since a blade is not one thing", () => {
+    expect(reagentRequirement(getRecipe("Plate")).properties).toEqual(["structural", "fibrous"]);
+    expect(reagentRequirement(getRecipe("Rod, staff, wand")).properties)
+      .toEqual(["arcane", "perceptive", "structural"]);
+  });
+
+  it("overrides the category where it would be plainly wrong", () => {
+    // Padded armour is quilted; a net is woven. Neither is plate.
+    expect(reagentRequirement(getRecipe("Padded")).properties).toEqual(["fibrous"]);
+    expect(reagentRequirement(getRecipe("Net")).properties).toEqual(["fibrous"]);
+  });
+
+  it("takes gear's budget from the material yardstick, not from rarity", () => {
+    const dagger = reagentRequirement(getRecipe("Dagger")).potency;
+    const longsword = reagentRequirement(getRecipe("Longsword")).potency;
+    const plate = reagentRequirement(getRecipe("Plate")).potency;
+    expect(dagger).toBeLessThan(longsword);
+    expect(longsword).toBeLessThan(plate);
+  });
+
+  it("falls back to a mid-ladder cost for the items the book never prices", () => {
+    expect(materialPotency(getRecipe("Ring"))).toBe(UNPRICED_POTENCY);
+    expect(materialPotency(getRecipe("Wondrous item"))).toBe(UNPRICED_POTENCY);
+  });
+
+  it("every catalogue recipe demands something — the house rule has no exceptions", () => {
+    for (const r of MANUFACTURING_TABLE) {
+      expect(reagentRequirement(r), `"${r.name}" can be made out of nothing`).toBeTruthy();
+    }
+  });
+
+  it("every gear requirement names properties that parts actually carry", () => {
+    for (const props of [...Object.values(CATEGORY_REAGENT), ...Object.values(ITEM_REAGENT)]) {
+      for (const p of props) expect(ALL_PROPERTIES).toContain(p);
+    }
+  });
+
+  it("no gear budget outruns what a single great part can cover", () => {
+    // Plate should be an undertaking, not an impossibility.
+    const best = Math.max(...Object.values(ESSENCE_POTENCY_BY_DC));
+    for (const r of MANUFACTURING_TABLE) {
+      expect(reagentRequirement(r).potency, `"${r.name}" is unbuildable`)
+        .toBeLessThanOrEqual(best);
+    }
   });
 
   it("every rarity budget is reachable with parts that exist", () => {
@@ -231,10 +290,12 @@ describe("checkReagents", () => {
     expect(checkReagents(giant, [{ name: "Heart", dc: 20, creatureType: "Giant" }]).themed).toBe(true);
   });
 
-  it("waves through anything that needs no reagents at all", () => {
-    const result = checkReagents(getRecipe("Longsword"), []);
-    expect(result.required).toBe(false);
-    expect(result.met).toBe(true);
+  it("waves through a world recipe in a category it has never heard of", () => {
+    // Better to let a table's own content build than to block it on a
+    // category this module was never told about.
+    const invented = { name: "Soulforge Engine", category: "Clockwork", tools: [], dc: 15, hours: 4 };
+    expect(checkReagents(invented, []).required).toBe(false);
+    expect(checkReagents(invented, []).met).toBe(true);
   });
 
   it("survives being handed nothing", () => {
@@ -264,8 +325,30 @@ describe("planManufacture — reagents", () => {
     expect(plan.dc).toBe(13);
   });
 
-  it("never blocks a weapon", () => {
-    expect(planManufacture(getRecipe("Longsword"), {}, []).blocked).toBe(false);
+  it("blocks a blade with no bone, talon or chitin to knap it from", () => {
+    expect(planManufacture(getRecipe("Longsword"), {}, []).blocked).toBe(true);
+  });
+
+  it("builds the things the source books actually describe", () => {
+    // A blade from a talon, plate from chitin, a wand from an eye stalk.
+    const blade = planManufacture(getRecipe("Dagger"), {}, [{ name: "Talon", dc: 10 }]);
+    const plate = planManufacture(getRecipe("Plate"), {}, [
+      { name: "Chitin", dc: 20 }, { name: "Hide", dc: 20 }
+    ]);
+    const wand = planManufacture(getRecipe("Rod, staff, wand"), {}, [
+      { name: "Main Eye", dc: 20, creatureType: "aberration" }
+    ]);
+
+    expect(blade.blocked).toBe(false);
+    expect(plate.blocked).toBe(false);
+    expect(wand.blocked).toBe(false);
+  });
+
+  it("will not let a heart be hammered into a breastplate", () => {
+    // Organs are not armour. The property is the whole point.
+    const plate = planManufacture(getRecipe("Plate"), {}, [{ name: "Heart", dc: 20 }]);
+    expect(plate.blocked).toBe(true);
+    expect(plate.reagents.rejected.map(p => p.name)).toEqual(["Heart"]);
   });
 });
 

@@ -24,7 +24,11 @@ import {
   ESSENCE_POTENCY_BY_DC,
   RARITY_POTENCY,
   POTION_PROPERTY,
-  CONSUMABLE_REAGENT
+  CONSUMABLE_REAGENT,
+  CATEGORY_REAGENT,
+  ITEM_REAGENT,
+  MATERIAL_POTENCY,
+  UNPRICED_POTENCY
 } from "../data/reagents.js";
 
 /* ---------------------------------------------
@@ -226,30 +230,66 @@ export function componentProperties(name) {
 export function componentPotency(part) {
   if (!part) return 0;
   const table = part.essence ? ESSENCE_POTENCY_BY_DC : POTENCY_BY_DC;
-  const dc = Number(part.dc);
+  // A part handed over without a DC is valued at the least that component
+  // could be worth — the same conservative rule partFromItem applies, kept
+  // here too so a caller cannot bypass it by skipping that step.
+  const dc = Number(part.dc) || lowestComponentDC(part.name);
   const each = table[dc] ?? 0;
   return each * Math.max(1, Number(part.quantity) || 1);
 }
 
 /**
- * What a recipe demands in monster parts, or null if it demands none.
- * Weapons and armour take raw material rather than reagents, so most of the
- * catalogue returns null here.
+ * Potency a build's worth of material comes to.
+ *
+ * Read off the material yardstick rather than invented: the table already
+ * grades how much stuff each item takes, and a ladder keeps a breastplate
+ * from demanding a hundred hearts the way a linear gp conversion would.
+ */
+export function materialPotency(recipe) {
+  const gp = materialYardstick(recipe);
+  if (gp === null) return UNPRICED_POTENCY;
+  return MATERIAL_POTENCY.find(tier => gp <= tier.maxGp)?.potency ?? UNPRICED_POTENCY;
+}
+
+/**
+ * What a recipe demands in monster parts.
+ *
+ * Everything in the catalogue demands something — that is the house rule
+ * that replaced gold with monster parts. Potions want a specific kind of
+ * part; gear accepts *any of* several, because a blade can be talon or bone
+ * or chitin and picking one would be wrong most of the time.
+ *
+ * @returns {{properties: string[], potency: number, theme: string[]}|null}
  */
 export function reagentRequirement(recipe) {
   if (!recipe?.name) return null;
 
   const consumable = CONSUMABLE_REAGENT[recipe.name];
-  if (consumable) return { ...consumable, theme: consumable.theme ?? [] };
+  if (consumable) {
+    return {
+      properties: [consumable.property],
+      potency: consumable.potency,
+      theme: consumable.theme ?? []
+    };
+  }
 
   const potion = POTION_PROPERTY[recipe.name];
   if (potion) {
     return {
-      property: potion.property,
+      properties: [potion.property],
       potency: RARITY_POTENCY[recipe.rarity] ?? RARITY_POTENCY.common,
       theme: potion.theme ?? []
     };
   }
+
+  // Gear: an item override if there is one, else the category default.
+  const properties = ITEM_REAGENT[recipe.name] ?? CATEGORY_REAGENT[recipe.category];
+  if (properties?.length) {
+    return { properties: properties.slice(), potency: materialPotency(recipe), theme: [] };
+  }
+
+  // A world-loaded recipe in an invented category. Rather than block a build
+  // on a category this module has never heard of, let it through.
   return null;
 }
 
@@ -268,14 +308,22 @@ export function reagentRequirement(recipe) {
  */
 export function checkReagents(recipe, parts = []) {
   const need = reagentRequirement(recipe);
-  if (!need) return { required: false, met: true, potency: 0, needed: 0, used: [], rejected: [], themed: false, dcAdjust: 0 };
+  if (!need) {
+    return {
+      required: false, met: true, potency: 0, needed: 0,
+      properties: [], used: [], rejected: [], theme: [], themed: false, dcAdjust: 0, shortfall: 0
+    };
+  }
 
   const used = [];
   const rejected = [];
   for (const part of parts ?? []) {
     const props = componentProperties(part?.name);
     const potency = componentPotency(part);
-    if (props.includes(need.property) && potency > 0) used.push({ ...part, potency });
+    // Any one of the accepted properties will do; a chitin plate satisfies
+    // armour whether the recipe calls it structural or fibrous.
+    const matches = props.some(p => need.properties.includes(p));
+    if (matches && potency > 0) used.push({ ...part, potency });
     else rejected.push({ ...part, potency, reason: potency > 0 ? "wrong property" : "not a harvested component" });
   }
 
@@ -285,7 +333,7 @@ export function checkReagents(recipe, parts = []) {
 
   return {
     required: true,
-    property: need.property,
+    properties: need.properties,
     needed: need.potency,
     potency,
     met: potency >= need.potency,
@@ -335,12 +383,15 @@ export function partsFromActor(actor) {
 }
 
 /**
- * Every component in the harvest table that would satisfy a property.
+ * Every component in the harvest table that would satisfy a requirement.
  * Feeds the "what should I be hunting?" hint in the panel.
+ *
+ * @param {string|string[]} properties One property, or any-of several
  */
-export function componentsWithProperty(property) {
+export function componentsWithProperty(properties) {
+  const wanted = Array.isArray(properties) ? properties : [properties];
   return Object.entries(COMPONENT_PROPERTIES)
-    .filter(([, props]) => props.includes(property))
+    .filter(([, props]) => props.some(p => wanted.includes(p)))
     .map(([name]) => name);
 }
 

@@ -179,7 +179,7 @@ export class CraftPanel {
         materialLabel,
         proficient: false,
         disadvantage: false,
-        reagents: this._reagents(recipe, [])
+        reagents: this._reagents(recipe, [], true)
       };
     }
 
@@ -200,19 +200,26 @@ export class CraftPanel {
    * saying no — the point of the property model is that many monsters
    * qualify, and a player can only act on that if they can see it.
    */
-  _reagents(recipe, parts) {
+  _reagents(recipe, parts, unknownStock = false) {
     const check = checkReagents(recipe, parts);
     if (!check.required) return null;
 
     const need = reagentRequirement(recipe);
+    const properties = check.properties ?? [];
     return {
-      property: check.property,
-      propertyLabel: PROPERTY_LABELS[check.property] ?? check.property,
-      hint: PROPERTY_HINTS[check.property] ?? "",
+      properties,
+      // "Structural or Fibrous" — the alternatives matter, so all of them
+      // are named rather than only the first.
+      propertyLabel: properties.map(p => PROPERTY_LABELS[p] ?? p).join(" or "),
+      hint: properties.map(p => PROPERTY_HINTS[p] ?? "").filter(Boolean).join(" · "),
       needed: check.needed,
       potency: check.potency,
       shortfall: check.shortfall,
       met: check.met,
+      // With nobody at the bench we have no inventory to weigh, so the panel
+      // states the requirement rather than reporting a shortfall that only
+      // means "no character is assigned".
+      unknownStock,
       themed: check.themed,
       themeLabel: (need?.theme ?? []).join(" or "),
       dcAdjust: check.dcAdjust,
@@ -220,12 +227,13 @@ export class CraftPanel {
         name: p.name,
         potency: p.potency,
         creatureType: p.creatureType ?? null,
-        // An unstamped part was valued at the lowest DC it could be, which is
-        // worth saying out loud — the player may be owed more.
-        assumed: p.stamped === false
+        // A part with no recorded origin was valued at the lowest DC it
+        // could be, which is worth saying out loud — the player may be owed
+        // more if the GM remembers what it came off.
+        assumed: !p.stamped
       })),
       // A sample, not the list of 60: enough to point somewhere useful.
-      suggestions: check.met ? [] : componentsWithProperty(check.property).slice(0, 8)
+      suggestions: check.met ? [] : componentsWithProperty(properties).slice(0, 8)
     };
   }
 

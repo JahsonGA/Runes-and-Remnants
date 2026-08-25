@@ -240,9 +240,16 @@ Potions and consumables now require monster parts. Three layers:
 - **Property** — a recipe asks for a kind of part (`vital`, `virulent`,
   `elemental`, `arcane`, `perceptive`, `structural`, `viscous`, `fibrous`),
   never a specific item, so many monsters qualify and no party is locked out.
+  Gear accepts *any of* several: a blade is talon or bone or chitin.
 - **Potency** — read off the part's harvest DC (5→2 … 25→12, essences 12–25).
   The curve steepens because harvest DCs are cumulative.
 - **Budget** — a potency total, so lesser parts substitute for greater ones.
+  Potions scale by rarity; gear scales by the material yardstick.
+
+**Everything in the catalogue demands parts, gear included** — chitin plate,
+hide coats, a blade from a talon, a wand from an eye stalk. The first cut of
+this exempted weapons and armour, which was backwards for a monster-hunter
+framework and is now guarded by a test.
 
 Creature theme is a **bonus, never a gate**: an apt creature takes 2 off the
 DC; the wrong one still works.
