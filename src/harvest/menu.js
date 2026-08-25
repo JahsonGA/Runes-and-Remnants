@@ -460,8 +460,14 @@ export class HarvestMenu extends Application {
     const materials = awarded.map(e => e.name);
 
     // --- Drop or Grant Materials ---
+    // Each part is stamped with where it came from. Crafting weighs a reagent
+    // by the DC it was cut at and the creature it was cut from, and it cannot
+    // recover either after the fact — a Heart in a backpack looks the same
+    // whether it came off a dragon or a goblin.
+    const essenceName = getEssenceByCR(Number(cr) || 0)?.name;
     const dropPoint = targetToken?.object?.center ?? null;
-    for (const itemName of materials) {
+    for (const entry of awarded) {
+      const itemName = entry.name;
       const indexEntry = findCompendiumEntry(loot, itemName, typeKey);
       if (!indexEntry) {
         console.warn(`[${MODULE_ID}] No compendium entry for "${itemName}" — skipping.`);
@@ -469,7 +475,18 @@ export class HarvestMenu extends Application {
       }
       try {
         const itemDoc = await pack.getDocument(indexEntry._id);
-        await grantMaterial({ item: itemDoc, qty: 1, toActor: harvesterActor, dropAt: dropPoint });
+        await grantMaterial({
+          item: itemDoc,
+          qty: 1,
+          toActor: harvesterActor,
+          dropAt: dropPoint,
+          origin: {
+            creatureType: typeKey,
+            cr: Number(cr) || 0,
+            dc: entry.componentDC ?? null,
+            essence: itemName === essenceName
+          }
+        });
       } catch (err) {
         console.warn(`[${MODULE_ID}] Failed to grant "${itemName}":`, err);
       }

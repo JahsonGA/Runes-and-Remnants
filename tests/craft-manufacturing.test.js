@@ -46,9 +46,13 @@ describe("MANUFACTURING_TABLE — integrity", () => {
   });
 
   it("DCs sit in a sane 5e band", () => {
+    // Mundane work tops out at 20 — a smith with expertise should be able to
+    // make anything on the mundane list. Magic potions run above that on
+    // purpose: legendary brewing is meant to need more than a good day.
     for (const r of MANUFACTURING_TABLE) {
+      const ceiling = r.category === "Potion" ? 21 : 20;
       expect(r.dc, `"${r.name}" DC ${r.dc}`).toBeGreaterThanOrEqual(10);
-      expect(r.dc, `"${r.name}" DC ${r.dc}`).toBeLessThanOrEqual(20);
+      expect(r.dc, `"${r.name}" DC ${r.dc}`).toBeLessThanOrEqual(ceiling);
     }
   });
 
@@ -186,8 +190,15 @@ describe("materialYardstick", () => {
   });
 
   it("every priced recipe costs less in materials than it is worth", () => {
+    // Holy water is the one honest exception: it takes 25 gp of powdered
+    // silver and sells for 25 gp. Nobody makes it for the margin.
+    const BREAK_EVEN = new Set(["Holy Water (flask)"]);
     for (const r of MANUFACTURING_TABLE) {
       if (r.materialGp == null || r.valueGp == null) continue;
+      if (BREAK_EVEN.has(r.name)) {
+        expect(r.materialGp, `"${r.name}"`).toBe(r.valueGp);
+        continue;
+      }
       expect(r.materialGp, `"${r.name}" materials cost more than the item`).toBeLessThan(r.valueGp);
     }
   });

@@ -233,6 +233,24 @@ ammunition, gear) and **Alchemy** (potions, poisons, enchantment brews).
   catalogue (Gear / Alchemy) with a workbench, delegated from the hub.
 - 68 tests, reproducing the source's worked examples.
 
+### 4.1b — Reagents: the Harvest ➜ Craft join  ✅ *done*
+
+Potions and consumables now require monster parts. Three layers:
+
+- **Property** — a recipe asks for a kind of part (`vital`, `virulent`,
+  `elemental`, `arcane`, `perceptive`, `structural`, `viscous`, `fibrous`),
+  never a specific item, so many monsters qualify and no party is locked out.
+- **Potency** — read off the part's harvest DC (5→2 … 25→12, essences 12–25).
+  The curve steepens because harvest DCs are cumulative.
+- **Budget** — a potency total, so lesser parts substitute for greater ones.
+
+Creature theme is a **bonus, never a gate**: an apt creature takes 2 off the
+DC; the wrong one still works.
+
+Harvest stamps origin (`creatureType`, `cr`, `dc`, `essence`) onto every
+granted part, since potency cannot be recovered afterwards. Unstamped parts
+fall back to the lowest DC that component is ever worth.
+
 ### 4.2 — Execution  ⬅ **next**
 
 The panel is **reference-grade, not automated** — hence the tab's `partial`
@@ -240,7 +258,8 @@ status. Remaining:
 
 - roll the manufacturing / alchemy check against the computed DC, with
   advantage/disadvantage from tool proficiency
-- consume the components and ingredients the build used
+- consume the reagents and ingredients the build used (the requirement is
+  checked today, but nothing is spent yet)
 - grant the finished item, GM-authoritative over the socket like harvest
 - track elapsed crafting hours across sessions
 

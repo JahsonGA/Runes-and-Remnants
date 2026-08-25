@@ -15,6 +15,7 @@
 import { HarvestMenu } from "../harvest/menu.js";
 import { HUB_TABS, HUB_TAB_IDS, resolveTab } from "../data/hub-tabs.js";
 import { CraftPanel } from "../craft/panel.js";
+import { partsFromActor } from "../craft/logic.js";
 
 export { HUB_TABS };
 
@@ -97,7 +98,10 @@ export class RunesHub extends HarvestMenu {
     return {
       abilities,
       tools,
-      proficiency: actor.system?.attributes?.prof ?? 2
+      proficiency: actor.system?.attributes?.prof ?? 2,
+      // What they are carrying that a brew could use. Read fresh each render
+      // so a harvest made a moment ago shows up on the bench immediately.
+      parts: partsFromActor(actor)
     };
   }
 

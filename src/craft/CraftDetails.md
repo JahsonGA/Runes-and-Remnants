@@ -14,13 +14,65 @@ not here.
 
 | File | Purpose |
 |---|---|
-| [`logic.js`](logic.js) | Pure logic: recipe lookup, DC arithmetic, concoction validation |
+| [`logic.js`](logic.js) | Pure logic: recipe lookup, DC arithmetic, concoction validation, the third-party registry |
 | [`panel.js`](panel.js) | `CraftPanel` — the crafting tab's state and template shaping |
+| [`extras.js`](extras.js) | The only Foundry-touching file here: reads third-party recipes from the world's compendiums |
 
 Data lives in [`src/data/manufacturing.js`](../data/DataDetails.md) and
 [`src/data/alchemy.js`](../data/DataDetails.md).
 
 ---
+
+## Reagents — the Harvest ➜ Craft join
+
+Without this, Harvest and Craft merely share a window. With it, **what you
+hunted decides what you can brew.** Every potion and mundane consumable
+demands monster parts; weapons and armour do not, since steel is not a
+monster part.
+
+Three ideas, layered:
+
+**Property.** A recipe asks for a *kind* of part — `vital`, `virulent`,
+`elemental`, `arcane`, `perceptive`, `structural`, `viscous`, `fibrous` —
+never a specific item. Tags are keyed by component *name*, because the
+harvest table reuses 65 names across 215 creature-type rows: a Heart is a
+Heart whether it came out of a dragon or a goblin. Many parts carry more than
+one property, so many monsters satisfy any given recipe and a party is never
+locked out for want of one creature. A test asserts every property is carried
+by at least five components, for exactly that reason.
+
+**Potency.** How impressive the kill was, read off the part's harvest DC —
+5/10/15/20/25 → 2/5/7/10/12, essences 12–25 by CR. Nothing new to author. The
+curve steepens on purpose: harvest DCs are *cumulative*, so reaching the fifth
+component costs far more than five times the first, and potency has to bend
+the same way or nobody would ever reach for the hard components.
+
+**Budget.** A recipe needs a potency *total*, not one qualifying part. Five
+phials of blood brew what one dragon's heart brews. A low-level party grinds;
+a high-level one takes a single trophy.
+
+```
+Potion of Superior Healing (rare) — needs [vital], potency 10
+  Dragon Heart      DC 20 → 10  ✓
+  Liver             DC 15 →  7  ✗ short by 3
+  Phial of Blood ×5 DC  5 → 10  ✓
+```
+
+**Creature theme is a bonus, never a gate.** A giant's heart in a Potion of
+Giant Strength takes 2 off the DC. A troll's heart still works. Flavour should
+reward, not dead-end.
+
+### Origin stamping
+
+Potency depends on the DC a part was cut at and the creature it came from —
+neither recoverable after the fact, since a Heart in a backpack looks the same
+either way. So harvest stamps `flags["runes-and-remnants"].origin` onto every
+granted item, and `partFromItem` reads it back.
+
+Parts predating that, or handed out by a GM, fall back to the component's
+**lowest** DC anywhere in the table. Deliberately the lowest: a generous
+default would let a player launder scraps into legendary reagents. The panel
+marks such parts with a `?` so the player can see they may be owed more.
 
 ## Manufacturing
 

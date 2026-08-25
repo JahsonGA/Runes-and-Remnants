@@ -17,6 +17,71 @@ import {
   ENCHANTMENT_BASE,
   MAX_MODIFIERS
 } from "../data/alchemy.js";
+import { MODULE_ID, lowestComponentDC } from "../harvest/logic.js";
+import {
+  COMPONENT_PROPERTIES,
+  POTENCY_BY_DC,
+  ESSENCE_POTENCY_BY_DC,
+  RARITY_POTENCY,
+  POTION_PROPERTY,
+  CONSUMABLE_REAGENT
+} from "../data/reagents.js";
+
+/* ---------------------------------------------
+   THIRD-PARTY RECIPES
+
+   The module ships SRD-safe names and mechanics only. Grim Hollow, Ryoko's,
+   Heliana's and the rest are commercial books — their item text cannot ride
+   along in a publicly listed package. So they load at runtime from a
+   compendium the table populates itself, from books it owns.
+
+   The registry lives here, in the pure layer, so it is testable without a
+   world. src/craft/extras.js does the Foundry-side reading and calls
+   registerExtraRecipes().
+--------------------------------------------- */
+
+/** @type {Recipe[]} */
+let EXTRA_RECIPES = [];
+
+/**
+ * Add recipes loaded from the world. Later calls replace earlier ones for the
+ * same name, so a world can override a shipped recipe rather than duplicate
+ * it — a table using Grim Hollow's armour rules wants *its* Plate, not two.
+ *
+ * @param {object[]} recipes
+ * @param {string}   [source] Where they came from, shown in the UI
+ * @returns {number} how many were accepted
+ */
+export function registerExtraRecipes(recipes = [], source = "world") {
+  const accepted = (recipes ?? []).filter(r => r?.name && r?.category)
+    .map(r => ({ srd: false, source, ...r }));
+  const names = new Set(accepted.map(r => r.name.toLowerCase()));
+  EXTRA_RECIPES = EXTRA_RECIPES
+    .filter(r => !names.has(r.name.toLowerCase()))
+    .concat(accepted);
+  return accepted.length;
+}
+
+/** Everything loaded from the world, in load order. */
+export function getExtraRecipes() {
+  return EXTRA_RECIPES.slice();
+}
+
+/** Drop every world-loaded recipe. Used on reload and by tests. */
+export function clearExtraRecipes() {
+  EXTRA_RECIPES = [];
+}
+
+/**
+ * Shipped recipes plus world-loaded ones, with world entries winning on a
+ * name collision.
+ */
+export function allRecipes() {
+  const overridden = new Set(EXTRA_RECIPES.map(r => r.name.toLowerCase()));
+  return MANUFACTURING_TABLE
+    .filter(r => !overridden.has(r.name.toLowerCase()))
+    .concat(EXTRA_RECIPES);
+}
 
 /* ---------------------------------------------
    MANUFACTURING
@@ -26,15 +91,23 @@ import {
 export function getRecipe(name) {
   if (!name) return null;
   const key = String(name).toLowerCase();
-  return MANUFACTURING_TABLE.find(r => r.name.toLowerCase() === key) ?? null;
+  return allRecipes().find(r => r.name.toLowerCase() === key) ?? null;
 }
 
-/** Recipes grouped for display, in MANUFACTURING_CATEGORIES order. */
+/**
+ * Recipes grouped for display, in MANUFACTURING_CATEGORIES order.
+ * A world-loaded recipe may invent its own category; those follow the known
+ * ones rather than being dropped or silently folded into "Gear".
+ */
 export function getRecipesByCategory() {
-  return MANUFACTURING_CATEGORIES
+  const recipes = allRecipes();
+  const extraCategories = [...new Set(recipes.map(r => r.category))]
+    .filter(c => !MANUFACTURING_CATEGORIES.includes(c));
+
+  return [...MANUFACTURING_CATEGORIES, ...extraCategories]
     .map(category => ({
       category,
-      recipes: MANUFACTURING_TABLE.filter(r => r.category === category)
+      recipes: recipes.filter(r => r.category === category)
     }))
     .filter(group => group.recipes.length > 0);
 }
@@ -78,7 +151,7 @@ export function bestAbility(abilities = [], mods = {}) {
  * @param {object} recipe
  * @param {object} crafter  { abilities: {str,dex,...}, tools: string[], proficiency: number }
  */
-export function planManufacture(recipe, crafter = {}) {
+export function planManufacture(recipe, crafter = {}, parts = []) {
   if (!recipe) return null;
 
   const { abilities = {}, tools = [], proficiency = 2 } = crafter;
@@ -88,9 +161,15 @@ export function planManufacture(recipe, crafter = {}) {
   const ability = bestAbility(abilitiesForRecipe(recipe), abilities) ?? { key: null, mod: 0 };
   const bonus = ability.mod + (proficient ? proficiency : 0);
 
+  // Potions and consumables need monster parts on the bench. A fitting
+  // creature discounts the DC; a missing reagent blocks the attempt outright,
+  // since there is nothing to brew from.
+  const reagents = checkReagents(recipe, parts);
+
   return {
     item: recipe.name,
-    dc: recipe.dc,
+    dc: recipe.dc + reagents.dcAdjust,
+    baseDc: recipe.dc,
     hours: recipe.hours,
     tools: recipe.tools,
     tool: usableTools[0] ?? recipe.tools[0] ?? null,
@@ -99,7 +178,9 @@ export function planManufacture(recipe, crafter = {}) {
     proficient,
     disadvantage: !proficient,
     bonus,
-    materialGp: materialYardstick(recipe)
+    materialGp: materialYardstick(recipe),
+    reagents,
+    blocked: reagents.required && !reagents.met
   };
 }
 
@@ -118,6 +199,149 @@ export function materialYardstick(recipe) {
   if (recipe.materialGp !== null && recipe.materialGp !== undefined) return recipe.materialGp;
   if (recipe.valueGp) return Math.round((recipe.valueGp / 3) * 100) / 100;
   return null;
+}
+
+/* ---------------------------------------------
+   REAGENTS — the Harvest ➜ Craft join
+
+   A potion or consumable needs monster parts, not just tools and time. See
+   src/data/reagents.js for the model; this is the arithmetic.
+--------------------------------------------- */
+
+/** Properties a harvested component carries. Unknown parts carry none. */
+export function componentProperties(name) {
+  if (!name) return [];
+  const key = Object.keys(COMPONENT_PROPERTIES)
+    .find(k => k.toLowerCase() === String(name).toLowerCase());
+  return key ? COMPONENT_PROPERTIES[key].slice() : [];
+}
+
+/**
+ * How much a single harvested part is worth to a brew.
+ *
+ * @param {object} part { name, dc, essence?, quantity? }
+ *   `dc` is the component's harvest DC, stamped on the item when it was cut
+ *   free. Essences use their own, heavier scale.
+ */
+export function componentPotency(part) {
+  if (!part) return 0;
+  const table = part.essence ? ESSENCE_POTENCY_BY_DC : POTENCY_BY_DC;
+  const dc = Number(part.dc);
+  const each = table[dc] ?? 0;
+  return each * Math.max(1, Number(part.quantity) || 1);
+}
+
+/**
+ * What a recipe demands in monster parts, or null if it demands none.
+ * Weapons and armour take raw material rather than reagents, so most of the
+ * catalogue returns null here.
+ */
+export function reagentRequirement(recipe) {
+  if (!recipe?.name) return null;
+
+  const consumable = CONSUMABLE_REAGENT[recipe.name];
+  if (consumable) return { ...consumable, theme: consumable.theme ?? [] };
+
+  const potion = POTION_PROPERTY[recipe.name];
+  if (potion) {
+    return {
+      property: potion.property,
+      potency: RARITY_POTENCY[recipe.rarity] ?? RARITY_POTENCY.common,
+      theme: potion.theme ?? []
+    };
+  }
+  return null;
+}
+
+/**
+ * Weigh a pile of harvested parts against what a recipe wants.
+ *
+ * Only parts carrying the required property count toward the budget —
+ * everything else is set aside rather than silently ignored, so a player can
+ * see *why* their heap of bones won't brew a healing potion.
+ *
+ * A part from a thematically apt creature is not required and does not count
+ * for more; it discounts the DC. Flavour should reward, not gate.
+ *
+ * @param {object}   recipe
+ * @param {object[]} parts  [{ name, dc, creatureType?, essence?, quantity? }]
+ */
+export function checkReagents(recipe, parts = []) {
+  const need = reagentRequirement(recipe);
+  if (!need) return { required: false, met: true, potency: 0, needed: 0, used: [], rejected: [], themed: false, dcAdjust: 0 };
+
+  const used = [];
+  const rejected = [];
+  for (const part of parts ?? []) {
+    const props = componentProperties(part?.name);
+    const potency = componentPotency(part);
+    if (props.includes(need.property) && potency > 0) used.push({ ...part, potency });
+    else rejected.push({ ...part, potency, reason: potency > 0 ? "wrong property" : "not a harvested component" });
+  }
+
+  const potency = used.reduce((sum, p) => sum + p.potency, 0);
+  const themed = need.theme.length > 0
+    && used.some(p => need.theme.includes(String(p.creatureType ?? "").toLowerCase()));
+
+  return {
+    required: true,
+    property: need.property,
+    needed: need.potency,
+    potency,
+    met: potency >= need.potency,
+    shortfall: Math.max(0, need.potency - potency),
+    used,
+    rejected,
+    theme: need.theme,
+    themed,
+    // A fitting creature makes the work go easier, worth two points of DC.
+    dcAdjust: themed ? -2 : 0
+  };
+}
+
+/**
+ * Read a carried item back into a weighable part.
+ *
+ * Harvest stamps origin on everything it grants. Parts that predate that —
+ * or were handed out by a GM — fall back to the component's lowest DC
+ * anywhere in the harvest table, so an unlabelled heart is treated as a
+ * goblin's rather than a dragon's. Generous defaults here would let a player
+ * launder scraps into legendary reagents.
+ *
+ * @param {object} item A dnd5e item, or anything with name/flags/system
+ */
+export function partFromItem(item) {
+  if (!item?.name) return null;
+  const origin = item.flags?.[MODULE_ID]?.origin ?? {};
+  const dc = Number(origin.dc) || lowestComponentDC(item.name);
+  if (!dc) return null;
+
+  return {
+    name: item.name,
+    dc,
+    creatureType: origin.creatureType ?? null,
+    cr: origin.cr ?? null,
+    essence: Boolean(origin.essence),
+    quantity: Number(item.system?.quantity) || 1,
+    stamped: Boolean(origin.dc),
+    id: item.id ?? item._id ?? null
+  };
+}
+
+/** Everything in an actor's inventory that crafting could use as a reagent. */
+export function partsFromActor(actor) {
+  const items = actor?.items?.contents ?? actor?.items ?? [];
+  return [...items].map(partFromItem).filter(Boolean);
+}
+
+/**
+ * Every component in the harvest table that would satisfy a property.
+ * Feeds the "what should I be hunting?" hint in the panel.
+ */
+export function componentsWithProperty(property) {
+  return Object.entries(COMPONENT_PROPERTIES)
+    .filter(([, props]) => props.includes(property))
+    .map(([name]) => name);
 }
 
 /* ---------------------------------------------

@@ -11,6 +11,7 @@ dependency — safe to import from tests.
 | [`hub-tabs.js`](hub-tabs.js) | Hub tab definitions, icons, status, and `resolveTab` |
 | [`manufacturing.js`](manufacturing.js) | Mundane item recipes: tool, ability, time, DC |
 | [`alchemy.js`](alchemy.js) | Alchemy ingredients: role, DC modifier, terrain, effect |
+| [`reagents.js`](reagents.js) | Component properties, potency scale, and which parts each potion demands |
 
 ---
 

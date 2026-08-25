@@ -17,9 +17,13 @@ import {
   materialYardstick,
   getIngredient,
   ingredientsByRole,
-  analyseConcoction
+  analyseConcoction,
+  checkReagents,
+  reagentRequirement,
+  componentsWithProperty
 } from "./logic.js";
 import { ENCHANTMENT_BASE } from "../data/alchemy.js";
+import { PROPERTY_LABELS, PROPERTY_HINTS } from "../data/reagents.js";
 
 const ABILITY_LABEL = { str: "Str", dex: "Dex", con: "Con", int: "Int", wis: "Wis", cha: "Cha" };
 
@@ -128,6 +132,10 @@ export class CraftPanel {
         name: r.name,
         dc: r.dc,
         hours: r.hours,
+        rarity: r.rarity ?? null,
+        // Named so a GM can see at a glance which entries came from their own
+        // books rather than from the module.
+        source: r.srd === false ? (r.source ?? "third-party") : null,
         selected: r.name === this.recipe
       }))
     }));
@@ -170,16 +178,54 @@ export class CraftPanel {
         bonusLabel: "",
         materialLabel,
         proficient: false,
-        disadvantage: false
+        disadvantage: false,
+        reagents: this._reagents(recipe, [])
       };
     }
 
-    const plan = planManufacture(recipe, crafter);
+    const plan = planManufacture(recipe, crafter, crafter.parts ?? []);
     return {
       ...plan,
       abilityLabel: ABILITY_LABEL[plan.ability] ?? plan.ability ?? "—",
       bonusLabel: plan.bonus >= 0 ? `+${plan.bonus}` : String(plan.bonus),
-      materialLabel
+      materialLabel,
+      reagents: this._reagents(recipe, crafter.parts ?? [])
+    };
+  }
+
+  /**
+   * The reagent requirement, shaped for display.
+   *
+   * When the crafter is short, this lists what *would* work rather than only
+   * saying no — the point of the property model is that many monsters
+   * qualify, and a player can only act on that if they can see it.
+   */
+  _reagents(recipe, parts) {
+    const check = checkReagents(recipe, parts);
+    if (!check.required) return null;
+
+    const need = reagentRequirement(recipe);
+    return {
+      property: check.property,
+      propertyLabel: PROPERTY_LABELS[check.property] ?? check.property,
+      hint: PROPERTY_HINTS[check.property] ?? "",
+      needed: check.needed,
+      potency: check.potency,
+      shortfall: check.shortfall,
+      met: check.met,
+      themed: check.themed,
+      themeLabel: (need?.theme ?? []).join(" or "),
+      dcAdjust: check.dcAdjust,
+      used: check.used.map(p => ({
+        name: p.name,
+        potency: p.potency,
+        creatureType: p.creatureType ?? null,
+        // An unstamped part was valued at the lowest DC it could be, which is
+        // worth saying out loud — the player may be owed more.
+        assumed: p.stamped === false
+      })),
+      // A sample, not the list of 60: enough to point somewhere useful.
+      suggestions: check.met ? [] : componentsWithProperty(check.property).slice(0, 8)
     };
   }
 

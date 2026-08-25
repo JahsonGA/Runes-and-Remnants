@@ -1,6 +1,6 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **204 tests across 11 files**,
+Vitest suite plus a standalone packaging check. **272 tests across 13 files**,
 all runnable without a Foundry runtime.
 
 ```bash
@@ -22,6 +22,8 @@ npm run check:assets  # standalone manifest/asset validation
 | [`hub-tabs.test.js`](hub-tabs.test.js) | 18 | Hub tab config, status states, icon paths, panel/partial wiring |
 | [`craft-manufacturing.test.js`](craft-manufacturing.test.js) | 28 | Recipe table integrity, tool/ability resolution, proficiency and disadvantage |
 | [`craft-alchemy.test.js`](craft-alchemy.test.js) | 40 | Ingredient table, DC arithmetic against the source's worked examples, concoction rules |
+| [`craft-catalogue.test.js`](craft-catalogue.test.js) | 26 | Category coverage, consumables, rarity-derived potions, third-party loading |
+| [`craft-reagents.test.js`](craft-reagents.test.js) | 42 | Component tagging coverage, potency scale, reagent budgets, origin stamping |
 | [`check-assets.mjs`](check-assets.mjs) | — | Not Vitest. Standalone packaging guard |
 
 ---
@@ -100,6 +102,33 @@ modifiers, modifier type matching its base, `locked` ingredients refusing
 modification, and the separate enchantment path (Elemental Water base, exactly
 one enchantment, no modifiers). `analyseConcoction` returns *every* violation,
 not just the first, and the tests assert that.
+
+### `craft-reagents.test.js`
+
+Guards the join between Harvest and Craft. The highest-value assertion is
+**tag coverage in both directions**: every component the harvest table can
+drop must be tagged, and nothing may be tagged that never drops. An untagged
+component is dead weight — it can never satisfy a recipe, and a player has no
+way to discover that except by failing. This caught `Tentacle` on its first
+run.
+
+Also asserts that **no property is carried by fewer than five components**,
+which is the whole reason recipes key off properties instead of item names,
+and that every rarity budget is reachable with parts that actually exist — a
+requirement nobody can meet is a bug, not difficulty.
+
+Then the potency curve (steepening, matching the cumulative harvest DCs),
+theme discounts that never substitute for potency, and origin stamping —
+including the conservative fallback, where an unstamped part is valued at the
+*lowest* DC it could be so scraps cannot be laundered into legendary reagents.
+
+### `craft-catalogue.test.js`
+
+Coverage of the four things a hunter makes — weapons, armour, consumables,
+potions — plus the rarity-derived potion table (nothing hand-typed, so nothing
+can drift) and the third-party registry: world recipes override shipped ones
+rather than duplicating them, re-registering never doubles up, and an invented
+category is shown after the known ones rather than dropped.
 
 ### `harvest-duplicates.test.js`
 

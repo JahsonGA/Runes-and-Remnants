@@ -30,8 +30,9 @@
               <li>
                 <button type="button" class="rnr-add {{#if this.selected}}rnr-picked{{/if}}"
                         data-action="pick-recipe" data-name="{{this.name}}"
-                        title="DC {{this.dc}} · {{this.hours}} hrs">
+                        title="DC {{this.dc}} · {{this.hours}} hrs{{#if this.rarity}} · {{this.rarity}}{{/if}}{{#if this.source}} · from {{this.source}}{{/if}}">
                   {{this.name}}
+                  {{#if this.source}}<span class="rnr-src-badge" title="Loaded from your own compendium">◈</span>{{/if}}
                 </button>
               </li>
             {{/each}}
@@ -94,9 +95,66 @@
           </p>
         {{/if}}
 
-        <div class="rnr-formula">
-          1d20 + {{plan.abilityLabel}}{{#if plan.proficient}} + proficiency{{/if}}
-          vs DC {{plan.dc}}
+        <!-- ===== Reagents: the Harvest ➜ Craft join ===== -->
+        {{#if plan.reagents}}
+          <div class="rnr-tier rnr-reagents {{#unless plan.reagents.met}}rnr-tier-short{{/unless}}">
+            <div class="rnr-tier-header">
+              Reagents — {{plan.reagents.propertyLabel}}
+              <span class="rnr-num {{#if plan.reagents.met}}rnr-ok{{else}}rnr-danger{{/if}}">
+                {{plan.reagents.potency}} / {{plan.reagents.needed}}
+              </span>
+            </div>
+            <p class="muted rnr-hint">{{plan.reagents.hint}}</p>
+
+            {{#if plan.reagents.used.length}}
+              <ul class="rnr-list rnr-pool">
+                {{#each plan.reagents.used}}
+                  <li>
+                    <span class="rnr-add rnr-picked" title="{{#if this.creatureType}}{{this.creatureType}} · {{/if}}potency {{this.potency}}">
+                      {{this.name}} <span class="rnr-num">{{this.potency}}</span>
+                      {{#if this.assumed}}<span class="rnr-src-badge" title="Unlabelled — valued at the least it could be worth">?</span>{{/if}}
+                    </span>
+                  </li>
+                {{/each}}
+              </ul>
+            {{/if}}
+
+            {{#if plan.reagents.met}}
+              {{#if plan.reagents.themed}}
+                <p class="rnr-ok">
+                  Fitting quarry — a {{plan.reagents.themeLabel}} part suits this brew.
+                  DC {{plan.reagents.dcAdjust}} (was {{plan.baseDc}}).
+                </p>
+              {{/if}}
+            {{else}}
+              <p class="warning">
+                Short by <b>{{plan.reagents.shortfall}}</b> potency. Bring more
+                {{plan.reagents.propertyLabel}} parts, or one cut from a tougher creature —
+                deeper components on the harvest list are worth far more.
+              </p>
+              <p class="muted rnr-hint">
+                Counts toward this:
+                {{#each plan.reagents.suggestions}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}…
+              </p>
+            {{/if}}
+
+            {{#if plan.reagents.themeLabel}}
+              {{#unless plan.reagents.themed}}
+                <p class="muted rnr-hint">
+                  A {{plan.reagents.themeLabel}} part would take 2 off the DC — helpful, never required.
+                </p>
+              {{/unless}}
+            {{/if}}
+          </div>
+        {{/if}}
+
+        <div class="rnr-formula {{#if plan.blocked}}rnr-blocked{{/if}}">
+          {{#if plan.blocked}}
+            No reagents on hand — nothing to brew from.
+          {{else}}
+            1d20 + {{plan.abilityLabel}}{{#if plan.proficient}} + proficiency{{/if}}
+            vs DC {{plan.dc}}
+          {{/if}}
         </div>
       {{else}}
         <p class="muted">Pick an item on the left to see what it takes to build.</p>

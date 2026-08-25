@@ -299,6 +299,24 @@ tr.rnr-missing td {
   cursor: pointer;
   white-space: nowrap;
 }
+/* ---- Reagents: the harvest ➜ craft join ---- */
+.rnr-reagents { margin-top: 8px; }
+.rnr-tier.rnr-tier-short { border-left: 2px solid var(--rnr-red, #b22222); }
+.rnr-ok { color: #7fa86b; }
+.rnr-formula.rnr-blocked {
+  color: var(--rnr-red, #b22222);
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+/* Marks a recipe read from the world's own compendium rather than shipped. */
+.rnr-src-badge {
+  color: var(--rnr-gold, #c8a44d);
+  font-size: 0.6rem;
+  margin-left: 3px;
+  vertical-align: super;
+  opacity: 0.8;
+}
 .rnr-add:hover {
   border-color: var(--rnr-red);
   color: #fff;

@@ -4,6 +4,7 @@
 import { HarvestMenu } from "./src/harvest/menu.js";
 import { RunesHub } from "./src/hub/hub.js";
 import { pickExecutorId } from "./src/harvest/logic.js";
+import { registerExtraSettings, loadExtraRecipes } from "./src/craft/extras.js";
 
 const MODULE_ID = "runes-and-remnants";
 
@@ -28,6 +29,14 @@ Hooks.once("init", () => {
 Hooks.once("init", () => {
   Handlebars.registerHelper("eq", (a, b) => a === b);
 });
+
+/**
+ * Third-party crafting content. The module ships SRD-safe names only;
+ * anything from a commercial book is read out of the world's own compendium
+ * at load. See src/craft/extras.js for why.
+ */
+Hooks.once("init", () => registerExtraSettings());
+Hooks.once("ready", () => loadExtraRecipes());
 
 /**
  * Register the hub's panels as Handlebars partials so hub.html can swap

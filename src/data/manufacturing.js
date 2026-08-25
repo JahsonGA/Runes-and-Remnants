@@ -54,6 +54,7 @@ const T = {
   leatherworker: "Leatherworker's tools",
   mason: "Mason's tools",
   painter: "Painter's supplies",
+  poisoner: "Poisoner's kit",
   smith: "Smith's tools",
   tinker: "Tinker's tools",
   weaver: "Weaver's tools",
@@ -69,7 +70,9 @@ const T = {
  * @property {number}   dc         Manufacturing check DC
  * @property {number}   materialGp Material yardstick in gp (see house rule above)
  * @property {number}   valueGp    Finished item value in gp
+ * @property {string}  [rarity]    Potions only; drives DC, time and cost
  * @property {boolean} [srd]       false = name comes from a third-party book
+ * @property {string}  [source]    Where a non-SRD recipe was loaded from
  */
 
 /** gp helpers so the table reads like the book. */
@@ -153,12 +156,118 @@ export const MANUFACTURING_TABLE = [
   { name: "Potion base",      category: "Consumable Base", tools: [T.alchemist, T.brewer, T.herbalism], hours: 2, dc: 15, materialGp: 2, valueGp: 5 },
   { name: "Spell scroll base",category: "Consumable Base", tools: [T.calligrapher, T.cartographer, T.painter], hours: 2, dc: 15, materialGp: 3, valueGp: 10 },
 
+  // ---------------- Consumables ----------------
+  // Finished mundane consumables — no magic, no formula, just craft and use.
+  // Distinct from Alchemy: these are known recipes with a fixed DC, whereas
+  // alchemy builds an unlisted concoction out of harvested ingredients.
+  { name: "Acid (vial)",             category: "Consumable", tools: [T.alchemist], hours: 4, dc: 15, materialGp: 8,  valueGp: 25 },
+  { name: "Alchemist's Fire (flask)",category: "Consumable", tools: [T.alchemist], hours: 6, dc: 17, materialGp: 17, valueGp: 50 },
+  { name: "Antitoxin (vial)",        category: "Consumable", tools: [T.alchemist, T.herbalism], hours: 6, dc: 17, materialGp: 17, valueGp: 50 },
+  { name: "Holy Water (flask)",      category: "Consumable", tools: [T.alchemist], hours: 1, dc: 15, materialGp: 25, valueGp: 25 },
+  { name: "Oil (flask)",             category: "Consumable", tools: [T.alchemist, T.brewer], hours: 1, dc: 11, materialGp: cp(3), valueGp: sp(1) },
+  { name: "Poison, Basic (vial)",    category: "Consumable", tools: [T.poisoner], hours: 8, dc: 18, materialGp: 33, valueGp: 100 },
+  { name: "Healer's Kit",            category: "Consumable", tools: [T.herbalism, T.leatherworker], hours: 4, dc: 13, materialGp: 2, valueGp: 5 },
+
   // ---------------- Focus & wondrous ----------------
   { name: "Instrument",     category: "Focus & Wondrous", tools: [T.carpenter, T.tinker, T.woodcarver], hours: 16, dc: 15, materialGp: 20, valueGp: 60 },
   { name: "Ring",           category: "Focus & Wondrous", tools: [T.jeweller], hours: 8, dc: 15, materialGp: null, valueGp: null },
   { name: "Rod, staff, wand",category: "Focus & Wondrous", tools: [T.carpenter, T.glassblower, T.smith, T.tinker, T.woodcarver], hours: 8, dc: 17, materialGp: null, valueGp: null },
   { name: "Wondrous item",  category: "Focus & Wondrous", tools: Object.keys(TOOL_ABILITY), hours: 8, dc: 15, materialGp: null, valueGp: null }
 ];
+
+// =========================================================
+// Potions
+//
+// Magic potions are not on the mundane Manufacturing table — they scale with
+// rarity, not with item type. Rather than hand-type thirty near-identical
+// rows and let them drift, the scale below is applied to a list of names.
+//
+// Time and cost follow the standard magic-item crafting progression, halved
+// because a consumable is spent rather than kept. The DC column is a HOUSE
+// scale, not a printed table — the published rules gate magic crafting on a
+// formula and spellcasting rather than on a check, but this campaign turns
+// everything into a roll, so rarity needs a difficulty.
+//
+// Per the house rule, the gp figure is the yardstick the GM converts into
+// monster parts. A Potion of Supreme Healing costing 10,000 gp means it wants
+// a genuinely rare remnant, not that anyone hands over the coin.
+// =========================================================
+
+/** @type {Record<string, {dc:number, hours:number, gp:number}>} */
+export const RARITY_CRAFTING = {
+  common:      { dc: 13, hours: 20,   gp: 25 },
+  uncommon:    { dc: 15, hours: 40,   gp: 100 },
+  rare:        { dc: 17, hours: 200,  gp: 1000 },
+  "very rare": { dc: 19, hours: 500,  gp: 10000 },
+  legendary:   { dc: 21, hours: 1000, gp: 50000 }
+};
+
+/** SRD 5.1 potions and oils, by rarity. Names only — no descriptions ship. */
+const POTIONS_BY_RARITY = {
+  common: [
+    "Potion of Healing",
+    "Potion of Climbing"
+  ],
+  uncommon: [
+    "Potion of Greater Healing",
+    "Potion of Animal Friendship",
+    "Potion of Fire Breath",
+    "Potion of Growth",
+    "Potion of Hill Giant Strength",
+    "Potion of Poison",
+    "Potion of Resistance",
+    "Potion of Water Breathing",
+    "Philter of Love",
+    "Oil of Slipperiness"
+  ],
+  rare: [
+    "Potion of Superior Healing",
+    "Potion of Diminution",
+    "Potion of Gaseous Form",
+    "Potion of Frost Giant Strength",
+    "Potion of Stone Giant Strength",
+    "Potion of Fire Giant Strength",
+    "Potion of Heroism",
+    "Potion of Invulnerability",
+    "Potion of Mind Reading",
+    "Oil of Etherealness"
+  ],
+  "very rare": [
+    "Potion of Supreme Healing",
+    "Potion of Cloud Giant Strength",
+    "Potion of Flying",
+    "Potion of Invisibility",
+    "Potion of Longevity",
+    "Potion of Speed",
+    "Potion of Vitality",
+    "Oil of Sharpness"
+  ],
+  legendary: [
+    "Potion of Storm Giant Strength"
+  ]
+};
+
+/**
+ * The potion catalogue, expanded from the rarity scale.
+ * Brewer's supplies and a herbalism kit both qualify alongside alchemy —
+ * a potion is as much a brew as a reaction.
+ */
+export const POTION_TABLE = Object.entries(POTIONS_BY_RARITY).flatMap(
+  ([rarity, names]) => names.map(name => ({
+    name,
+    category: "Potion",
+    rarity,
+    tools: [T.alchemist, T.brewer, T.herbalism],
+    hours: RARITY_CRAFTING[rarity].hours,
+    dc: RARITY_CRAFTING[rarity].dc,
+    materialGp: RARITY_CRAFTING[rarity].gp,
+    // Market value is roughly twice the cost to make. Left null rather than
+    // invented: this campaign has no potion market worth pricing.
+    valueGp: null
+  }))
+);
+
+MANUFACTURING_TABLE.push(...POTION_TABLE);
 
 /** Categories in the order the UI should show them. */
 export const MANUFACTURING_CATEGORIES = [
@@ -169,6 +278,8 @@ export const MANUFACTURING_CATEGORIES = [
   "Armour",
   "Ammunition",
   "Consumable Base",
+  "Consumable",
+  "Potion",
   "Focus & Wondrous",
   "Gear"
 ];

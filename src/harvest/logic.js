@@ -221,7 +221,32 @@ export function computeHelperBonus(helpers = [], skillKey = "sur", sizeKey = "me
 /**
  * Grants harvested materials to an actor or drops them on the map.
  */
-export async function grantMaterial({ item, qty = 1, toActor = null, dropAt = null }) {
+/**
+ * Lowest DC this component is ever worth, across every creature type.
+ *
+ * Used when a part in someone's pack predates origin stamping, or was made
+ * by hand. Deliberately the *lowest* — an unlabelled heart should not be
+ * assumed to have come off a dragon.
+ */
+export function lowestComponentDC(name) {
+  if (!name) return null;
+  const key = String(name).toLowerCase();
+  let lowest = null;
+  for (const tiers of Object.values(HARVEST_TABLE)) {
+    for (const tier of tiers) {
+      if (!tier.items.some(i => i.toLowerCase() === key)) continue;
+      if (lowest === null || tier.dc < lowest) lowest = tier.dc;
+    }
+  }
+  return lowest;
+}
+
+/**
+ * @param {object} [origin] Where the part came from — { creatureType, cr, dc,
+ *   essence }. Stamped onto the granted item so crafting can weigh it later
+ *   without guessing; a Heart is worth more off a dragon than off a goblin.
+ */
+export async function grantMaterial({ item, qty = 1, toActor = null, dropAt = null, origin = null }) {
   let q = Number(qty);
   if (Number.isNaN(q)) {
     try { q = (await new Roll(String(qty)).evaluate()).total; }
@@ -233,7 +258,7 @@ export async function grantMaterial({ item, qty = 1, toActor = null, dropAt = nu
   if (dropAt && pilesActive) {
     const api = game.modules.get("item-piles")?.api;
     if (api?.createItemPile) {
-      const data = item.toObject();
+      const data = stampOrigin(item.toObject(), origin);
       data.system = data.system || {};
       data.system.quantity = q;
       await api.createItemPile(dropAt, { items: [data] });
@@ -242,11 +267,22 @@ export async function grantMaterial({ item, qty = 1, toActor = null, dropAt = nu
   }
 
   if (toActor) {
-    const data = item.toObject();
+    const data = stampOrigin(item.toObject(), origin);
     data.system = data.system || {};
     data.system.quantity = q;
     await toActor.createEmbeddedDocuments("Item", [data]);
   }
+}
+
+/**
+ * Record where a component came from, in the module's own flag namespace so
+ * it survives export/import and never collides with the system's fields.
+ */
+export function stampOrigin(data, origin) {
+  if (!origin) return data;
+  data.flags = data.flags || {};
+  data.flags[MODULE_ID] = { ...(data.flags[MODULE_ID] ?? {}), origin };
+  return data;
 }
 
 /* ---------------------------------------------
