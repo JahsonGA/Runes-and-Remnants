@@ -9,6 +9,14 @@
   --rnr-wood:  #60402B;
   --rnr-ink:   #0c0c0f;
   --rnr-text:  #e6e0d6;
+
+  /* Two tones per accent. The dark ones are for borders and glows, where
+     contrast against a background does not matter. The 'lit' ones are for
+     TEXT: #734A12 on the panel ground is 2.5:1, which is atmospheric and
+     unreadable. These clear WCAG AA (4.5:1) while staying the same hue. */
+  --rnr-brown-lit: #B57C22;
+  --rnr-red-lit:   #E05252;
+  --rnr-good:      #96c47e;
 }
 
 /* HUD button */
@@ -44,7 +52,19 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  /* Flex children default to min-width:auto, which lets one long string
+     stretch the whole hub. Everything in here must be allowed to shrink. */
+  min-width: 0;
+  /* Declared here, not only on .grimdark .window-content. Most text in the
+     hub sets no colour of its own, so without this the panel inherits
+     whatever the surrounding Foundry theme provides — and dark text on these
+     near-black grounds is unreadable. v13 reworked application chrome, so
+     depending on an ancestor for something this load-bearing is a risk the
+     component should not take. */
+  color: var(--rnr-text);
 }
+.rnr-hub *, .rnr-panel * { min-width: 0; }
+.rnr-panel { max-width: 100%; }
 
 .rnr-tabs {
   display: flex;
@@ -84,7 +104,7 @@
   border-bottom: 2px solid #171315;
   color: #fff;
 }
-.rnr-tab.active .rnr-tab-label { color: var(--rnr-brown); font-weight: bold; }
+.rnr-tab.active .rnr-tab-label { color: var(--rnr-brown-lit); font-weight: bold; }
 
 .rnr-tab-icon {
   width: 26px;
@@ -108,7 +128,7 @@
   font-size: 0.58rem;
   text-transform: uppercase;
   letter-spacing: 0.07em;
-  color: var(--rnr-brown);
+  color: var(--rnr-brown-lit);
   border: 1px solid var(--rnr-wood);
   border-radius: 3px;
   padding: 0 4px;
@@ -122,7 +142,7 @@
   font-size: 0.8rem;
 }
 .rnr-steps li { margin-bottom: 0.45rem; }
-.rnr-steps b { color: var(--rnr-brown); display: block; }
+.rnr-steps b { color: var(--rnr-brown-lit); display: block; }
 .rnr-steps span { display: block; opacity: 0.9; }
 
 .rnr-formula {
@@ -137,17 +157,26 @@
 
 .rnr-ref {
   width: 100%;
+  /* Without this a long cell (a tool list, a joined ability set) sizes the
+     table to its content and pushes every other value off-screen, which is
+     exactly what "Wondrous item" used to do. */
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 0.75rem;
 }
 .rnr-ref td {
   padding: 2px 8px;
   border-bottom: 1px solid #1b1515;
+  overflow-wrap: anywhere;
 }
+/* Label column stays narrow; the value column takes the rest. */
+.rnr-ref td:first-child { width: 6.5rem; color: var(--rnr-brown-lit); }
 .rnr-ref tr:last-child td { border-bottom: none; }
-.rnr-ref .rnr-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.rnr-ref-head td { color: var(--rnr-brown); font-weight: bold; }
-.rnr-danger { color: var(--rnr-red); font-weight: bold; }
+.rnr-ref .rnr-num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Only genuinely numeric cells resist wrapping. */
+.rnr-ref .rnr-dc { white-space: nowrap; }
+.rnr-ref-head td { color: var(--rnr-brown-lit); font-weight: bold; }
+.rnr-danger { color: var(--rnr-red-lit); font-weight: bold; }
 
 .rnr-note {
   font-size: 0.75rem;
@@ -165,7 +194,7 @@
   padding: 6px 9px;
   margin: 0.5rem 0;
 }
-.rnr-status b { color: var(--rnr-brown); }
+.rnr-status b { color: var(--rnr-brown-lit); }
 
 /* Crafting bench */
 .rnr-add.rnr-picked {
@@ -174,7 +203,7 @@
   color: #fff;
 }
 .rnr-dcmod {
-  color: var(--rnr-brown);
+  color: var(--rnr-brown-lit);
   font-variant-numeric: tabular-nums;
 }
 .rnr-loot-controls button.active {
@@ -202,7 +231,7 @@
   border-radius: 10px;
   padding: 10px;
 }
-.rnr-card h3 { margin-top: 0; color: var(--rnr-brown); }
+.rnr-card h3 { margin-top: 0; color: var(--rnr-brown-lit); }
 
 /* Loot header row (title + Select All / Clear) */
 .rnr-loot-header {
@@ -245,17 +274,25 @@
   background: #0f0d0e;
 }
 .rnr-tier-header {
+  /* The reagent header carries a running total on the right, which needs to
+     stay clear of a label as long as "Structural or Fibrous or Viscous". */
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   padding: 2px 8px;
   font-size: 0.72rem;
   font-weight: bold;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--rnr-brown);
+  color: var(--rnr-brown-lit);
   border-bottom: 1px solid var(--rnr-wood);
   background: #1a1010;
+  overflow-wrap: anywhere;
 }
+.rnr-tier-header .rnr-num { flex: none; }
 .rnr-tier-essence .rnr-tier-header {
-  color: var(--rnr-red);
+  color: var(--rnr-red-lit);
 }
 .rnr-tier .rnr-list {
   list-style: none;
@@ -286,7 +323,7 @@ tr.rnr-missing td {
   flex-wrap: wrap;
   gap: 3px;
 }
-.rnr-pool li { padding: 0; }
+.rnr-pool li { padding: 0; min-width: 0; max-width: 100%; }
 .rnr-add {
   background: #1a1010;
   color: var(--rnr-text);
@@ -296,15 +333,21 @@ tr.rnr-missing td {
   font-size: 0.75rem;
   line-height: 1.5;
   width: auto;
+  max-width: 100%;
   cursor: pointer;
-  white-space: nowrap;
+  /* Harvest components are short ("Eye", "Bone") but recipe names are not
+     — "Potion of Storm Giant Strength" is 30 characters. Wrapping inside
+     the pill beats overflowing the panel. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 /* ---- Reagents: the harvest ➜ craft join ---- */
 .rnr-reagents { margin-top: 8px; }
 .rnr-tier.rnr-tier-short { border-left: 2px solid var(--rnr-red, #b22222); }
 .rnr-ok { color: #7fa86b; }
 .rnr-formula.rnr-blocked {
-  color: var(--rnr-red, #b22222);
+  color: var(--rnr-red-lit);
   border-style: dashed;
   opacity: 0.85;
 }
@@ -323,7 +366,7 @@ tr.rnr-missing td {
   box-shadow: 0 0 5px rgba(178, 34, 34, 0.5);
 }
 .rnr-taken {
-  color: var(--rnr-red);
+  color: var(--rnr-red-lit);
   font-weight: bold;
 }
 
@@ -338,7 +381,7 @@ tr.rnr-missing td {
   font-size: 0.66rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--rnr-brown);
+  color: var(--rnr-brown-lit);
   border-bottom: 1px solid var(--rnr-wood);
   padding: 2px 4px;
 }
@@ -348,7 +391,7 @@ tr.rnr-missing td {
   vertical-align: middle;
 }
 .rnr-harvest-list .rnr-order {
-  color: var(--rnr-brown);
+  color: var(--rnr-brown-lit);
   width: 1.4rem;
 }
 .rnr-harvest-list .rnr-num {
@@ -379,7 +422,7 @@ tr.rnr-missing td {
 }
 .rnr-row-actions button:hover {
   opacity: 1;
-  color: var(--rnr-red);
+  color: var(--rnr-red-lit);
 }
 .rnr-final-dc {
   margin: 4px 0 0;
@@ -427,7 +470,7 @@ tr.rnr-missing td {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--rnr-red);
+  color: var(--rnr-red-lit);
   font-weight: bold;
   margin-bottom: 0.25rem;
 }
@@ -553,7 +596,7 @@ tr.rnr-missing td {
 }
 
 .rnr-harvest-summary h3 {
-  color: var(--rnr-red);
+  color: var(--rnr-red-lit);
   text-transform: uppercase;
   font-size: 1.05rem;
   letter-spacing: 0.05em;

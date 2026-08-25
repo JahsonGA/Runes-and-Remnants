@@ -3,3 +3,7 @@ Runes-and-Remnants.zip
 .agents/
 skills-lock.json
 node_modules/
+# Playwright
+test-results/
+playwright-report/
+blob-report/

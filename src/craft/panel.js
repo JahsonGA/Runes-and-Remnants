@@ -23,6 +23,7 @@ import {
   componentsWithProperty
 } from "./logic.js";
 import { ENCHANTMENT_BASE } from "../data/alchemy.js";
+import { TOOL_ABILITY } from "../data/manufacturing.js";
 import { PROPERTY_LABELS, PROPERTY_HINTS } from "../data/reagents.js";
 
 const ABILITY_LABEL = { str: "Str", dex: "Dex", con: "Con", int: "Int", wis: "Wis", cha: "Cha" };
@@ -48,6 +49,20 @@ const POOL_GROUPS = [
   { label: "Either",             roles: ["both-modifier"] },
   { label: "Enchantment",        roles: ["enchantment-base", "enchantment"], isEnchant: true }
 ];
+
+/**
+ * Names the tools a build can use, without letting the list run away.
+ *
+ * "Wondrous item" accepts all nineteen artisan tools, which joined with
+ * " or " comes to 386 characters — enough to force the workbench table wider
+ * than the window and push every other value off-screen. Summarise instead.
+ */
+function toolLabel(tools = [], allToolCount = 0) {
+  if (!tools.length) return "—";
+  if (allToolCount && tools.length >= allToolCount) return "Any artisan's tools";
+  if (tools.length <= 3) return tools.join(" or ");
+  return `${tools.slice(0, 2).join(", ")} or ${tools.length - 2} others`;
+}
 
 /** Renders a DC modifier the way the source tables do: +2, −2, or a dash. */
 function signOf(dc) {
@@ -173,7 +188,8 @@ export class CraftPanel {
         item: recipe.name,
         dc: recipe.dc,
         hours: recipe.hours,
-        tool: recipe.tools.join(" or "),
+        tool: toolLabel(recipe.tools, Object.keys(TOOL_ABILITY).length),
+        toolTitle: recipe.tools.join(", "),
         abilityLabel: options.join(" or "),
         bonusLabel: "",
         materialLabel,
@@ -186,6 +202,10 @@ export class CraftPanel {
     const plan = planManufacture(recipe, crafter, crafter.parts ?? []);
     return {
       ...plan,
+      // planManufacture picks the one tool they can actually use; fall back
+      // to a summary rather than the full list when they have none of them.
+      tool: plan.proficient ? plan.tool : toolLabel(recipe.tools, Object.keys(TOOL_ABILITY).length),
+      toolTitle: recipe.tools.join(", "),
       abilityLabel: ABILITY_LABEL[plan.ability] ?? plan.ability ?? "—",
       bonusLabel: plan.bonus >= 0 ? `+${plan.bonus}` : String(plan.bonus),
       materialLabel,
