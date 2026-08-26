@@ -17,6 +17,8 @@ import { HUB_TABS, HUB_TAB_IDS, resolveTab } from "../data/hub-tabs.js";
 import { CraftPanel } from "../craft/panel.js";
 import { partsFromActor } from "../craft/logic.js";
 import { requestCraft } from "../craft/execute.js";
+import { EnchantPanel } from "../enchant/panel.js";
+import { requestEnchant, casterFrom } from "../enchant/execute.js";
 
 export { HUB_TABS };
 
@@ -28,6 +30,7 @@ export class RunesHub extends HarvestMenu {
     // Crafting keeps its own state in its own controller. Harvest still lives
     // in the base class; it moves here too once it is worth the churn.
     this.craft = new CraftPanel();
+    this.enchant = new EnchantPanel();
   }
 
   static get defaultOptions() {
@@ -76,6 +79,7 @@ export class RunesHub extends HarvestMenu {
     return {
       ...data,
       ...this.craft.getData(this._crafter()),
+      ...this.enchant.getData(this._caster()),
       activeTab: this.activeTab,
       tabs: HUB_TABS.map(t => ({ ...t, active: t.id === this.activeTab }))
     };
@@ -111,9 +115,34 @@ export class RunesHub extends HarvestMenu {
     };
   }
 
+  /**
+   * Who is at the enchanting bench.
+   *
+   * The same actor as the crafter, plus their spellcasting and the mundane
+   * items they could bind something into. Enchanting needs more of the sheet
+   * than crafting does — "only a spellcaster can bind a remnant".
+   */
+  _caster() {
+    const actor = game.actors?.get(this.harvester?.actorId);
+    if (!actor) return null;
+
+    return {
+      ...casterFrom(actor),
+      parts: partsFromActor(actor),
+      // Only mundane gear is enchantable; something already bound is Phase 6's
+      // problem, and harvested parts are ingredients rather than targets.
+      items: actor.items.filter(i =>
+        ["weapon", "equipment"].includes(i.type)
+        && !i.flags?.["runes-and-remnants"]?.enchanted
+        && !partsFromActor({ items: [i] }).length
+      )
+    };
+  }
+
   activateListeners(html) {
     super.activateListeners(html);
     this.craft.activateListeners(html, () => this.render(true));
+    this.enchant.activateListeners(html, () => this.render(true));
 
     // Crafting needs the actor, which the panel deliberately does not know
     // about — it is handed shaped data, not documents. So the hub owns this.
@@ -126,6 +155,27 @@ export class RunesHub extends HarvestMenu {
         : { actorId, recipe: this.craft.recipe });
 
       this.render(true);   // inventory changed; the bench must catch up
+    });
+
+    html.on("click", "[data-action='do-enchant']", async () => {
+      const actorId = this.harvester?.actorId;
+      if (!actorId) return ui.notifications?.warn("Assign a harvester first.");
+
+      await requestEnchant({
+        actorId,
+        itemId: this.enchant.itemId,
+        enchantment: this.enchant.enchantment,
+        remnantId: this.enchant.remnantId,
+        componentId: this.enchant.componentId,
+        attunement: this.enchant.attunement,
+        consumable: this.enchant.consumable
+      });
+
+      // The item was renamed and its materials spent; every selection is stale.
+      this.enchant.itemId = null;
+      this.enchant.remnantId = null;
+      this.enchant.componentId = null;
+      this.render(true);
     });
 
     // Delegated, so the in-panel "go harvest" shortcuts work too.

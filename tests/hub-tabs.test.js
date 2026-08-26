@@ -30,11 +30,13 @@ describe("HUB_TABS — structure", () => {
     expect(HUB_TAB_IDS.size).toBe(HUB_TABS.length);
   });
 
-  it("harvest and crafting both roll and grant; enchanting is still a sketch", () => {
-    const byId = Object.fromEntries(HUB_TABS.map(t => [t.id, t.status]));
-    expect(byId.harvest).toBe("live");
-    expect(byId.crafting).toBe("live");
-    expect(byId.enchanting).toBe("planned");
+  it("all three systems roll, spend and grant", () => {
+    // Phase 5 landed; nothing in the hub is a placeholder any more. The
+    // three-state model stays because Phase 6 will need `partial` again.
+    for (const tab of HUB_TABS) {
+      expect(tab.status, `"${tab.id}"`).toBe("live");
+      expect(tab.locked, `"${tab.id}"`).toBe(false);
+    }
   });
 });
 

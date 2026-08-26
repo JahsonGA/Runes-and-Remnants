@@ -10,6 +10,7 @@ Foundry entry point itself is [`index.js`](../index.js) at the project root.
 | [`hub/`](hub/HubDetails.md) | The hub shell — tab rail over the three systems |
 | [`harvest/`](harvest/HarvestDetails.md) | The Harvest System — UI application and pure game logic |
 | [`craft/`](craft/CraftDetails.md) | Manufacturing and Alchemy — recipes, DC maths, panel controller |
+| [`enchant/`](enchant/EnchantDetails.md) | Binding remnants into items — rarity ladder, flaws, panel controller |
 | [`data/`](data/DataDetails.md) | Static game data tables (creature type → materials) |
 
 ## Architectural rule

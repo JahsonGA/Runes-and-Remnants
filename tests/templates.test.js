@@ -129,7 +129,9 @@ describe("hub shell renders", () => {
 
     expect(html).toContain("Harvest");
     expect(html).toContain("Crafting");
-    expect(html).toContain("Planned");     // enchanting's badge; the live tabs carry none
+    // Every system is live now, so no tab carries a status badge.
+    expect(html).toContain("Enchanting");
+    expect(html).not.toContain("rnr-tab-badge");
     expect(html).not.toMatch(/\{\{/);
   });
 });

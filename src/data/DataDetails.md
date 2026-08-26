@@ -12,6 +12,7 @@ dependency — safe to import from tests.
 | [`manufacturing.js`](manufacturing.js) | Mundane item recipes: tool, ability, time, DC |
 | [`alchemy.js`](alchemy.js) | Alchemy ingredients: role, DC modifier, terrain, effect |
 | [`reagents.js`](reagents.js) | Component properties, potency scale, and which parts each potion demands |
+| [`enchanting.js`](enchanting.js) | Remnant tiers, the enchantment list, flaw bands and flaws |
 
 ---
 

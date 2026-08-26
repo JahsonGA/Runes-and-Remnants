@@ -44,7 +44,7 @@ export const HUB_TABS = [
     label: "Enchanting",
     icon: "icons/skills/trades/academics-book-study-purple.webp",
     hint: "Bind monster parts and remnants into magic items",
-    status: "planned"
+    status: "live"
   }
 ].map(tab => ({
   ...tab,

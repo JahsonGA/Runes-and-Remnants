@@ -187,10 +187,18 @@
 .rnr-ref td {
   padding: 2px 8px;
   border-bottom: 1px solid #1b1515;
-  overflow-wrap: anywhere;
+  /* break-word, not anywhere. `anywhere` also shrinks the cell's intrinsic
+     width, which under table-layout: fixed squeezed the rarity column until
+     it read "uncomm / on". This only breaks a word that genuinely cannot
+     fit. */
+  overflow-wrap: break-word;
 }
 /* Label column stays narrow; the value column takes the rest. */
 .rnr-ref td:first-child { width: 6.5rem; color: var(--rnr-brown-lit); }
+/* Reference tables carry four columns, so the numbers get a fixed sliver and
+   the wordy column keeps the remainder. */
+.rnr-ref-wide td:first-child { width: 4.5rem; }
+.rnr-ref-wide .rnr-num { width: 3.4rem; }
 .rnr-ref tr:last-child td { border-bottom: none; }
 .rnr-ref .rnr-num { text-align: right; font-variant-numeric: tabular-nums; }
 /* Only genuinely numeric cells resist wrapping. */
@@ -492,6 +500,31 @@ tr.rnr-missing td {
   border-style: dashed;
   opacity: 0.85;
 }
+
+/* ---- Enchanting ---- */
+/* An enchantment the chosen item cannot take. Dimmed rather than hidden, so a
+   player can see what a different item would let them make before going and
+   making it. */
+.rnr-tier-dim { opacity: 0.55; }
+.rnr-tier-dim .rnr-add { cursor: default; }
+
+.rnr-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  padding: 2px 0;
+  cursor: pointer;
+}
+.rnr-check input { width: auto; margin: 0; flex: none; }
+
+/* Flaws in the chat card. */
+.rnr-flaws {
+  margin: 0.3rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+}
+.rnr-flaws li { margin-bottom: 0.2rem; }
 
 /* Marks a recipe read from the world's own compendium rather than shipped. */
 .rnr-src-badge {

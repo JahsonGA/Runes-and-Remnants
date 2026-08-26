@@ -1,112 +1,247 @@
 <!-- =========================================================
-     Enchanting panel — magic items, remnants, ancestral weapons
-     Reference view. Automation lands in Phase 5.
+     Enchanting panel — bind a remnant into a mundane item.
+
+     Item + component + remnant + a caster's check. The component decides what
+     the item becomes; the remnant decides how strong. See
+     src/data/enchanting.js.
      ========================================================= -->
 <section class="rnr-columns">
 
-  <!-- ================= THE PROCESS ================= -->
-  <div class="rnr-card">
-    <h3>Enchanting</h3>
-
-    <p class="muted rnr-hint">
-      Drawing the power out of monster parts and binding it into a mundane
-      item — grafted on, or transferred by a caster's will.
-    </p>
-
-    <ol class="rnr-steps">
-      <li>
-        <b>A mundane item</b>
-        <span>Manufactured or bought. You cannot enchant what does not exist
-        yet.</span>
-      </li>
-      <li>
-        <b>A monster component</b>
-        <span>Set by the recipe. The component decides what the item
-        <i>becomes</i>.</span>
-      </li>
-      <li>
-        <b>A remnant</b>
-        <span>The creature's essence or soul, gathered before it fades. This
-        decides how <i>strong</i> the item is. Use a rarer remnant than the
-        recipe asks and the item takes that higher rarity — along with its
-        longer time and steeper DC.</span>
-      </li>
-      <li>
-        <b>Enchanting check</b>
-        <span>Rolled at the end of the enchanting time. Only a spellcaster can
-        do it.</span>
-      </li>
-    </ol>
-
-    <div class="rnr-formula">
-      Enchanting check = 1d20 + spellcasting ability + skill for the
-      creature's type
+  <!-- ================= THE CHOOSING ================= -->
+  <div class="rnr-card rnr-card-pinned">
+    <div class="rnr-loot-header">
+      <h3>Enchanting</h3>
     </div>
-    <p class="muted rnr-hint">
-      A wizard enchanting with a dragon's remnant rolls Intelligence
-      (Survival) — the ability is the caster's, the skill is the corpse's.
-    </p>
 
-    <p class="rnr-status">
-      <b>On failure</b> the enchantment can still take hold, but the item
-      gains flaws in proportion to how badly the check missed. Miss by 13 or
-      more and it is destroyed. Either way, the remnant and component are
-      consumed.
-    </p>
+    <div class="rnr-catalogue">
+      <p class="muted rnr-hint">
+        Draw the power out of a monster part and bind it into something you
+        already own. The component decides what it becomes; the remnant
+        decides how strong.
+      </p>
+
+      <!-- ---- 1. the item ---- -->
+      <div class="rnr-tier">
+        <div class="rnr-tier-header">1 · The item</div>
+        {{#if enchantItems.length}}
+          <ul class="rnr-list rnr-pool">
+            {{#each enchantItems}}
+              <li>
+                <button type="button" class="rnr-add {{#if this.selected}}rnr-picked{{/if}}"
+                        data-action="pick-enchant-item" data-value="{{this.id}}"
+                        title="{{this.kind}}">
+                  {{this.name}}
+                </button>
+              </li>
+            {{/each}}
+          </ul>
+        {{else}}
+          <p class="muted rnr-hint">
+            {{#if hasCaster}}
+              Nothing to enchant. Craft or buy a mundane item first — you
+              cannot enchant what does not exist yet.
+            {{else}}
+              Assign a harvester to see what they are carrying.
+            {{/if}}
+          </p>
+        {{/if}}
+      </div>
+
+      <!-- ---- 2. the enchantment ---- -->
+      {{#each enchantGroups}}
+        <div class="rnr-tier {{#unless this.fits}}rnr-tier-dim{{/unless}}">
+          <div class="rnr-tier-header">
+            2 · {{this.label}}
+            {{#unless this.fits}}<span class="rnr-num muted">needs a different item</span>{{/unless}}
+          </div>
+          <ul class="rnr-list rnr-pool">
+            {{#each this.items}}
+              <li>
+                <button type="button" class="rnr-add {{#if this.selected}}rnr-picked{{/if}}"
+                        data-action="pick-enchantment" data-value="{{this.name}}"
+                        title="{{this.effect}} — needs a {{this.property}} component, {{this.rarity}} or better">
+                  {{this.name}} <span class="rnr-dcmod">{{this.rarity}}</span>
+                </button>
+              </li>
+            {{/each}}
+          </ul>
+        </div>
+      {{/each}}
+
+      <!-- ---- 3. the component ---- -->
+      {{#if enchantPlanData}}
+        <div class="rnr-tier">
+          <div class="rnr-tier-header">
+            3 · The component
+            <span class="rnr-num muted">{{enchantPlanData.property}}</span>
+          </div>
+          {{#if enchantComponents.length}}
+            <ul class="rnr-list rnr-pool">
+              {{#each enchantComponents}}
+                <li>
+                  <button type="button" class="rnr-add {{#if this.selected}}rnr-picked{{/if}}"
+                          data-action="pick-enchant-component" data-value="{{this.id}}"
+                          title="{{#if this.creatureType}}from a {{this.creatureType}}{{/if}}">
+                    {{this.name}}
+                  </button>
+                </li>
+              {{/each}}
+            </ul>
+          {{else}}
+            <p class="muted rnr-hint">
+              Nothing {{enchantPlanData.property}} in the pack. Go and cut one.
+            </p>
+          {{/if}}
+        </div>
+      {{/if}}
+
+      <!-- ---- 4. the remnant ---- -->
+      <div class="rnr-tier rnr-tier-essence">
+        <div class="rnr-tier-header">4 · The remnant</div>
+        {{#if enchantRemnants.length}}
+          <ul class="rnr-list rnr-pool">
+            {{#each enchantRemnants}}
+              <li>
+                <button type="button" class="rnr-add {{#if this.selected}}rnr-picked{{/if}}"
+                        data-action="pick-remnant" data-value="{{this.id}}"
+                        title="{{this.rarity}}{{#if this.creatureType}} · {{this.creatureType}}{{/if}}">
+                  {{this.name}} <span class="rnr-dcmod">{{this.rarity}}</span>
+                </button>
+              </li>
+            {{/each}}
+          </ul>
+          <p class="muted rnr-hint">
+            A stronger remnant than the recipe asks for raises the item's
+            rarity — and its DC and hours with it.
+          </p>
+        {{else}}
+          <p class="muted rnr-hint">
+            No remnants carried. An essence is pulled from a corpse at the
+            deep end of the harvest list, before it fades.
+          </p>
+        {{/if}}
+      </div>
+
+      <label class="rnr-check">
+        <input type="checkbox" data-action="enchant-toggle" data-field="attunement"
+               {{#if attunement}}checked{{/if}}> Requires attunement (doubles the hours)
+      </label>
+      <label class="rnr-check">
+        <input type="checkbox" data-action="enchant-toggle" data-field="consumable"
+               {{#if consumable}}checked{{/if}}> A consumable (far quicker)
+      </label>
+    </div>
   </div>
 
-  <!-- ================= REFERENCE ================= -->
-  <div class="rnr-card">
-    <h3>Rarity &amp; Remnants</h3>
-
-    <div class="rnr-tier">
-      <div class="rnr-tier-header">Remnant → Rarity → Difficulty</div>
-      <table class="rnr-ref">
-        <tr class="rnr-ref-head">
-          <td>Remnant</td><td>Rarity</td><td class="rnr-num">DC</td><td class="rnr-num">Hours*</td>
-        </tr>
-        <tr><td>—</td><td>Common</td><td class="rnr-num">12</td><td class="rnr-num">1</td></tr>
-        <tr><td>Frail</td><td>Uncommon</td><td class="rnr-num">15</td><td class="rnr-num">10</td></tr>
-        <tr><td>Robust</td><td>Rare</td><td class="rnr-num">18</td><td class="rnr-num">40</td></tr>
-        <tr><td>Potent</td><td>Very Rare</td><td class="rnr-num">21</td><td class="rnr-num">160</td></tr>
-        <tr><td>Mythic</td><td>Legendary</td><td class="rnr-num">25</td><td class="rnr-num">640</td></tr>
-        <tr><td>Deific</td><td>Artifact</td><td class="rnr-num">30</td><td class="rnr-num">100,000</td></tr>
-      </table>
-      <p class="muted rnr-hint">*Non-attunement. Consumables are far quicker; attunement doubles it.</p>
+  <!-- ================= THE BINDING ================= -->
+  <div class="rnr-card rnr-card-pinned">
+    <div class="rnr-loot-header">
+      <h3>The Binding</h3>
     </div>
 
-    <div class="rnr-tier">
-      <div class="rnr-tier-header">Flaws on a failed check</div>
-      <table class="rnr-ref">
-        <tr><td>0 or better</td><td>No flaws</td></tr>
-        <tr><td>−1 to −4</td><td>One flaw</td></tr>
-        <tr><td>−5 to −8</td><td>Two flaws</td></tr>
-        <tr><td>−9 to −12</td><td>Three flaws</td></tr>
-        <tr><td>−13 or worse</td><td class="rnr-danger">Item destroyed</td></tr>
-      </table>
+    <div class="rnr-bench-body">
+      {{#if enchantPlanData}}
+        <div class="rnr-tier">
+          <div class="rnr-tier-header">
+            {{enchantPlanData.enchantment}}
+            <span class="rnr-num">{{enchantPlanData.rarity}}</span>
+          </div>
+          <p class="rnr-note">{{enchantPlanData.effect}}</p>
+          <table class="rnr-ref">
+            <tr><td>Item</td><td class="rnr-num">{{#if enchantPlanData.item}}{{enchantPlanData.item}}{{else}}—{{/if}}</td></tr>
+            <tr><td>Check</td><td class="rnr-num rnr-dc">DC {{enchantPlanData.dc}}</td></tr>
+            <tr><td>Ability</td><td class="rnr-num">{{#if enchantPlanData.ability}}{{enchantPlanData.ability}} ({{enchantPlanData.skill}}){{else}}{{enchantPlanData.skill}}{{/if}}</td></tr>
+            <tr><td>Time</td><td class="rnr-num">{{enchantPlanData.hours}} hrs</td></tr>
+            <tr><td>Remnant</td><td class="rnr-num">{{#if enchantPlanData.remnant}}{{enchantPlanData.remnant}}{{else}}—{{/if}}</td></tr>
+            <tr><td>Component</td><td class="rnr-num">{{#if enchantPlanData.component}}{{enchantPlanData.component}}{{else}}—{{/if}}</td></tr>
+          </table>
+        </div>
+
+        {{#if enchantPlanData.upgraded}}
+          <p class="rnr-ok">
+            A {{enchantPlanData.remnantTier}} remnant carries this further than
+            {{enchantPlanData.askedRarity}} — the item comes out
+            {{enchantPlanData.rarity}}, at a steeper DC and longer hours.
+          </p>
+        {{/if}}
+
+        {{#if enchantPlanData.blockers.length}}
+          <ul class="rnr-list rnr-errors">
+            {{#each enchantPlanData.blockers}}<li class="rnr-danger">{{this}}</li>{{/each}}
+          </ul>
+        {{else}}
+          <div class="rnr-formula">
+            1d20 + {{enchantPlanData.ability}}{{#if enchantPlanData.proficient}} + proficiency{{/if}}
+            vs DC {{enchantPlanData.dc}}
+          </div>
+          <p class="muted rnr-hint">
+            The ability is the caster's; the skill is the corpse's.
+          </p>
+        {{/if}}
+      {{else}}
+        <p class="muted">Choose an enchantment to see what it takes.</p>
+      {{/if}}
+
+      <!-- ---- reference, still true now it is automated ---- -->
+      <div class="rnr-tier">
+        <div class="rnr-tier-header">Remnant → Rarity → Difficulty</div>
+        <table class="rnr-ref rnr-ref-wide">
+          <tr class="rnr-ref-head">
+            <td>Remnant</td><td>Rarity</td><td class="rnr-num">DC</td><td class="rnr-num">Hours</td>
+          </tr>
+          {{#each remnantTiers}}
+            <tr><td>{{this.remnant}}</td><td>{{this.rarity}}</td>
+                <td class="rnr-num">{{this.dc}}</td><td class="rnr-num">{{this.hours}}</td></tr>
+          {{/each}}
+        </table>
+      </div>
+
+      <div class="rnr-tier">
+        <div class="rnr-tier-header">Flaws on a failed check</div>
+        <table class="rnr-ref">
+          {{#each flawBands}}
+            <tr><td>{{this.range}}</td>
+                <td class="{{#if this.destroyed}}rnr-danger{{/if}}">{{this.result}}</td></tr>
+          {{/each}}
+        </table>
+        <p class="rnr-note">
+          A miss still binds — badly. The remnant and component are consumed
+          either way; the power left them the moment the binding began.
+        </p>
+      </div>
+
+      <div class="rnr-tier rnr-tier-essence">
+        <div class="rnr-tier-header">Ancestral Weapons</div>
+        <p class="rnr-note">
+          One weapon per character, grown rather than replaced. Upgrades cost
+          <b>spirit points</b>, earned through deeds rather than harvested.
+        </p>
+        <p class="rnr-note">
+          A remnant may stand in for spirit points — but spend one that way and
+          the weapon can <b>never be enchanted again</b>. At 20 points it
+          awakens, takes 5 final points, and is finished.
+        </p>
+        <p class="rnr-status">
+          <b>Not yet automated.</b> Spirit points and weapon progression are
+          Phase&nbsp;6.
+        </p>
+      </div>
     </div>
 
-    <div class="rnr-tier rnr-tier-essence">
-      <div class="rnr-tier-header">Ancestral Weapons</div>
-      <p class="rnr-note">
-        One weapon per character, grown rather than replaced. Upgrades cost
-        <b>spirit points</b>, earned through deeds rather than harvested.
-      </p>
-      <p class="rnr-note">
-        A remnant may stand in for spirit points — but spend one that way and
-        the weapon can <b>never be enchanted again</b>. At 20 points it
-        awakens, takes 5 final points, and is finished.
-      </p>
-    </div>
-
-    <p class="rnr-status">
-      <b>Not yet automated.</b> Socketing, rarity scaling, flaws and weapon
-      progression arrive in Phase&nbsp;5.
-    </p>
-
-    <div class="actions">
+    <div class="actions rnr-craft-actions">
+      {{#if canEnchant}}
+        <button type="button" class="rnr-craft-go" data-action="do-enchant"
+                {{#if enchantBlocked}}disabled{{/if}}
+                title="{{enchantHint}}">
+          {{enchantLabel}}
+        </button>
+      {{/if}}
       <button type="button" data-action="switch-tab" data-tab="harvest">← Go gather remnants</button>
     </div>
+
+    {{#if enchantHint}}
+      <p class="muted rnr-hint rnr-craft-hint">{{enchantHint}}</p>
+    {{/if}}
   </div>
 
 </section>

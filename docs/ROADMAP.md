@@ -299,9 +299,29 @@ package stays clean.
 
 ---
 
-## Phase 5 — Rune / Enchantment System
+## Phase 5 — Enchantment System  ✅ *done*
 
-Socketing, enchantment application, item evolution, corruption mechanics.
+Bind a remnant into a mundane item. Item + component + remnant + a caster's
+check.
+
+- **The component decides what it becomes**, keyed to the eight properties
+  from § 4.1b rather than to named parts — a venomous blade takes any venom
+  gland. 24 enchantments across weapon, armour and wondrous.
+- **The remnant decides how strong.** Every enchantment names a floor rarity;
+  a stronger remnant raises the item past it, with the steeper DC and longer
+  hours that follow. The tiers *are* the essences harvest already drops, so
+  a party's loot feeds straight in.
+- **The check is the caster's ability and the corpse's skill** — a wizard
+  working a dragon's remnant rolls Intelligence (Survival). Spellcasters only.
+- **Failure still binds, badly.** Flaws in proportion to the miss; destroyed
+  at −13. A natural 1 gives three flaws rather than dust, because losing a
+  Deific remnant to one die roll is not a risk anyone would take.
+- Materials are consumed whatever the roll. The panel says so beforehand.
+- The item is **rewritten, not replaced**, so sheet slots and effects
+  pointing at it survive.
+
+Still open: socketed runes and corruption mechanics, which were sketched in
+the original Phase 5 scope and are better placed alongside Phase 6.
 
 ## Phase 6 — Ancestral Weapons
 

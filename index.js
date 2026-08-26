@@ -6,6 +6,7 @@ import { RunesHub } from "./src/hub/hub.js";
 import { pickExecutorId } from "./src/harvest/logic.js";
 import { registerExtraSettings, loadExtraRecipes } from "./src/craft/extras.js";
 import { executeCraft, isCraftExecutor } from "./src/craft/execute.js";
+import { executeEnchant, isEnchantExecutor } from "./src/enchant/execute.js";
 
 const MODULE_ID = "runes-and-remnants";
 
@@ -82,6 +83,12 @@ Hooks.once("ready", () => {
       const token = payload.tokenUuid ? await fromUuid(payload.tokenUuid) : null;
       const tokenDoc = token?.document ?? token ?? null;
       RunesHub.open({ tokenDoc, tab: "harvest" });
+      return;
+    }
+
+    if (payload.action === "requestEnchant") {
+      if (!isEnchantExecutor()) return;
+      await executeEnchant(payload);
       return;
     }
 

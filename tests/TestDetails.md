@@ -1,9 +1,9 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **317 tests across 15 files**,
+Vitest suite plus a standalone packaging check. **359 tests across 16 files**,
 all runnable without a Foundry runtime.
 
-A second suite runs in a real browser. **30 Playwright tests** render the
+A second suite runs in a real browser. **40 Playwright tests** render the
 module's own templates and stylesheet and check that the result is usable —
 the class of bug string assertions cannot see.
 
@@ -35,6 +35,7 @@ collects the Playwright files and fails on the missing runner.
 | [`craft-catalogue.test.js`](craft-catalogue.test.js) | 26 | Category coverage, consumables, rarity-derived potions, third-party loading |
 | [`craft-reagents.test.js`](craft-reagents.test.js) | 52 | Component tagging coverage, potency scale, gear and potion budgets, origin stamping |
 | [`craft-outcome.test.js`](craft-outcome.test.js) | 22 | Roll grading, graded failure, reagent selection, stack consumption |
+| [`enchant.test.js`](enchant.test.js) | 42 | Remnant tiers, rarity normalising, the plan, flaws on failure |
 | [`templates.test.js`](templates.test.js) | 13 | Handlebars templates compile and render against real panel data |
 | [`check-assets.mjs`](check-assets.mjs) | — | Not Vitest. Standalone packaging guard |
 
@@ -155,6 +156,31 @@ the whole stack and deducted a single item, which would have let the same
 bones be spent indefinitely. Caught by reading a screenshot, not by a test —
 so there is one now.
 
+### `enchant.test.js`
+
+The rules of binding a remnant into an item.
+
+Two assertions matter more than the rest. **Every remnant tier must be an
+essence the harvest table actually drops** — a tier nobody can obtain is a
+dead branch in the loop, and this is the test that keeps Enchanting wired to
+Harvest rather than merely adjacent to it. And **every enchantment must have a
+component that satisfies it**, plus something low-rarity for each item kind:
+a party that has only ever killed a wolf should still have an option.
+
+`normaliseRarity` gets its own block because three spellings of "very rare"
+are in play at once — `veryRare` from the essence table, `very rare` from
+manufacturing, `veryRare` from dnd5e. Comparing them raw would read a very
+rare remnant as unknown and quietly downgrade an item the party worked for.
+
+The DCs, hours and flaw bands are pinned against the numbers the panel has
+printed since before any of it was automated, so the implementation cannot
+drift away from what a table has been reading at the bench.
+
+Also covers: a stronger remnant raising rarity, DC and hours together; a
+weaker one blocking outright; every blocker reported at once rather than one
+per reload; and that a natural 1 gives three flaws rather than destroying the
+item — losing a Deific remnant to one die roll is not a risk anyone would take.
+
 ### `craft-catalogue.test.js`
 
 Coverage of the four things a hunter makes — weapons, armour, consumables,
@@ -180,7 +206,7 @@ off-screen. Every existing test passed. It read as four empty rows.
 |---|---|---|
 | [`ui/harness.js`](ui/harness.js) | — | Builds a full page for one hub state |
 | [`ui/layout.spec.js`](ui/layout.spec.js) | 13 | Overflow, clipping, unreachable content, scrollbars, narrow windows |
-| [`ui/usable.spec.js`](ui/usable.spec.js) | 17 | Controls present, hittable, keyboard-reachable, legible; catalogue scroll and filter |
+| [`ui/usable.spec.js`](ui/usable.spec.js) | 27 | Controls present, hittable, keyboard-reachable, legible; catalogue scroll, filter, enchanting flow |
 
 **The layout sweep renders every recipe in two states** — with a crafter and
 without. That matters: with one, `planManufacture` resolves the single tool

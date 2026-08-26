@@ -7,7 +7,7 @@
 // =========================================================
 
 import { test, expect } from "@playwright/test";
-import { hubPage, fullCrafter } from "./harness.js";
+import { hubPage, fullCrafter, fullCaster } from "./harness.js";
 import { HUB_TABS } from "../../src/data/hub-tabs.js";
 
 /** Smallest comfortable pointer target. Below this, people miss. */
@@ -38,12 +38,14 @@ test.describe("the controls are there and work", () => {
     await expect(page.locator(".rnr-status").first()).toBeVisible();
   });
 
-  test("each tab carries its status badge", async ({ page }) => {
+  test("a live system carries no status badge", async ({ page }) => {
+    // The badge exists to announce an unfinished system. All three are
+    // finished now, so none should be shouting about itself.
     await page.setContent(hubPage({ tab: "harvest" }));
-    // Live systems carry no badge; only the unbuilt one announces itself.
-    await expect(page.locator('[data-tab="enchanting"] .rnr-tab-badge')).toHaveText("Planned");
-    await expect(page.locator('[data-tab="harvest"] .rnr-tab-badge')).toHaveCount(0);
-    await expect(page.locator('[data-tab="crafting"] .rnr-tab-badge')).toHaveCount(0);
+    for (const tab of HUB_TABS) {
+      await expect(page.locator(`[data-tab="${tab.id}"] .rnr-tab-badge`),
+        `"${tab.id}" is live but still badged`).toHaveCount(0);
+    }
   });
 
   test("every tab icon actually resolves to a path", async ({ page }) => {
@@ -232,5 +234,95 @@ test.describe("the catalogue is navigable", () => {
     await expect(go).toBeVisible();
     await expect(go).toBeDisabled();
     await expect(page.locator(".rnr-craft-hint")).toContainText("Short");
+  });
+});
+
+test.describe("enchanting", () => {
+  const bound = {
+    itemId: "w1", enchantment: "Keen", remnantId: "r1", componentId: "c1"
+  };
+
+  test("walks the player through the four choices in order", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "enchanting", caster: fullCaster() }));
+    for (const step of ["1 · The item", "2 ·", "4 · The remnant"]) {
+      await expect(page.getByText(step, { exact: false }).first()).toBeVisible();
+    }
+  });
+
+  test("offers only components matching the chosen enchantment", async ({ page }) => {
+    // Venomous wants a virulent part; teeth and a heart are not.
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: fullCaster(),
+      enchant: { itemId: "w1", enchantment: "Venomous" }
+    }));
+    const components = page.locator("[data-action='pick-enchant-component']");
+    await expect(components).toHaveCount(1);
+    await expect(components).toContainText("Poison Gland");
+  });
+
+  test("never offers a remnant as a component", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: fullCaster(),
+      enchant: { itemId: "w1", enchantment: "Keen" }
+    }));
+    const components = page.locator("[data-action='pick-enchant-component']");
+    await expect(components).not.toContainText("Essence");
+  });
+
+  test("dims what the chosen item cannot take, rather than hiding it", async ({ page }) => {
+    // A player should be able to see what a different item would allow.
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: fullCaster(), enchant: { itemId: "w1" }
+    }));
+    const dim = page.locator(".rnr-tier-dim");
+    await expect(dim.first()).toBeVisible();
+    await expect(dim.first()).toContainText("needs a different item");
+  });
+
+  test("shows the binding, and says the remnant raised it", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "enchanting", caster: fullCaster(), enchant: bound }));
+    await expect(page.locator(".rnr-bench-body")).toContainText("DC 21");
+    await expect(page.locator(".rnr-ok")).toContainText("Potent");
+    await expect(page.locator("[data-action='do-enchant']")).toBeEnabled();
+  });
+
+  test("names what will be consumed before the click", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "enchanting", caster: fullCaster(), enchant: bound }));
+    await expect(page.locator(".rnr-craft-hint")).toContainText("Essence (Potent)");
+    await expect(page.locator(".rnr-craft-hint")).toContainText("whatever the roll");
+  });
+
+  test("lists every blocker at once, with the button disabled", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: fullCaster(),
+      // Lifedrinker is a weapon enchantment needing a rare remnant and a
+      // vital component. Armour, a frail remnant and teeth fail all three.
+      enchant: { itemId: "a1", enchantment: "Lifedrinker", remnantId: "r2", componentId: "c1" }
+    }));
+    const errors = page.locator(".rnr-errors li");
+    expect(await errors.count()).toBeGreaterThanOrEqual(2);
+    await expect(page.locator("[data-action='do-enchant']")).toBeDisabled();
+  });
+
+  test("tells a non-caster why they cannot", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: fullCaster({ isCaster: false, ability: null }),
+      enchant: bound
+    }));
+    await expect(page.locator(".rnr-errors")).toContainText(/spellcaster/i);
+  });
+
+  test("asks for a harvester before anything else", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "enchanting", caster: null }));
+    await expect(page.locator(".rnr-catalogue")).toContainText("Assign a harvester");
+  });
+
+  test("keeps the reference tables now that it is automated", async ({ page }) => {
+    // They are what a table reads at the bench, and they are still true.
+    await page.setContent(hubPage({ tab: "enchanting", caster: fullCaster() }));
+    const body = page.locator(".rnr-bench-body");
+    await expect(body).toContainText("Remnant → Rarity → Difficulty");
+    await expect(body).toContainText("Flaws on a failed check");
+    await expect(body).toContainText("Ancestral Weapons");
   });
 });
