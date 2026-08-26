@@ -13,7 +13,7 @@
 // into a shell plus per-panel controllers.
 
 import { HarvestMenu } from "../harvest/menu.js";
-import { HUB_TABS, HUB_TAB_IDS, resolveTab } from "../data/hub-tabs.js";
+import { HUB_TABS, HUB_TAB_IDS, resolveTab, SCROLL_REGIONS } from "../data/hub-tabs.js";
 import { CraftPanel } from "../craft/panel.js";
 import { partsFromActor } from "../craft/logic.js";
 import { requestCraft } from "../craft/execute.js";
@@ -45,6 +45,10 @@ export class RunesHub extends HarvestMenu {
       // the workbench visible while you browse.
       height: 720,
       resizable: true,
+      // Foundry rebuilds the DOM on every render, which drops scroll position.
+      // Without this, adding the fourth component to a harvest list throws you
+      // back to the top before you can pick the fifth.
+      scrollY: SCROLL_REGIONS,
       classes: ["rnr-harvest", "grimdark", "rnr-hub-app"]
     });
   }

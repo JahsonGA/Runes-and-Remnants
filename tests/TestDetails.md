@@ -3,7 +3,7 @@
 Vitest suite plus a standalone packaging check. **359 tests across 16 files**,
 all runnable without a Foundry runtime.
 
-A second suite runs in a real browser. **40 Playwright tests** render the
+A second suite runs in a real browser. **42 Playwright tests** render the
 module's own templates and stylesheet and check that the result is usable —
 the class of bug string assertions cannot see.
 
@@ -205,7 +205,7 @@ off-screen. Every existing test passed. It read as four empty rows.
 | File | Tests | Covers |
 |---|---|---|
 | [`ui/harness.js`](ui/harness.js) | — | Builds a full page for one hub state |
-| [`ui/layout.spec.js`](ui/layout.spec.js) | 13 | Overflow, clipping, unreachable content, scrollbars, narrow windows |
+| [`ui/layout.spec.js`](ui/layout.spec.js) | 15 | Overflow, clipping, unreachable content, scrollbars, scroll restore, narrow windows |
 | [`ui/usable.spec.js`](ui/usable.spec.js) | 27 | Controls present, hittable, keyboard-reachable, legible; catalogue scroll, filter, enchanting flow |
 
 **The layout sweep renders every recipe in two states** — with a crafter and
@@ -232,6 +232,11 @@ rest**:
   clipped. Gutter width is host-dependent, so the test asserts the module has
   said something explicit (`scrollbar-color` is not `auto`, and a gutter is
   reserved) rather than pinning a pixel count.
+- *scroll survives a render* — Foundry rebuilds the DOM on render and restores
+  scroll only for the selectors named in `scrollY`. A region that scrolls but
+  is not listed snaps to the top on every click, which is what adding a fourth
+  component to a harvest list used to do. Checked in both directions: nothing
+  scrolls that is undeclared, and nothing is declared that matches no panel.
 
 The suite was verified by reverting the fix and confirming it fails, which is
 the only way to know a layout test is worth having. It reported *"3 of 200

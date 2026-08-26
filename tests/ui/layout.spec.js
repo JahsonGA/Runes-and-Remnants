@@ -7,7 +7,8 @@
 // =========================================================
 
 import { test, expect } from "@playwright/test";
-import { hubPage, fullCrafter, allRecipeNames, HUB_WIDTH } from "./harness.js";
+import { hubPage, fullCrafter, fullCaster, allRecipeNames, HUB_WIDTH } from "./harness.js";
+import { SCROLL_REGIONS } from "../../src/data/hub-tabs.js";
 
 /**
  * Anything that sticks out past the window frame.
@@ -232,5 +233,45 @@ test.describe("nothing is cut off with no way to reach it", () => {
         expect(r.gutter, `"${r.cls}" reserves no room for a scrollbar`).toBeGreaterThan(4);
       }
     }
+  });
+});
+
+test.describe("scroll position survives a re-render", () => {
+  test("every region that scrolls is declared in scrollY", async ({ page }) => {
+    // Foundry rebuilds the DOM on render and restores scroll only for the
+    // selectors named in `scrollY`. A region that scrolls but is not listed
+    // silently snaps to the top on every click — which is what adding a
+    // fourth component to a harvest list used to do.
+    for (const tab of ["harvest", "crafting", "enchanting"]) {
+      await page.setContent(hubPage({ tab, caster: fullCaster(), crafter: fullCrafter() }));
+
+      const undeclared = await page.evaluate(selectors => {
+        const out = [];
+        for (const el of document.querySelectorAll(".rnr-hub, .rnr-hub *")) {
+          const o = getComputedStyle(el).overflowY;
+          if (o !== "auto" && o !== "scroll") continue;
+          if (el.scrollHeight <= el.clientHeight + 1) continue;    // not actually scrolling
+          if (selectors.some(s => el.matches(s))) continue;
+          out.push(String(el.className).slice(0, 40));
+        }
+        return out;
+      }, SCROLL_REGIONS);
+
+      expect(undeclared, `"${tab}" has scrolling regions missing from scrollY`).toEqual([]);
+    }
+  });
+
+  test("scrollY names nothing that does not exist", async ({ page }) => {
+    // A stale selector is dead weight and hides the fact that the region it
+    // was meant to cover has been renamed.
+    const seen = new Set();
+    for (const tab of ["harvest", "crafting", "enchanting"]) {
+      await page.setContent(hubPage({ tab, caster: fullCaster(), crafter: fullCrafter() }));
+      for (const sel of SCROLL_REGIONS) {
+        if (await page.locator(sel).count()) seen.add(sel);
+      }
+    }
+    const dead = SCROLL_REGIONS.filter(s => !seen.has(s));
+    expect(dead, "scrollY selectors that match nothing in any panel").toEqual([]);
   });
 });

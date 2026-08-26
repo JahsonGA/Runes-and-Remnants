@@ -53,6 +53,25 @@ export const HUB_TABS = [
   badge: STATUS_LABEL[tab.status]
 }));
 
+/**
+ * Every region in the hub that scrolls.
+ *
+ * Foundry rebuilds the whole application on render, which drops scroll
+ * position — so picking the fourth component off a long harvest list threw
+ * you back to the top before you could pick the fifth. Passing these as
+ * `scrollY` in defaultOptions makes Foundry save and restore them around
+ * each render.
+ *
+ * Kept here rather than inline in hub.js so a test can check the list against
+ * what the templates actually scroll; the two drifting apart is silent.
+ */
+export const SCROLL_REGIONS = [
+  ".rnr-catalogue",
+  ".rnr-bench-body",
+  ".rnr-card",
+  ".rnr-dropdown"
+];
+
 /** Tab ids, for validating what a caller asked to open. */
 export const HUB_TAB_IDS = new Set(HUB_TABS.map(t => t.id));
 
