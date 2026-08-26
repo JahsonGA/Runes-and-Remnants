@@ -7,6 +7,7 @@ import { pickExecutorId } from "./src/harvest/logic.js";
 import { registerExtraSettings, loadExtraRecipes } from "./src/craft/extras.js";
 import { executeCraft, isCraftExecutor } from "./src/craft/execute.js";
 import { executeEnchant, isEnchantExecutor } from "./src/enchant/execute.js";
+import { registerConfirmSetting } from "./src/ui/confirm.js";
 
 const MODULE_ID = "runes-and-remnants";
 
@@ -38,6 +39,7 @@ Hooks.once("init", () => {
  * at load. See src/craft/extras.js for why.
  */
 Hooks.once("init", () => registerExtraSettings());
+Hooks.once("init", () => registerConfirmSetting());
 Hooks.once("ready", () => loadExtraRecipes());
 
 /**

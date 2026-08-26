@@ -501,6 +501,34 @@ tr.rnr-missing td {
   opacity: 0.85;
 }
 
+/* =========================================================
+   CONFIRMATION DIALOG
+
+   Rendered by Foundry outside .rnr-hub, so none of the panel scoping
+   reaches it. Everything it needs is declared here rather than inherited.
+   ========================================================= */
+.rnr-confirm {
+  background: var(--rnr-ink);
+  color: var(--rnr-text);
+  border: 1px solid var(--rnr-wood);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.82rem;
+  max-width: 460px;
+}
+.rnr-confirm .rnr-ref { margin-bottom: 8px; }
+.rnr-confirm .rnr-tier { margin-bottom: 6px; }
+.rnr-confirm .warning {
+  color: #ffcc00;
+  font-style: italic;
+  margin: 6px 0 0;
+}
+.rnr-confirm .muted { color: #a3968a; }
+.rnr-confirm p:last-child { margin-bottom: 0; }
+/* Nothing in the dialog is clickable — it is a statement of cost, and a pill
+   that looks pressable invites a click that does nothing. */
+.rnr-confirm .rnr-add { cursor: default; }
+
 /* ---- Who is at the bench ---- */
 .rnr-crafter { margin-bottom: 8px; flex: none; }
 .rnr-crafter .rnr-dropdown { max-height: 120px; }

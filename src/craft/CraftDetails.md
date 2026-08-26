@@ -19,6 +19,7 @@ not here.
 | [`outcome.js`](outcome.js) | What a roll means and what it costs. Pure |
 | [`extras.js`](extras.js) | Reads third-party recipes from the world's compendiums |
 | [`execute.js`](execute.js) | Rolls, spends, grants. GM-authoritative |
+| [`summary.js`](summary.js) | What the confirmation says. Pure |
 
 Data lives in [`src/data/manufacturing.js`](../data/DataDetails.md) and
 [`src/data/alchemy.js`](../data/DataDetails.md).
@@ -207,6 +208,32 @@ deducting one item would let the same bones be spent over and over.
 whether taking two of four is a decrement or a delete.
 
 The panel names what will be spent *before* the click.
+
+### Confirming first
+
+Crafting spends things that cannot be got back without another hunt, and a
+bad roll spends them for nothing. So it asks first, showing **what leaves the
+pack, what it costs, and how long the character is at the bench**.
+
+The summary is built by [`summary.js`](summary.js) from the same
+`planManufacture` and `selectReagents` calls the execution uses, so the
+numbers a player agrees to are the numbers that get applied. It lists the
+*real* selection rather than everything that matched — a dialog naming more
+than will actually be spent is a lie in the direction of scaring people off.
+
+It also states the loss rule as it actually is: *"a miss by 5 or more spoils
+these; a near miss costs only the time."* Whether a near miss is survivable
+decides whether a party attempts something above their level, so a vague "you
+may lose these" would be worse than saying nothing.
+
+Hours are rendered as something a player can picture — the potion table runs
+to 1,000 hours and the artifact tier to 100,000, which read as typos printed
+raw. The raw count is always kept alongside.
+
+The dialog itself is [`src/ui/confirm.js`](../ui/confirm.js), which feature-
+detects `DialogV2` (v13+) and falls back to `Dialog` (v11/v12). Closing the
+window counts as a refusal, never a silent yes. A world setting turns the
+confirmations off for a table that already knows the numbers.
 
 ### Not yet
 

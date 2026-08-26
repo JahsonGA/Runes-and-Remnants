@@ -1,6 +1,6 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **360 tests across 16 files**,
+Vitest suite plus a standalone packaging check. **388 tests across 17 files**,
 all runnable without a Foundry runtime.
 
 A second suite runs in a real browser. **51 Playwright tests** render the
@@ -36,6 +36,7 @@ collects the Playwright files and fails on the missing runner.
 | [`craft-reagents.test.js`](craft-reagents.test.js) | 52 | Component tagging coverage, potency scale, gear and potion budgets, origin stamping |
 | [`craft-outcome.test.js`](craft-outcome.test.js) | 22 | Roll grading, graded failure, reagent selection, stack consumption |
 | [`enchant.test.js`](enchant.test.js) | 42 | Remnant tiers, rarity normalising, the plan, flaws on failure |
+| [`craft-summary.test.js`](craft-summary.test.js) | 28 | Confirmation content: hours, cost, what is consumed, escaping |
 | [`templates.test.js`](templates.test.js) | 13 | Handlebars templates compile and render against real panel data |
 | [`check-assets.mjs`](check-assets.mjs) | — | Not Vitest. Standalone packaging guard |
 
@@ -180,6 +181,28 @@ Also covers: a stronger remnant raising rarity, DC and hours together; a
 weaker one blocking outright; every blocker reported at once rather than one
 per reload; and that a natural 1 gives three flaws rather than destroying the
 item — losing a Deific remnant to one die roll is not a risk anyone would take.
+
+### `craft-summary.test.js`
+
+The content of the "are you sure" dialog. These matter more than they look:
+a player agrees to a cost based on what this says, so the numbers here have
+to be the numbers that actually get applied.
+
+Pins that **what is listed as consumed is the real selection**, not everything
+that merely matched — `selectReagents` spends the minimum, and a dialog
+listing more would be a lie in the direction of scaring people off.
+
+Pins the **wording of the loss rule**, because "you may lose these" and "a
+miss by 5 or more spoils these, a near miss costs only the time" lead to
+different decisions about whether to attempt something.
+
+`formatHours` gets its own block. The potion table runs to 1,000 hours and the
+artifact tier to 100,000; printed raw, that reads as a typo rather than as a
+statement of intent, so it becomes days, workweeks or years while always
+keeping the raw count alongside.
+
+Also checks HTML escaping — item names come out of compendiums this module
+did not write, and they land in a dialog as markup.
 
 ### `craft-catalogue.test.js`
 

@@ -15,10 +15,13 @@
 import { HarvestMenu } from "../harvest/menu.js";
 import { HUB_TABS, HUB_TAB_IDS, resolveTab, SCROLL_REGIONS } from "../data/hub-tabs.js";
 import { CraftPanel } from "../craft/panel.js";
-import { partsFromActor } from "../craft/logic.js";
+import { partsFromActor, getRecipe, planManufacture, selectReagents, alchemyModifier } from "../craft/logic.js";
+import { craftSummary, alchemySummary, enchantSummary, summaryToHtml } from "../craft/summary.js";
+import { confirmSpend } from "../ui/confirm.js";
 import { requestCraft } from "../craft/execute.js";
 import { EnchantPanel } from "../enchant/panel.js";
 import { requestEnchant, casterFrom } from "../enchant/execute.js";
+import { enchantPlan } from "../enchant/logic.js";
 
 export { HUB_TABS };
 
@@ -179,6 +182,69 @@ export class RunesHub extends HarvestMenu {
     };
   }
 
+  /**
+   * Show what a craft will cost and wait for a yes.
+   *
+   * The summary is built from the same functions the execution uses, so the
+   * numbers a player agrees to are the numbers that get applied.
+   */
+  async _confirmCraft() {
+    const crafter = this._crafter();
+
+    const summary = this.craft.mode === "alchemy"
+      ? alchemySummary({
+          concoction: this.craft._concoction(),
+          bench: this.craft.bench,
+          bonus: alchemyModifier({
+            int: crafter?.abilities?.int ?? 0,
+            wis: crafter?.abilities?.wis ?? 0,
+            proficient: (crafter?.tools ?? []).includes("Alchemist's supplies"),
+            proficiency: crafter?.proficiency ?? 2
+          })
+        })
+      : (() => {
+          const recipe = getRecipe(this.craft.recipe);
+          if (!recipe || !crafter) return null;
+          return craftSummary({
+            recipe,
+            plan: planManufacture(recipe, crafter, crafter.parts ?? []),
+            selection: selectReagents(recipe, crafter.parts ?? [])
+          });
+        })();
+
+    if (!summary) return true;   // nothing to warn about; let it through
+    return confirmSpend({
+      title: summary.title,
+      content: summaryToHtml(summary),
+      confirmLabel: this.craft.mode === "alchemy" ? "Brew it" : "Craft it"
+    });
+  }
+
+  /** Show what a binding will cost and wait for a yes. */
+  async _confirmEnchant() {
+    const caster = this._caster();
+    if (!caster) return true;
+
+    const parts = caster.parts ?? [];
+    const plan = enchantPlan({
+      enchantment: this.enchant.enchantment,
+      item: (caster.items ?? []).find(i => i.id === this.enchant.itemId) ?? null,
+      remnant: parts.find(p => p.id === this.enchant.remnantId) ?? null,
+      component: parts.find(p => p.id === this.enchant.componentId) ?? null,
+      caster,
+      attunement: this.enchant.attunement,
+      consumable: this.enchant.consumable
+    });
+
+    const summary = enchantSummary({ plan });
+    if (!summary) return true;
+    return confirmSpend({
+      title: summary.title,
+      content: summaryToHtml(summary),
+      confirmLabel: "Bind it"
+    });
+  }
+
   activateListeners(html) {
     super.activateListeners(html);
     this.craft.activateListeners(html, () => this.render(true));
@@ -190,6 +256,9 @@ export class RunesHub extends HarvestMenu {
       const actorId = this._crafterActor()?.id;
       if (!actorId) return ui.notifications?.warn("Choose who is at the bench first.");
 
+      // Nothing is spent until the player has seen what it costs.
+      if (!await this._confirmCraft()) return;
+
       await requestCraft(this.craft.mode === "alchemy"
         ? { actorId, bench: [...this.craft.bench] }
         : { actorId, recipe: this.craft.recipe });
@@ -200,6 +269,10 @@ export class RunesHub extends HarvestMenu {
     html.on("click", "[data-action='do-enchant']", async () => {
       const actorId = this._crafterActor()?.id;
       if (!actorId) return ui.notifications?.warn("Choose who is at the bench first.");
+
+      // Binding is the least reversible thing in the module — the remnant and
+      // component go whatever the roll, and a bad enough miss takes the item.
+      if (!await this._confirmEnchant()) return;
 
       await requestEnchant({
         actorId,

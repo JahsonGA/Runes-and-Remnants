@@ -17,6 +17,8 @@ const REQUIRED = [
   "src/enchant/logic.js",
   "src/enchant/panel.js",
   "src/enchant/execute.js",
+  "src/craft/summary.js",
+  "src/ui/confirm.js",
   "src/data/enchanting.js",
   "src/data/harvest-table.js",
   "src/data/hub-tabs.js",
