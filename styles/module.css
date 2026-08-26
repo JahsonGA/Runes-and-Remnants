@@ -255,12 +255,19 @@
   border: 1px solid var(--rnr-wood);
   border-radius: 10px;
   padding: 10px;
-  /* Cards are their own scroll context; nothing inside grows the window. */
+  /* Cards are their own scroll context; nothing inside grows the window.
+     Scrolling by DEFAULT, not hidden — a card with no inner scroller of its
+     own (harvest's, for one) would otherwise clip its contents dead, with no
+     way to reach them. */
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
 }
+/* Cards that pin a header and scroll a region beneath it instead. Marked in
+   the template rather than sniffed with :has(), which needs a newer engine
+   than the oldest Foundry this module supports. */
+.rnr-card.rnr-card-pinned { overflow: hidden; }
 
 /* The scrolling half of the catalogue card. The header and filter above it
    stay put while the list moves, so the search box is always reachable. */
@@ -276,6 +283,68 @@
   min-height: 0;
   overflow-y: auto;
   padding-right: 4px;
+}
+
+/* =========================================================
+   SCROLLBARS
+
+   A scrollable region the player cannot see is indistinguishable from a
+   clipped one. Two things conspire here:
+
+   1. Modern Chromium (and so Foundry) defaults to OVERLAY scrollbars — they
+      reserve no width and fade out when idle, so a full catalogue just looks
+      cut off. `scrollbar-gutter: stable` reserves the track permanently.
+   2. The default thumb is a dark grey that vanishes against these near-black
+      panels even while it is showing.
+
+   Applied to the scroll containers directly rather than through a descendant
+   selector, because `::-webkit-scrollbar` is matched against the scrolling
+   element itself and inheritance does not carry it.
+   ========================================================= */
+.rnr-catalogue,
+.rnr-bench-body,
+.rnr-card,
+.rnr-dropdown,
+.rnr-hub-app .window-content {
+  scrollbar-gutter: stable;
+  /* Firefox has no pseudo-elements for this. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--rnr-brown-lit) #0b0a0a;
+}
+
+.rnr-catalogue::-webkit-scrollbar,
+.rnr-bench-body::-webkit-scrollbar,
+.rnr-card::-webkit-scrollbar,
+.rnr-dropdown::-webkit-scrollbar,
+.rnr-hub-app .window-content::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.rnr-catalogue::-webkit-scrollbar-track,
+.rnr-bench-body::-webkit-scrollbar-track,
+.rnr-card::-webkit-scrollbar-track,
+.rnr-dropdown::-webkit-scrollbar-track,
+.rnr-hub-app .window-content::-webkit-scrollbar-track {
+  background: #0b0a0a;
+  border-radius: 5px;
+}
+.rnr-catalogue::-webkit-scrollbar-thumb,
+.rnr-bench-body::-webkit-scrollbar-thumb,
+.rnr-card::-webkit-scrollbar-thumb,
+.rnr-dropdown::-webkit-scrollbar-thumb,
+.rnr-hub-app .window-content::-webkit-scrollbar-thumb {
+  background: var(--rnr-wood);
+  border: 1px solid #0b0a0a;
+  border-radius: 5px;
+  /* Always visible, never a hover-only hint. */
+  min-height: 28px;
+}
+.rnr-catalogue::-webkit-scrollbar-thumb:hover,
+.rnr-bench-body::-webkit-scrollbar-thumb:hover,
+.rnr-card::-webkit-scrollbar-thumb:hover,
+.rnr-dropdown::-webkit-scrollbar-thumb:hover,
+.rnr-hub-app .window-content::-webkit-scrollbar-thumb:hover {
+  background: var(--rnr-brown-lit);
 }
 
 .rnr-filter {

@@ -3,7 +3,7 @@
 Vitest suite plus a standalone packaging check. **317 tests across 15 files**,
 all runnable without a Foundry runtime.
 
-A second suite runs in a real browser. **25 Playwright tests** render the
+A second suite runs in a real browser. **30 Playwright tests** render the
 module's own templates and stylesheet and check that the result is usable —
 the class of bug string assertions cannot see.
 
@@ -179,13 +179,33 @@ off-screen. Every existing test passed. It read as four empty rows.
 | File | Tests | Covers |
 |---|---|---|
 | [`ui/harness.js`](ui/harness.js) | — | Builds a full page for one hub state |
-| [`ui/layout.spec.js`](ui/layout.spec.js) | 8 | Overflow, clipping, narrow windows |
+| [`ui/layout.spec.js`](ui/layout.spec.js) | 13 | Overflow, clipping, unreachable content, scrollbars, narrow windows |
 | [`ui/usable.spec.js`](ui/usable.spec.js) | 17 | Controls present, hittable, keyboard-reachable, legible; catalogue scroll and filter |
 
 **The layout sweep renders every recipe in two states** — with a crafter and
 without. That matters: with one, `planManufacture` resolves the single tool
 they can use and the long string never appears. An earlier version checked
 only that state and sailed past the very bug it was written for.
+
+**The harness copies Foundry's window chrome rather than improving on it.**
+`.window-app` is a flex column and `.window-content` is `flex: 1` with its
+own `overflow-y` — that is all `module.css` gets to build on. An earlier
+harness set `display: flex` on `.window-content` too, which meant the module
+stylesheet was never proven sufficient by itself: the catalogue scrolled in
+the test while staying stuck in Foundry.
+
+Two checks came out of a panel that was cut off with **no way to reach the
+rest**:
+
+- *unreachable content* — anything with `overflow: hidden` that is taller than
+  its box, on every tab. That is what a card with no inner scroller produces,
+  and it is worse than an overflow that merely sticks out.
+- *scrollbars are visible* — Chromium defaults to **overlay** scrollbars,
+  which reserve no width and fade when idle, and the default thumb is a grey
+  that disappears against these panels. Both make a scrollable region look
+  clipped. Gutter width is host-dependent, so the test asserts the module has
+  said something explicit (`scrollbar-color` is not `auto`, and a gutter is
+  reserved) rather than pinning a pixel count.
 
 The suite was verified by reverting the fix and confirming it fails, which is
 the only way to know a layout test is worth having. It reported *"3 of 200

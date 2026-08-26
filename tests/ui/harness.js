@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import Handlebars from "handlebars";
 import { CraftPanel } from "../../src/craft/panel.js";
 import { HUB_TABS } from "../../src/data/hub-tabs.js";
+import { HARVEST_TABLE } from "../../src/data/harvest-table.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = rel => fs.readFileSync(path.join(ROOT, rel), "utf8");
@@ -52,6 +53,47 @@ export function fullCrafter(parts = []) {
 }
 
 /**
+ * A fully-loaded harvest panel: a real creature's component tiers, roles
+ * filled, a list building. The empty state hides layout bugs, so the harness
+ * renders the busiest case a table would actually see.
+ */
+function harvestData() {
+  const tiers = HARVEST_TABLE.dragon.map(tier => ({
+    dc: tier.dc,
+    items: tier.items.map(name => ({ name, missing: false, taken: 0 }))
+  }));
+
+  const actor = id => ({ actorId: id, name: id, img: "icons/svg/mystery-man.svg" });
+
+  return {
+    hasTarget: true,
+    targetName: "Adult Black Dragon",
+    targetImg: "icons/svg/mystery-man.svg",
+    targetType: "dragon",
+    targetCR: 14,
+    targetSize: "huge",
+    maxHelpers: 6,
+    hasComponents: true,
+    componentTiers: tiers,
+    essence: { name: "Essence of the Ancient", dc: 40, taken: 0 },
+    assessor: actor("Assessor"),
+    harvester: actor("Harvester"),
+    helpers: [actor("Ape"), actor("Adult Black Dragon")],
+    availableForAssessor: [actor("Someone Else")],
+    availableForHarvester: [actor("Someone Else")],
+    availableHelpers: [actor("Someone Else")],
+    potentialBonus: 3,
+    sameActor: false,
+    hasHarvestList: true,
+    harvestList: [
+      { name: "Eye", order: 1, componentDC: 5, harvestDC: 5, unknown: false },
+      { name: "Pouch of Teeth", order: 2, componentDC: 10, harvestDC: 15, unknown: false },
+      { name: "Heart", order: 3, componentDC: 20, harvestDC: 35, unknown: false }
+    ]
+  };
+}
+
+/**
  * Full HTML document for one hub state.
  *
  * The shell reproduces Foundry's window chrome closely enough for layout to
@@ -70,11 +112,7 @@ export function hubPage({ tab = "crafting", recipe = null, bench = [], mode = nu
     ...panel.getData(crafter),
     activeTab: tab,
     tabs: HUB_TABS.map(t => ({ ...t, active: t.id === tab })),
-    // Harvest panel fields, so its branch renders rather than throwing.
-    harvester: null,
-    targetName: null,
-    lootTiers: [],
-    harvestList: []
+    ...harvestData()
   };
 
   return `<!doctype html>
@@ -83,8 +121,12 @@ export function hubPage({ tab = "crafting", recipe = null, bench = [], mode = nu
   /* Stand-in for Foundry's own window chrome. Only the frame — everything
      inside comes from the module's real stylesheet. */
   body { margin: 0; background: #2b2a29; font-family: "Signika", sans-serif; }
-  /* Fixed size, matching the real window. An auto-height frame here would
-     let the catalogue grow to fit and hide the very overflow being tested. */
+  /* Foundry's own window chrome, copied rather than improved on.
+     .window-app is a flex column and .window-content is flex:1 with its own
+     overflow-y — that is all the module gets to build on, so the harness must
+     not add to it. An earlier version set display:flex here too, which meant
+     module.css was never proven sufficient by itself and the panel scrolled
+     in the test while staying stuck in Foundry. */
   .app-window {
     width: ${HUB_WIDTH}px;
     height: ${HUB_HEIGHT}px;
@@ -96,12 +138,10 @@ export function hubPage({ tab = "crafting", recipe = null, bench = [], mode = nu
     flex-direction: column;
   }
   .window-content {
+    flex: 1;
+    overflow-y: auto;
     padding: 8px;
     box-sizing: border-box;
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
   }
 ${read("styles/module.css")}
 </style></head>
