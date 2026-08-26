@@ -314,7 +314,7 @@ test.describe("enchanting", () => {
 
   test("asks for a harvester before anything else", async ({ page }) => {
     await page.setContent(hubPage({ tab: "enchanting", caster: null }));
-    await expect(page.locator(".rnr-catalogue")).toContainText("Assign a harvester");
+    await expect(page.locator(".rnr-catalogue")).toContainText("Choose an enchanter");
   });
 
   test("keeps the reference tables now that it is automated", async ({ page }) => {
@@ -324,5 +324,111 @@ test.describe("enchanting", () => {
     await expect(body).toContainText("Remnant → Rarity → Difficulty");
     await expect(body).toContainText("Flaws on a failed check");
     await expect(body).toContainText("Ancestral Weapons");
+  });
+});
+
+test.describe("who is at the bench", () => {
+  test("both working tabs show a crafter picker", async ({ page }) => {
+    // Crafting used to silently inherit the harvester, which read as a bug
+    // when the workbench knew someone's Dexterity but found none of their
+    // supplies — nothing on screen said whose pack it was looking in.
+    for (const tab of ["crafting", "enchanting"]) {
+      await page.setContent(hubPage({ tab, crafter: fullCrafter(), caster: fullCaster() }));
+      await expect(page.locator(".rnr-crafter"), `no picker on "${tab}"`).toBeVisible();
+    }
+  });
+
+  test("labels the role for the tab it is on", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "crafting" }));
+    await expect(page.locator(".rnr-crafter h4")).toContainText("Crafter");
+    await page.setContent(hubPage({ tab: "enchanting", caster: fullCaster() }));
+    await expect(page.locator(".rnr-crafter h4")).toContainText("Enchanter");
+  });
+
+  test("marks a crafter inherited from the Harvest tab", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "crafting", crafter: fullCrafter() }));
+    await expect(page.locator(".rnr-inherited")).toContainText("from Harvest");
+  });
+
+  test("does not mark one chosen here", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "crafting", crafter: fullCrafter(),
+      crafterActor: { id: "a1", name: "Someone Else", img: "icons/svg/mystery-man.svg", inherited: false }
+    }));
+    await expect(page.locator(".rnr-inherited")).toHaveCount(0);
+  });
+
+  test("offers a choice when nobody is at the bench", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "crafting", crafterActor: null }));
+    const options = page.locator("[data-action='set-crafter']");
+    expect(await options.count()).toBeGreaterThan(0);
+    await expect(options.first()).toBeVisible();
+  });
+
+  test("the picker stays clear of the workbench below it", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "crafting", recipe: "Leather", crafter: fullCrafter()
+    }));
+    const picker = await page.locator(".rnr-crafter").boundingBox();
+    const table = await page.locator(".rnr-bench-body .rnr-ref").first().boundingBox();
+    expect(table.y, "the workbench overlaps the picker")
+      .toBeGreaterThanOrEqual(picker.y + picker.height - 1);
+  });
+});
+
+test.describe("alchemy bench spacing", () => {
+  const loaded = { tab: "crafting", mode: "alchemy",
+                   bench: ["Wild Sageroot", "Milkweed Seeds", "Dried Ephedra"] };
+
+  test("the name column takes the slack, not the buttons", async ({ page }) => {
+    // The columns used to bunch to the left with a dead gap before the ✕,
+    // because the actions column was pinned at 4.5rem for three buttons the
+    // alchemy bench does not have.
+    await page.setContent(hubPage({ ...loaded, crafter: fullCrafter() }));
+    const { name, actions, table } = await page.evaluate(() => {
+      const t = document.querySelector(".rnr-harvest-list");
+      return {
+        name: t.querySelector("td.rnr-name").getBoundingClientRect().width,
+        actions: t.querySelector(".rnr-row-actions").getBoundingClientRect().width,
+        table: t.getBoundingClientRect().width
+      };
+    });
+    expect(name, "the name column is not absorbing the slack").toBeGreaterThan(table / 3);
+    expect(actions, "the buttons column is hoarding width").toBeLessThan(50);
+  });
+
+  test("the total spans the bench rather than floating off to one side", async ({ page }) => {
+    await page.setContent(hubPage({ ...loaded, crafter: fullCrafter() }));
+    const bar = await page.locator(".rnr-final-dc").boundingBox();
+    const table = await page.locator(".rnr-harvest-list").boundingBox();
+    expect(bar.width, "the DC line does not line up with the table it totals")
+      .toBeGreaterThanOrEqual(table.width - 4);
+  });
+
+  test("both bench tables line up the same way", async ({ page }) => {
+    // Harvest carries three row buttons and alchemy one; shrink-to-fit has to
+    // work for both or one of them looks broken.
+    for (const state of [loaded, { tab: "harvest" }]) {
+      await page.setContent(hubPage({ ...state, crafter: fullCrafter() }));
+      const row = await page.evaluate(() => {
+        const t = document.querySelector(".rnr-harvest-list");
+        const actions = t?.querySelector(".rnr-row-actions");
+        if (!actions) return null;
+        // The gap against the cell immediately before it — the columns in
+        // between are content, not slack, so measuring across them would call
+        // a correctly-laid-out table broken.
+        const prev = actions.previousElementSibling;
+        return {
+          gap: actions.getBoundingClientRect().left - prev.getBoundingClientRect().right,
+          buttons: actions.querySelectorAll("button").length,
+          width: actions.getBoundingClientRect().width
+        };
+      });
+      if (!row) continue;
+      expect(row.gap, "a dead gap before the row buttons").toBeLessThan(4);
+      // Sized to what it holds: one ✕ must not reserve room for three.
+      expect(row.width, `${row.buttons} button(s) taking too much room`)
+        .toBeLessThan(24 * row.buttons + 12);
+    }
   });
 });

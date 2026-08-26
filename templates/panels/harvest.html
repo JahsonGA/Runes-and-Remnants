@@ -80,13 +80,13 @@
       </p>
       <table class="rnr-harvest-list">
         <thead>
-          <tr><th></th><th>Component</th><th>Cost</th><th>Harvest DC</th><th></th></tr>
+          <tr><th></th><th class="rnr-name">Component</th><th class="rnr-num">Cost</th><th class="rnr-num">Harvest DC</th><th></th></tr>
         </thead>
         <tbody>
           {{#each harvestList}}
             <tr data-index="{{@index}}" class="{{#if this.unknown}}rnr-missing{{/if}}">
               <td class="rnr-order">{{this.order}}</td>
-              <td>{{this.name}}{{#if this.unknown}} ⚠{{/if}}</td>
+              <td class="rnr-name">{{this.name}}{{#if this.unknown}} ⚠{{/if}}</td>
               <td class="rnr-num">{{#if this.unknown}}—{{else}}+{{this.componentDC}}{{/if}}</td>
               <td class="rnr-num rnr-dc">{{#unless this.unknown}}{{this.harvestDC}}{{/unless}}</td>
               <td class="rnr-row-actions">

@@ -39,6 +39,9 @@ const clipped = () => {
   const out = [];
   for (const el of document.querySelectorAll(".rnr-hub *")) {
     if (el.children.length) continue;             // only leaf text nodes
+    // An image is not text. object-fit and a portrait that fails to load both
+    // give scrollWidth != clientWidth without anything being cut off.
+    if (el.tagName === "IMG") continue;
     const style = getComputedStyle(el);
     if (style.overflow === "auto" || style.overflow === "scroll") continue;
     if (el.scrollWidth > el.clientWidth + 1 && el.clientWidth > 0) {

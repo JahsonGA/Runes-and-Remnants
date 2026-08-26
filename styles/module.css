@@ -501,6 +501,23 @@ tr.rnr-missing td {
   opacity: 0.85;
 }
 
+/* ---- Who is at the bench ---- */
+.rnr-crafter { margin-bottom: 8px; flex: none; }
+.rnr-crafter .rnr-dropdown { max-height: 120px; }
+/* Marks a crafter carried over from the Harvest tab rather than chosen here,
+   so an inherited choice is never mistaken for a deliberate one. */
+.rnr-inherited {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--rnr-brown-lit);
+  border: 1px solid var(--rnr-wood);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: auto;
+  flex: none;
+}
+
 /* ---- Enchanting ---- */
 /* An enchantment the chosen item cannot take. Dimmed rather than hidden, so a
    player can see what a different item would let them make before going and
@@ -568,7 +585,12 @@ tr.rnr-missing td {
   color: var(--rnr-brown-lit);
   width: 1.4rem;
 }
-.rnr-harvest-list .rnr-num {
+/* The name column takes all the slack; everything else shrinks to its own
+   content. Without this the columns bunched to the left and left a dead gap
+   before the row buttons. */
+.rnr-harvest-list .rnr-name { width: 100%; }
+.rnr-harvest-list .rnr-num,
+.rnr-harvest-list th.rnr-num {
   text-align: right;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -581,7 +603,9 @@ tr.rnr-missing td {
 .rnr-row-actions {
   text-align: right;
   white-space: nowrap;
-  width: 4.5rem;
+  /* Shrink-to-fit. The harvest list carries three buttons and the alchemy
+     bench one, so a fixed width is wrong for one of them either way. */
+  width: 1%;
 }
 .rnr-row-actions button {
   background: none;
@@ -598,13 +622,25 @@ tr.rnr-missing td {
   opacity: 1;
   color: var(--rnr-red-lit);
 }
+/* The result of the bench, shown as a bar rather than floated right —
+   right-aligned it read as a stray caption rather than the total the whole
+   table adds up to. Matches .rnr-formula, which does the same job on the
+   manufacturing side. */
 .rnr-final-dc {
-  margin: 4px 0 0;
-  text-align: right;
+  margin: 6px 0 0;
+  padding: 5px 9px;
+  background: #0f0d0e;
+  border: 1px solid var(--rnr-wood);
+  border-left: 3px solid var(--rnr-brown-lit);
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
   font-size: 0.78rem;
   color: var(--rnr-text);
 }
-.rnr-final-dc b { color: #8ef; }
+.rnr-final-dc b { color: #8ef; white-space: nowrap; }
 
 /* Dropdowns */
 .rnr-dropdown {

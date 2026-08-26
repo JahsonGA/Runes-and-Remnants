@@ -26,7 +26,8 @@ const REQUIRED = [
   "templates/hub.html",
   "templates/panels/harvest.html",
   "templates/panels/crafting.html",
-  "templates/panels/enchanting.html"
+  "templates/panels/enchanting.html",
+  "templates/partials/crafter.html"
 ];
 
 let missing = [];

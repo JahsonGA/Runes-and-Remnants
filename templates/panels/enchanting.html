@@ -41,7 +41,7 @@
               Nothing to enchant. Craft or buy a mundane item first — you
               cannot enchant what does not exist yet.
             {{else}}
-              Assign a harvester to see what they are carrying.
+              Choose an enchanter to see what they are carrying.
             {{/if}}
           </p>
         {{/if}}
@@ -140,6 +140,8 @@
     </div>
 
     <div class="rnr-bench-body">
+      {{> rnrCrafterPicker}}
+
       {{#if enchantPlanData}}
         <div class="rnr-tier">
           <div class="rnr-tier-header">

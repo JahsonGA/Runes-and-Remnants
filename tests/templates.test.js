@@ -10,6 +10,7 @@ import { HUB_TABS } from "../src/data/hub-tabs.js";
 // in a field name or a malformed block is caught here instead of at a table.
 
 const TEMPLATES = [
+  "templates/partials/crafter.html",
   "templates/hub.html",
   "templates/panels/harvest.html",
   "templates/panels/crafting.html",
@@ -18,6 +19,10 @@ const TEMPLATES = [
 
 beforeAll(() => {
   Handlebars.registerHelper("eq", (a, b) => a === b);
+  // Crafting and Enchanting both pull in the shared crafter picker, so it has
+  // to exist before either panel compiles.
+  Handlebars.registerPartial(
+    "rnrCrafterPicker", fs.readFileSync("templates/partials/crafter.html", "utf8"));
 });
 
 describe("templates compile", () => {
@@ -61,7 +66,7 @@ describe("crafting panel renders", () => {
     panel.recipe = "Plate";
     const html = render(panel.getData(null));
     expect(html).toContain("Structural or Fibrous");
-    expect(html).toContain("Assign a harvester");
+    expect(html).toContain("Choose who is at the bench");
     expect(html).not.toContain("Short by");
   });
 
@@ -113,6 +118,7 @@ describe("crafting panel renders", () => {
 describe("hub shell renders", () => {
   it("draws every tab with its badge and the active panel", () => {
     const hubSrc = fs.readFileSync("templates/hub.html", "utf8");
+    Handlebars.registerPartial("rnrCrafterPicker", fs.readFileSync("templates/partials/crafter.html", "utf8"));
     for (const tab of HUB_TABS) {
       Handlebars.registerPartial(
         `rnr${tab.id[0].toUpperCase()}${tab.id.slice(1)}Panel`,

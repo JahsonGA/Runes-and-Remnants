@@ -87,6 +87,23 @@ image:
 | Crafting | `icons/skills/trades/academics-merchant-scribe.webp` |
 | Enchanting | `icons/skills/trades/academics-book-study-purple.webp` |
 
+## Who is at the bench
+
+Crafting and Enchanting used to take the harvester silently. That read as a
+bug the moment the workbench knew someone's Dexterity but found none of their
+supplies — nothing on screen said whose pack it was looking in.
+
+Both tabs now carry a picker, sharing
+[`templates/partials/crafter.html`](../../templates/partials/crafter.html)
+with the harvest tab's markup and classes so all three behave the same.
+
+`_crafterActor()` prefers an explicit choice and falls back to the harvester,
+and the picker tags an inherited choice **from Harvest** so it is never
+mistaken for a deliberate one. Clearing it falls back to the harvester rather
+than to nobody, which is the more useful of the two.
+
+The person who guts the corpse is not always the one who works the forge.
+
 ## Related
 
 - [Harvest system](../harvest/HarvestDetails.md)

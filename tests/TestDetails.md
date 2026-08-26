@@ -1,9 +1,9 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **359 tests across 16 files**,
+Vitest suite plus a standalone packaging check. **360 tests across 16 files**,
 all runnable without a Foundry runtime.
 
-A second suite runs in a real browser. **42 Playwright tests** render the
+A second suite runs in a real browser. **51 Playwright tests** render the
 module's own templates and stylesheet and check that the result is usable —
 the class of bug string assertions cannot see.
 
@@ -206,7 +206,7 @@ off-screen. Every existing test passed. It read as four empty rows.
 |---|---|---|
 | [`ui/harness.js`](ui/harness.js) | — | Builds a full page for one hub state |
 | [`ui/layout.spec.js`](ui/layout.spec.js) | 15 | Overflow, clipping, unreachable content, scrollbars, scroll restore, narrow windows |
-| [`ui/usable.spec.js`](ui/usable.spec.js) | 27 | Controls present, hittable, keyboard-reachable, legible; catalogue scroll, filter, enchanting flow |
+| [`ui/usable.spec.js`](ui/usable.spec.js) | 36 | Controls present, hittable, keyboard-reachable, legible; catalogue scroll, filter, enchanting flow, crafter picker, bench spacing |
 
 **The layout sweep renders every recipe in two states** — with a crafter and
 without. That matters: with one, `planManufacture` resolves the single tool

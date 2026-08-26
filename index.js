@@ -49,7 +49,8 @@ Hooks.once("init", async () => {
   const panels = {
     rnrHarvestPanel:    `${base}/harvest.html`,
     rnrCraftingPanel:   `${base}/crafting.html`,
-    rnrEnchantingPanel: `${base}/enchanting.html`
+    rnrEnchantingPanel: `${base}/enchanting.html`,
+    rnrCrafterPicker:   `modules/${MODULE_ID}/templates/partials/crafter.html`
   };
 
   await loadTemplates(Object.values(panels));

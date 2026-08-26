@@ -37,6 +37,7 @@ function registerOnce() {
     const partial = `rnr${tab.id[0].toUpperCase()}${tab.id.slice(1)}Panel`;
     Handlebars.registerPartial(partial, read(`templates/panels/${tab.id}.html`));
   }
+  Handlebars.registerPartial("rnrCrafterPicker", read("templates/partials/crafter.html"));
   registered = true;
 }
 
@@ -128,7 +129,8 @@ function harvestData() {
  * stylesheet inside it.
  */
 export function hubPage({ tab = "crafting", recipe = null, bench = [], mode = null,
-                          crafter = null, enchant = null, caster = null } = {}) {
+                          crafter = null, enchant = null, caster = null,
+                          crafterActor = undefined } = {}) {
   registerOnce();
 
   const panel = new CraftPanel();
@@ -144,7 +146,17 @@ export function hubPage({ tab = "crafting", recipe = null, bench = [], mode = nu
     ...ench.getData(caster),
     activeTab: tab,
     tabs: HUB_TABS.map(t => ({ ...t, active: t.id === tab })),
-    ...harvestData()
+    ...harvestData(),
+    // The crafter picker, as RunesHub._crafterRole would shape it.
+    crafterLabel: tab === "enchanting" ? "Enchanter" : "Crafter",
+    crafterIcon: "icons/skills/trades/academics-merchant-scribe.webp",
+    crafterActor: crafterActor === undefined
+      ? { id: "h1", name: "Harvester", img: "icons/svg/mystery-man.svg", inherited: true }
+      : crafterActor,
+    availableForCrafter: [
+      { id: "a1", name: "Someone Else", img: "icons/svg/mystery-man.svg" },
+      { id: "a2", name: "A Third Party", img: "icons/svg/mystery-man.svg" }
+    ]
   };
 
   return `<!doctype html>

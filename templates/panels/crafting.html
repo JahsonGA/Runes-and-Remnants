@@ -85,6 +85,8 @@
 
     <div class="rnr-bench-body">
 
+    {{> rnrCrafterPicker}}
+
     {{#if (eq craftMode "manufacturing")}}
       {{#if plan}}
         <div class="rnr-tier">
@@ -135,7 +137,7 @@
 
             {{#if plan.reagents.unknownStock}}
               <p class="muted rnr-hint">
-                Assign a harvester to weigh what they are carrying.
+                Choose who is at the bench to weigh what they are carrying.
                 Made from: {{#each plan.reagents.suggestions}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}…
               </p>
             {{else if plan.reagents.met}}
@@ -182,13 +184,13 @@
       {{#if hasBench}}
         <table class="rnr-harvest-list">
           <thead>
-            <tr><th></th><th>Ingredient</th><th>Role</th><th>DC</th><th></th></tr>
+            <tr><th></th><th class="rnr-name">Ingredient</th><th>Role</th><th class="rnr-num">DC</th><th></th></tr>
           </thead>
           <tbody>
             {{#each bench}}
               <tr data-index="{{@index}}" class="{{#if this.unknown}}rnr-missing{{/if}}">
                 <td class="rnr-order">{{this.order}}</td>
-                <td>{{this.name}}</td>
+                <td class="rnr-name">{{this.name}}</td>
                 <td class="muted">{{this.roleLabel}}</td>
                 <td class="rnr-num">{{this.sign}}{{this.dc}}</td>
                 <td class="rnr-row-actions">
@@ -200,7 +202,8 @@
         </table>
 
         <p class="rnr-final-dc">
-          {{concoction.kindLabel}} — Alchemy Attempt <b>DC {{concoction.dc}}</b>
+          <span>{{concoction.kindLabel}} — Alchemy Attempt</span>
+          <b>DC {{concoction.dc}}</b>
         </p>
 
         {{#if concoction.errors.length}}

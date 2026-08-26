@@ -1,0 +1,48 @@
+<!-- =========================================================
+     Who is at the bench.
+
+     Shared by Crafting and Enchanting. Same markup and classes as the
+     harvest tab's role pickers, so the three tabs behave identically.
+
+     Crafting used to silently inherit the harvester, which read as a bug when
+     the workbench knew someone's Dexterity but found none of their supplies —
+     there was nothing on screen saying whose pack it was looking in.
+     ========================================================= -->
+<div class="rnr-role rnr-crafter">
+  <h4>
+    <img data-role="crafter" src="{{crafterIcon}}" class="role-icon" alt="">
+    {{crafterLabel}}
+  </h4>
+
+  {{#if crafterActor}}
+    <div class="rnr-role-entry">
+      <img src="{{crafterActor.img}}" class="portrait" alt="{{crafterActor.name}}">
+      <span>{{crafterActor.name}}</span>
+      {{#if crafterActor.inherited}}
+        <span class="rnr-inherited" title="Taken from the harvester on the Harvest tab. Pick someone else to change it.">
+          from Harvest
+        </span>
+      {{/if}}
+      <button type="button" data-action="remove-crafter" title="Choose someone else">✕</button>
+    </div>
+  {{else}}
+    {{#if availableForCrafter.length}}
+      <div class="rnr-dropdown">
+        {{#each availableForCrafter}}
+          <div class="rnr-dropdown-entry"
+               data-action="set-crafter"
+               data-actor-id="{{id}}"
+               data-actor-name="{{name}}"
+               data-actor-img="{{img}}">
+            <img src="{{img}}" class="portrait" alt="{{name}}">
+            <span>{{name}}</span>
+          </div>
+        {{/each}}
+      </div>
+    {{else}}
+      <p class="muted rnr-hint">
+        No characters you own. A GM sees every actor; a player sees their own.
+      </p>
+    {{/if}}
+  {{/if}}
+</div>

@@ -31,6 +31,11 @@ export class RunesHub extends HarvestMenu {
     // in the base class; it moves here too once it is worth the churn.
     this.craft = new CraftPanel();
     this.enchant = new EnchantPanel();
+
+    // Who is at the workbench. Null means "whoever is harvesting" — the old
+    // behaviour — but it can now be set independently, because the person who
+    // guts the corpse is not always the one who works the forge.
+    this.crafter = null;
   }
 
   static get defaultOptions() {
@@ -84,19 +89,50 @@ export class RunesHub extends HarvestMenu {
       ...data,
       ...this.craft.getData(this._crafter()),
       ...this.enchant.getData(this._caster()),
+      ...this._crafterRole(
+        this.activeTab === "enchanting" ? "Enchanter" : "Crafter",
+        this.activeTab === "enchanting"
+          ? "icons/skills/trades/academics-book-study-purple.webp"
+          : "icons/skills/trades/academics-merchant-scribe.webp"),
       activeTab: this.activeTab,
       tabs: HUB_TABS.map(t => ({ ...t, active: t.id === this.activeTab }))
     };
   }
 
   /**
-   * Who is at the workbench. Reuses the harvester if one is assigned, so a
-   * party that just carved a corpse can cost out a build with the same
-   * character's hands. Null until then — the panel shows requirements
-   * rather than pretending nobody is proficient.
+   * The actor at the workbench.
+   *
+   * An explicit choice wins; otherwise it falls back to the harvester, so a
+   * party that just carved a corpse can cost out a build without picking
+   * anyone twice. The panel says which of the two it is.
    */
+  _crafterActor() {
+    return game.actors?.get(this.crafter?.actorId)
+        ?? game.actors?.get(this.harvester?.actorId)
+        ?? null;
+  }
+
+  /** What the crafter picker renders. */
+  _crafterRole(label, icon) {
+    const actor = this._crafterActor();
+    const taken = this.crafter?.actorId ?? null;
+
+    return {
+      crafterLabel: label,
+      crafterIcon: icon,
+      crafterActor: actor && {
+        id: actor.id,
+        name: actor.name,
+        img: this._getPortrait(actor),
+        // Flagged so a player can tell an inherited choice from a made one.
+        inherited: !taken
+      },
+      availableForCrafter: this._getAvailableActors()
+    };
+  }
+
   _crafter() {
-    const actor = game.actors?.get(this.harvester?.actorId);
+    const actor = this._crafterActor();
     if (!actor) return null;
 
     const abilities = {};
@@ -127,7 +163,7 @@ export class RunesHub extends HarvestMenu {
    * than crafting does — "only a spellcaster can bind a remnant".
    */
   _caster() {
-    const actor = game.actors?.get(this.harvester?.actorId);
+    const actor = this._crafterActor();
     if (!actor) return null;
 
     return {
@@ -151,8 +187,8 @@ export class RunesHub extends HarvestMenu {
     // Crafting needs the actor, which the panel deliberately does not know
     // about — it is handed shaped data, not documents. So the hub owns this.
     html.on("click", "[data-action='do-craft']", async () => {
-      const actorId = this.harvester?.actorId;
-      if (!actorId) return ui.notifications?.warn("Assign a harvester first.");
+      const actorId = this._crafterActor()?.id;
+      if (!actorId) return ui.notifications?.warn("Choose who is at the bench first.");
 
       await requestCraft(this.craft.mode === "alchemy"
         ? { actorId, bench: [...this.craft.bench] }
@@ -162,8 +198,8 @@ export class RunesHub extends HarvestMenu {
     });
 
     html.on("click", "[data-action='do-enchant']", async () => {
-      const actorId = this.harvester?.actorId;
-      if (!actorId) return ui.notifications?.warn("Assign a harvester first.");
+      const actorId = this._crafterActor()?.id;
+      if (!actorId) return ui.notifications?.warn("Choose who is at the bench first.");
 
       await requestEnchant({
         actorId,
@@ -179,6 +215,23 @@ export class RunesHub extends HarvestMenu {
       this.enchant.itemId = null;
       this.enchant.remnantId = null;
       this.enchant.componentId = null;
+      this.render(true);
+    });
+
+    html.on("click", "[data-action='set-crafter']", ev => {
+      const el = ev.currentTarget;
+      this.crafter = {
+        actorId: el.dataset.actorId,
+        name: el.dataset.actorName,
+        img: el.dataset.actorImg
+      };
+      this.render(true);
+    });
+
+    html.on("click", "[data-action='remove-crafter']", () => {
+      // Clearing an explicit choice falls back to the harvester rather than
+      // to nobody, which is the more useful of the two.
+      this.crafter = null;
       this.render(true);
     });
 
