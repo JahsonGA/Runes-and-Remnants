@@ -22,6 +22,7 @@ import { requestCraft } from "../craft/execute.js";
 import { EnchantPanel } from "../enchant/panel.js";
 import { requestEnchant, casterFrom } from "../enchant/execute.js";
 import { enchantPlan } from "../enchant/logic.js";
+import { unlockPatch, canUnlock, earnPatch, spendRemnantPatch, remnantValue } from "../enchant/spirit.js";
 
 export { HUB_TABS };
 
@@ -172,12 +173,18 @@ export class RunesHub extends HarvestMenu {
     return {
       ...casterFrom(actor),
       parts: partsFromActor(actor),
-      // Only mundane gear is enchantable; something already bound is Phase 6's
-      // problem, and harvested parts are ingredients rather than targets.
+      isGM: game.user?.isGM ?? false,
+      // Only mundane gear can be bound; something already enchanted is done,
+      // and harvested parts are ingredients rather than targets.
       items: actor.items.filter(i =>
         ["weapon", "equipment"].includes(i.type)
         && !i.flags?.["runes-and-remnants"]?.enchanted
         && !partsFromActor({ items: [i] }).length
+      ),
+      // Evolve works on a different list: an ancestral weapon may well have
+      // been enchanted already, so it must not be filtered out here.
+      weapons: actor.items.filter(i =>
+        i.type === "weapon" && !partsFromActor({ items: [i] }).length
       )
     };
   }
@@ -245,6 +252,13 @@ export class RunesHub extends HarvestMenu {
     });
   }
 
+  /** The ancestral weapon selected on the Evolve side, as a document. */
+  _spiritWeapon() {
+    const item = this._crafterActor()?.items?.get(this.enchant.spiritItemId);
+    if (!item) ui.notifications?.warn("Choose a weapon first.");
+    return item ?? null;
+  }
+
   activateListeners(html) {
     super.activateListeners(html);
     this.craft.activateListeners(html, () => this.render(true));
@@ -305,6 +319,69 @@ export class RunesHub extends HarvestMenu {
       // Clearing an explicit choice falls back to the harvester rather than
       // to nobody, which is the more useful of the two.
       this.crafter = null;
+      this.render(true);
+    });
+
+    // ---- Ancestral weapons ----
+
+    html.on("click", "[data-action='unlock-ability']", async ev => {
+      const item = this._spiritWeapon();
+      if (!item) return;
+
+      const name = ev.currentTarget.dataset.value;
+      const patch = unlockPatch(name, item);
+      if (!patch) {
+        // canUnlock already knows why; say the first reason rather than
+        // failing silently on a button the template should have disabled.
+        return ui.notifications?.warn(canUnlock(name, item).reasons[0]);
+      }
+
+      await item.update(patch);
+      ui.notifications?.info(`${item.name} awakens ${name}.`);
+      this.render(true);
+    });
+
+    html.on("click", "[data-action='earn-spirit']", async ev => {
+      if (!game.user.isGM) return ui.notifications?.warn("Only a GM awards spirit points.");
+      const item = this._spiritWeapon();
+      if (!item) return;
+
+      const points = Number(ev.currentTarget.dataset.value) || 1;
+      await item.update(earnPatch(item, points));
+      this.render(true);
+    });
+
+    html.on("click", "[data-action='spend-remnant']", async ev => {
+      const item = this._spiritWeapon();
+      if (!item) return;
+
+      const remnantId = ev.currentTarget.dataset.value;
+      const remnant = this._crafterActor()?.items?.get(remnantId);
+      if (!remnant) return;
+
+      const points = remnantValue(remnant.name);
+      // The one-way door in the module. Nothing else forecloses a whole
+      // system permanently, so nothing else is worded this strongly.
+      const agreed = await confirmSpend({
+        title: `Feed ${remnant.name} to ${item.name}?`,
+        confirmLabel: "Do it, and close the door",
+        content: `<div class="rnr-confirm">
+          <table class="rnr-ref">
+            <tr><td>Gains</td><td class="rnr-num">${points} spirit points</td></tr>
+            <tr><td>Costs</td><td class="rnr-num">${remnant.name}</td></tr>
+          </table>
+          <p class="warning">This weapon can never be enchanted again. There is no
+          way back from this — not a failed roll, not a GM ruling, not another
+          remnant.</p>
+        </div>`
+      });
+      if (!agreed) return;
+
+      const patch = spendRemnantPatch(item, remnant.name);
+      if (!patch) return;
+
+      await item.update(patch);
+      await remnant.delete();
       this.render(true);
     });
 

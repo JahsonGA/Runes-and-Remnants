@@ -28,14 +28,17 @@ test.describe("the controls are there and work", () => {
     }
   });
 
-  test("a locked tab is still reachable — dormant, not disabled", async ({ page }) => {
-    // Enchanting is unbuilt, but a player must be able to open it and read
-    // what it will be. A disabled control that says nothing is worse than a
-    // dim one that explains itself.
-    await page.setContent(hubPage({ tab: "enchanting" }));
-    const button = page.locator('[data-action="switch-tab"][data-tab="enchanting"]').first();
-    await expect(button).toBeEnabled();
-    await expect(page.locator(".rnr-status").first()).toBeVisible();
+  test("every tab opens onto a panel with something in it", async ({ page }) => {
+    // No tab is a placeholder any more, so the old "says it is unbuilt" check
+    // was asserting the absence of a system that now exists.
+    for (const tab of HUB_TABS) {
+      await page.setContent(hubPage({ tab: tab.id, crafter: fullCrafter(), caster: fullCaster() }));
+      const button = page
+        .locator(`[data-action="switch-tab"][data-tab="${tab.id}"]`).first();
+      await expect(button).toBeEnabled();
+      await expect(page.locator(".rnr-panel"), `"${tab.id}" opens onto nothing`)
+        .not.toBeEmpty();
+    }
   });
 
   test("a live system carries no status badge", async ({ page }) => {
@@ -323,7 +326,9 @@ test.describe("enchanting", () => {
     const body = page.locator(".rnr-bench-body");
     await expect(body).toContainText("Remnant → Rarity → Difficulty");
     await expect(body).toContainText("Flaws on a failed check");
-    await expect(body).toContainText("Ancestral Weapons");
+    // Ancestral Weapons moved to the Evolve side, where it is now live
+    // rather than a note about a future phase.
+    await expect(body).not.toContainText("spirit points");
   });
 });
 
@@ -430,5 +435,132 @@ test.describe("alchemy bench spacing", () => {
       expect(row.width, `${row.buttons} button(s) taking too much room`)
         .toBeLessThan(24 * row.buttons + 12);
     }
+  });
+});
+
+test.describe("ancestral weapons", () => {
+  const blade = (earned, unlocked = [], remnantSpent = false) => ({
+    id: "w1", name: "Ancestral Blade", type: "weapon",
+    flags: { "runes-and-remnants": { spirit: { ancestral: true, earned, unlocked, remnantSpent } } }
+  });
+
+  const withWeapon = (item, over = {}) => fullCaster({
+    weapons: [item], items: [item], isGM: true, ...over
+  });
+
+  test("Bind and Evolve are both offered and mark which is active", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: fullCaster(), enchant: { mode: "evolve" }
+    }));
+    await expect(page.locator('[data-action="enchant-mode"][data-mode="evolve"]')).toHaveClass(/active/);
+    await expect(page.locator('[data-action="enchant-mode"][data-mode="bind"]')).not.toHaveClass(/active/);
+  });
+
+  test("shows how far the weapon has come and how far is left", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: withWeapon(blade(7, ["Whetted"])),
+      enchant: { mode: "evolve", spiritItemId: "w1" }
+    }));
+    const body = page.locator(".rnr-bench-body");
+    await expect(body).toContainText("7 / 25");
+    await expect(body).toContainText("13 more points and it wakes");
+    await expect(page.locator(".rnr-spirit-fill")).toBeVisible();
+  });
+
+  test("the progress bar fills in proportion, and marks where it wakes", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: withWeapon(blade(20)),
+      enchant: { mode: "evolve", spiritItemId: "w1" }
+    }));
+    const { fill, bar } = await page.evaluate(() => ({
+      fill: document.querySelector(".rnr-spirit-fill").getBoundingClientRect().width,
+      bar: document.querySelector(".rnr-spirit-bar").getBoundingClientRect().width
+    }));
+    expect(fill / bar).toBeGreaterThan(0.7);      // 20 of 25
+    expect(fill / bar).toBeLessThan(0.9);
+    await expect(page.locator(".rnr-spirit-mark")).toBeVisible();
+  });
+
+  test("says when the weapon has woken", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: withWeapon(blade(22)),
+      enchant: { mode: "evolve", spiritItemId: "w1" }
+    }));
+    await expect(page.locator(".rnr-ok")).toContainText("Awake");
+  });
+
+  test("dims what cannot be afforded rather than hiding it", async ({ page }) => {
+    // A player choosing what to aim for needs to see the whole ladder.
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: withWeapon(blade(1)),
+      enchant: { mode: "evolve", spiritItemId: "w1" }
+    }));
+    const locked = page.locator(".rnr-add-locked");
+    expect(await locked.count()).toBeGreaterThan(0);
+    await expect(locked.first()).toBeVisible();
+    await expect(locked.first()).toHaveAttribute("title", /point|first|awaken/i);
+  });
+
+  test("an unlocked ability reads as taken and cannot be taken twice", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: withWeapon(blade(10, ["Whetted"])),
+      enchant: { mode: "evolve", spiritItemId: "w1" }
+    }));
+    const taken = page.locator('[data-action="unlock-ability"].rnr-picked');
+    await expect(taken).toContainText("Whetted");
+    await expect(taken).toBeDisabled();
+  });
+
+  test("warns hard before a remnant closes the door", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: withWeapon(blade(4)),
+      enchant: { mode: "evolve", spiritItemId: "w1" }
+    }));
+    const offer = page.locator('[data-action="spend-remnant"]').first();
+    await expect(offer).toBeVisible();
+    await expect(page.locator(".rnr-tier-short")).toContainText("never be enchanted again");
+  });
+
+  test("stops offering remnants once the door is closed", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: withWeapon(blade(9, [], true)),
+      enchant: { mode: "evolve", spiritItemId: "w1" }
+    }));
+    await expect(page.locator('[data-action="spend-remnant"]')).toHaveCount(0);
+    await expect(page.locator(".warning")).toContainText("never be enchanted again");
+  });
+
+  test("only a GM sees the award controls", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: withWeapon(blade(5), { isGM: false }),
+      enchant: { mode: "evolve", spiritItemId: "w1" }
+    }));
+    await expect(page.locator('[data-action="earn-spirit"]')).toHaveCount(0);
+  });
+
+  test("says plainly that the costs are not the book's", async ({ page }) => {
+    // Ancestral Weapons is a commercial supplement; nothing of it ships here.
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: withWeapon(blade(5)),
+      enchant: { mode: "evolve", spiritItemId: "w1" }
+    }));
+    await expect(page.locator(".rnr-status")).toContainText("this module's own");
+  });
+
+  test("the evolve side fits its window like everything else", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: withWeapon(blade(12, ["Whetted", "Keen Spirit"])),
+      enchant: { mode: "evolve", spiritItemId: "w1" }
+    }));
+    const over = await page.evaluate(() => {
+      const frame = document.getElementById("app").getBoundingClientRect();
+      return [...document.querySelectorAll(".rnr-hub *")]
+        .filter(el => {
+          const r = el.getBoundingClientRect();
+          return (r.width || r.height) && (r.right > frame.right + 1 || r.left < frame.left - 1);
+        })
+        .map(el => String(el.className).slice(0, 30));
+    });
+    expect(over).toEqual([]);
   });
 });

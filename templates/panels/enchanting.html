@@ -10,10 +10,17 @@
   <!-- ================= THE CHOOSING ================= -->
   <div class="rnr-card rnr-card-pinned">
     <div class="rnr-loot-header">
-      <h3>Enchanting</h3>
+      <h3>{{#if (eq enchantMode "evolve")}}Ancestral Weapon{{else}}Enchanting{{/if}}</h3>
+      <div class="rnr-loot-controls">
+        <button type="button" data-action="enchant-mode" data-mode="bind"
+                class="{{#if (eq enchantMode "bind")}}active{{/if}}">Bind</button>
+        <button type="button" data-action="enchant-mode" data-mode="evolve"
+                class="{{#if (eq enchantMode "evolve")}}active{{/if}}">Evolve</button>
+      </div>
     </div>
 
     <div class="rnr-catalogue">
+    {{#if (eq enchantMode "bind")}}
       <p class="muted rnr-hint">
         Draw the power out of a monster part and bind it into something you
         already own. The component decides what it becomes; the remnant
@@ -130,6 +137,65 @@
         <input type="checkbox" data-action="enchant-toggle" data-field="consumable"
                {{#if consumable}}checked{{/if}}> A consumable (far quicker)
       </label>
+
+    {{else}}
+      <!-- ================= EVOLVE ================= -->
+      <p class="muted rnr-hint">
+        One weapon per character, grown rather than replaced. Abilities are
+        bought with <b>spirit points</b>, earned through deeds — the one
+        currency here that cannot be hunted for.
+      </p>
+
+      <div class="rnr-tier">
+        <div class="rnr-tier-header">The weapon</div>
+        {{#if spiritWeapons.length}}
+          <ul class="rnr-list rnr-pool">
+            {{#each spiritWeapons}}
+              <li>
+                <button type="button" class="rnr-add {{#if this.selected}}rnr-picked{{/if}}"
+                        data-action="pick-spirit-item" data-value="{{this.id}}"
+                        title="{{#if this.ancestral}}{{this.earned}} spirit points earned{{else}}Not yet an ancestral weapon{{/if}}">
+                  {{this.name}}
+                  {{#if this.ancestral}}<span class="rnr-dcmod">{{this.earned}}</span>{{/if}}
+                </button>
+              </li>
+            {{/each}}
+          </ul>
+        {{else}}
+          <p class="muted rnr-hint">
+            {{#if hasCaster}}
+              No weapons carried. An ancestral weapon starts as an ordinary one.
+            {{else}}
+              Choose an enchanter to see what they carry.
+            {{/if}}
+          </p>
+        {{/if}}
+      </div>
+
+      {{#if spirit}}
+        {{#each spiritLadder}}
+          <div class="rnr-tier {{#if this.requiresAwakened}}rnr-tier-essence{{/if}}">
+            <div class="rnr-tier-header">
+              {{this.label}}
+              <span class="rnr-num">{{this.cost}} pt{{#unless (eq this.cost 1)}}s{{/unless}}</span>
+            </div>
+            <ul class="rnr-list rnr-pool">
+              {{#each this.items}}
+                <li>
+                  <button type="button"
+                          class="rnr-add {{#if this.unlocked}}rnr-picked{{/if}}{{#unless this.available}} rnr-add-locked{{/unless}}"
+                          data-action="unlock-ability" data-value="{{this.name}}"
+                          {{#if this.unlocked}}disabled{{/if}}
+                          title="{{this.effect}}{{#if this.requires}} · after {{this.requires}}{{/if}}{{#if this.reason}} — {{this.reason}}{{/if}}">
+                    {{this.name}}
+                  </button>
+                </li>
+              {{/each}}
+            </ul>
+          </div>
+        {{/each}}
+      {{/if}}
+    {{/if}}
     </div>
   </div>
 
@@ -142,6 +208,7 @@
     <div class="rnr-bench-body">
       {{> rnrCrafterPicker}}
 
+    {{#if (eq enchantMode "bind")}}
       {{#if enchantPlanData}}
         <div class="rnr-tier">
           <div class="rnr-tier-header">
@@ -212,22 +279,87 @@
         </p>
       </div>
 
-      <div class="rnr-tier rnr-tier-essence">
-        <div class="rnr-tier-header">Ancestral Weapons</div>
-        <p class="rnr-note">
-          One weapon per character, grown rather than replaced. Upgrades cost
-          <b>spirit points</b>, earned through deeds rather than harvested.
-        </p>
-        <p class="rnr-note">
-          A remnant may stand in for spirit points — but spend one that way and
-          the weapon can <b>never be enchanted again</b>. At 20 points it
-          awakens, takes 5 final points, and is finished.
-        </p>
-        <p class="rnr-status">
-          <b>Not yet automated.</b> Spirit points and weapon progression are
-          Phase&nbsp;6.
-        </p>
-      </div>
+    {{else}}
+      <!-- ================= THE WEAPON'S STATE ================= -->
+      {{#if spirit}}
+        <div class="rnr-tier rnr-tier-essence">
+          <div class="rnr-tier-header">
+            {{spiritItem.name}}
+            <span class="rnr-num">{{spirit.earned}} / {{spirit.total}}</span>
+          </div>
+
+          <div class="rnr-spirit-bar" role="img"
+               aria-label="{{spirit.earned}} of {{spirit.total}} spirit points">
+            <div class="rnr-spirit-fill" style="width: {{spirit.percent}}%"></div>
+            <div class="rnr-spirit-mark" style="left: 80%" title="Awakens at {{spirit.awakenAt}}"></div>
+          </div>
+
+          <table class="rnr-ref">
+            <tr><td>Earned</td><td class="rnr-num">{{spirit.earned}}</td></tr>
+            <tr><td>Spent</td><td class="rnr-num">{{spirit.spent}}</td></tr>
+            <tr><td>Available</td><td class="rnr-num rnr-dc">{{spirit.available}}</td></tr>
+          </table>
+
+          {{#if spirit.awakened}}
+            <p class="rnr-ok">
+              Awake. {{#if spirit.finished}}Finished — it holds nothing more.{{else}}{{spirit.toFinish}} more and it is finished.{{/if}}
+            </p>
+          {{else}}
+            <p class="muted rnr-hint">{{spirit.toAwaken}} more points and it wakes.</p>
+          {{/if}}
+
+          {{#if spirit.remnantSpent}}
+            <p class="warning">
+              A remnant was spent into this weapon. It can never be enchanted again.
+            </p>
+          {{/if}}
+        </div>
+
+        {{#if isGM}}
+          <div class="rnr-tier">
+            <div class="rnr-tier-header">Award a deed <span class="rnr-num muted">GM</span></div>
+            <ul class="rnr-list rnr-pool">
+              {{#each spiritDeeds}}<li><span class="rnr-add rnr-deed">{{this}}</span></li>{{/each}}
+            </ul>
+            <div class="rnr-loot-controls">
+              <button type="button" data-action="earn-spirit" data-value="1">+1 point</button>
+              <button type="button" data-action="earn-spirit" data-value="3">+3</button>
+              <button type="button" data-action="earn-spirit" data-value="5">+5</button>
+            </div>
+          </div>
+        {{/if}}
+
+        {{#if spiritRemnants.length}}
+          <div class="rnr-tier rnr-tier-short">
+            <div class="rnr-tier-header">Spend a remnant instead</div>
+            <p class="warning">
+              A one-way door. Feed this weapon a remnant and it can
+              <b>never be enchanted again</b>.
+            </p>
+            <ul class="rnr-list rnr-pool">
+              {{#each spiritRemnants}}
+                <li>
+                  <button type="button" class="rnr-add" data-action="spend-remnant"
+                          data-value="{{this.id}}" data-name="{{this.name}}"
+                          title="Worth {{this.points}} spirit points — and forecloses enchanting">
+                    {{this.name}} <span class="rnr-dcmod">+{{this.points}}</span>
+                  </button>
+                </li>
+              {{/each}}
+            </ul>
+          </div>
+        {{/if}}
+      {{else}}
+        <p class="muted">Choose a weapon to see how far it has come.</p>
+      {{/if}}
+
+      <p class="rnr-status">
+        <b>These costs are this module's own.</b> Ancestral Weapons is a
+        commercial supplement, so its ability list and point costs are not
+        shipped here — edit <code>src/data/spirit.js</code>, or register your
+        own, to use the book's.
+      </p>
+    {{/if}}
     </div>
 
     <div class="actions rnr-craft-actions">

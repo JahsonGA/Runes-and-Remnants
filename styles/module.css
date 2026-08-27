@@ -546,6 +546,51 @@ tr.rnr-missing td {
   flex: none;
 }
 
+/* ---- Ancestral weapons: spirit points ---- */
+/* A bar rather than two numbers, because the thing a player actually wants to
+   know is how far off awakening still is. */
+.rnr-spirit-bar {
+  position: relative;
+  height: 10px;
+  margin: 6px 0;
+  background: #0b0a0a;
+  border: 1px solid var(--rnr-wood);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.rnr-spirit-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--rnr-wood), var(--rnr-brown-lit));
+  transition: width 0.2s ease;
+}
+/* Where the weapon wakes. Sits on top of the fill so it stays visible. */
+.rnr-spirit-mark {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  background: var(--rnr-red-lit);
+}
+
+/* An ability the weapon cannot take yet. Dimmed, still readable, and its
+   tooltip says why — the same treatment locked enchantments get. */
+.rnr-add-locked {
+  opacity: 0.45;
+  cursor: help;
+}
+.rnr-add-locked:hover {
+  border-color: var(--rnr-wood);
+  box-shadow: none;
+  color: var(--rnr-text);
+}
+/* Deeds are prose, not buttons — they must not look pressable. */
+.rnr-deed {
+  cursor: default;
+  white-space: normal;
+  text-align: left;
+  font-style: italic;
+}
+
 /* ---- Enchanting ---- */
 /* An enchantment the chosen item cannot take. Dimmed rather than hidden, so a
    player can see what a different item would let them make before going and

@@ -108,6 +108,60 @@ and the whole binding is recorded under `flags["runes-and-remnants"]`,
 including `boundAt`, which Phase 6 needs to know an item has been bound once
 already.
 
+## Ancestral weapons — spirit points
+
+The Evolve side of the same tab. One weapon per character, grown rather than
+replaced, its abilities bought with **spirit points**.
+
+Points are earned through **deeds**, not drops. That is the whole design: a
+spirit point you can farm is just another material, and this module already
+has plenty of those. Nothing awards them automatically — a GM does, from the
+panel.
+
+| | |
+|---|---|
+| Awakens at | **20** points earned |
+| Finished at | **25** — 5 more after waking |
+| Tiers | Lesser 1 · Greater 3 · Major 5 · Apex 8 |
+
+Awakening keys off points **earned**, not points remaining: a weapon carried
+through twenty points of deeds has woken whether or not its wielder spent
+them.
+
+Abilities can require another ability first, so a weapon grows along a path
+rather than picking the best three in isolation. A test walks every
+prerequisite chain and asserts none costs more than a weapon can hold — a
+branch that is permanently unreachable is a bug that looks like content.
+
+### The one-way door
+
+A remnant may be spent in place of a deed. Doing so means the weapon **can
+never be enchanted again** — and that is set in the same patch that adds the
+points, not left to a caller to remember. Forgetting it would be the worst
+kind of bug: the player finds out much later, with no way back. It also asks
+for confirmation in the strongest wording anywhere in the module.
+
+No single remnant is worth 20 points, so deeds have to do most of the work.
+A test pins that, because the moment a Deific essence could awaken a weapon on
+its own the currency stops meaning anything.
+
+### These costs are not a book's
+
+Ancestral Weapons is a commercial supplement. Its ability list and point costs
+are its text, and shipping them inside a publicly listed module is the same
+risk this project already declined with Grim Hollow, Ryoko's and Heliana's.
+
+What ships is the **engine** plus a ladder built to the two numbers the
+campaign had already fixed — 20 to awaken, 5 to finish. A table that owns the
+book replaces it in one of two ways:
+
+- edit `SPIRIT_ABILITIES` in [`src/data/spirit.js`](../data/spirit.js), or
+- call `registerSpiritAbilities(list, { replace: true })`, the same seam
+  third-party recipes use.
+
+The panel says so on screen, so nobody mistakes this module's scale for the
+supplement's.
+
 ## Related
 
 - [Craft](../craft/CraftDetails.md) — makes the mundane item, and owns the property tags

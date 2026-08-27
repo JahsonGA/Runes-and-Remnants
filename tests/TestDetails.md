@@ -1,9 +1,9 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **388 tests across 17 files**,
+Vitest suite plus a standalone packaging check. **426 tests across 18 files**,
 all runnable without a Foundry runtime.
 
-A second suite runs in a real browser. **51 Playwright tests** render the
+A second suite runs in a real browser. **62 Playwright tests** render the
 module's own templates and stylesheet and check that the result is usable —
 the class of bug string assertions cannot see.
 
@@ -37,6 +37,7 @@ collects the Playwright files and fails on the missing runner.
 | [`craft-outcome.test.js`](craft-outcome.test.js) | 22 | Roll grading, graded failure, reagent selection, stack consumption |
 | [`enchant.test.js`](enchant.test.js) | 42 | Remnant tiers, rarity normalising, the plan, flaws on failure |
 | [`craft-summary.test.js`](craft-summary.test.js) | 28 | Confirmation content: hours, cost, what is consumed, escaping |
+| [`spirit.test.js`](spirit.test.js) | 38 | Spirit ladder integrity, prerequisite chains, awakening, the one-way remnant door |
 | [`templates.test.js`](templates.test.js) | 13 | Handlebars templates compile and render against real panel data |
 | [`check-assets.mjs`](check-assets.mjs) | — | Not Vitest. Standalone packaging guard |
 
@@ -181,6 +182,31 @@ Also covers: a stronger remnant raising rarity, DC and hours together; a
 weaker one blocking outright; every blocker reported at once rather than one
 per reload; and that a natural 1 gives three flaws rather than destroying the
 item — losing a Deific remnant to one die roll is not a risk anyone would take.
+
+### `spirit.test.js`
+
+Ancestral weapon progression, and the balance properties that make it a
+choice rather than a checklist.
+
+Two integrity assertions carry the most weight. **Every prerequisite chain is
+walked** and asserted to cost no more than a weapon can hold — a branch that
+is permanently unreachable is a bug that looks like content. And **the whole
+ladder must cost more than the 25-point budget**, or there is no choice to
+make at all.
+
+**No single remnant may be worth 20 points.** The moment one could awaken a
+weapon on its own, spirit points stop being a currency earned through deeds
+and become another farmable material, which is the one thing they exist not
+to be.
+
+The one-way door gets its own block: spending a remnant must set
+`remnantSpent` in the *same patch* that adds the points. A caller that had to
+remember it separately would eventually forget, and the player would find out
+much later with no way back.
+
+Also covers awakening keying off points **earned** rather than remaining, and
+`registerSpiritAbilities` — the seam a table with the supplement uses to
+replace this module's invented costs with the book's.
 
 ### `craft-summary.test.js`
 

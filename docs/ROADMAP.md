@@ -323,10 +323,31 @@ check.
 Still open: socketed runes and corruption mechanics, which were sketched in
 the original Phase 5 scope and are better placed alongside Phase 6.
 
-## Phase 6 — Ancestral Weapons
+## Phase 6 — Ancestral Weapons  ✅ *core done*
 
-Persistent evolving weapons: unlock trees, rune infusion, material upgrades,
-milestone evolution.
+The Evolve side of the Enchanting tab. One weapon per character, grown rather
+than replaced, abilities bought with spirit points earned through deeds.
+
+- Awakens at 20 points earned, finished at 25. Awakening keys off points
+  earned rather than remaining — a weapon carried through twenty points of
+  deeds has woken whether or not its wielder spent them.
+- Abilities sit in tiers (1/3/5/8) and can require another first, so a weapon
+  grows along a path. A test walks every prerequisite chain and asserts none
+  exceeds what a weapon can hold.
+- A remnant may stand in for a deed, and doing so forecloses enchanting on
+  that weapon forever — set in the same patch that adds the points, and
+  confirmed in the strongest wording in the module. No single remnant can
+  awaken a weapon alone, so deeds do most of the work.
+- Points are never awarded automatically. A spirit point you can farm is just
+  another material.
+
+**The costs shipped are this module's own scale, not the supplement's.**
+Ancestral Weapons is commercial; its ability list and costs stay out of a
+public package, and a table that owns it replaces them in one edit or through
+`registerSpiritAbilities()`.
+
+Still open: rune infusion and corruption, carried over from the original
+Phase 5 sketch.
 
 ---
 

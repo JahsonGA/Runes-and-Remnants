@@ -13,11 +13,20 @@ import {
   enchantPlan, enchantmentsFor, componentsFor, remnantsFrom,
   getEnchantment, itemKind, rarityRank
 } from "./logic.js";
+import {
+  spiritState, abilityLadder, remnantValue,
+  SPIRIT_AWAKEN, SPIRIT_TOTAL
+} from "./spirit.js";
+import { SPIRIT_DEEDS } from "../data/spirit.js";
 
 const KIND_LABEL = { weapon: "Weapons", armour: "Armour", wondrous: "Wondrous" };
 
 export class EnchantPanel {
   constructor() {
+    /** "bind" a remnant into an item, or "evolve" an ancestral weapon. */
+    this.mode = "bind";
+    /** The ancestral weapon on the Evolve side, by id. */
+    this.spiritItemId = null;
     /** Item being enchanted, by id. */
     this.itemId = null;
     /** Chosen enchantment, by name. */
@@ -80,7 +89,55 @@ export class EnchantPanel {
               : `${b.flaws} flaw${b.flaws > 1 ? "s" : ""}`,
         destroyed: b.destroyed
       })),
-      ...this._action(plan)
+      ...this._action(plan),
+      ...this._spirit(caster, items)
+    };
+  }
+
+  /**
+   * The Evolve side: an ancestral weapon and what it can grow into.
+   *
+   * Kept on the enchanting tab because it is the same conversation — what a
+   * weapon becomes — and because the two share a currency: a remnant can be
+   * spent here instead of being bound, and doing so forecloses binding
+   * forever. Splitting them across tabs would hide that trade.
+   */
+  _spirit(caster, items) {
+    // A separate list from the bind side: an ancestral weapon may already have
+    // been enchanted, so it must not be filtered out the way bind targets are.
+    const weapons = caster?.weapons ?? items.filter(i => itemKind(i) === "weapon");
+    const item = weapons.find(i => i.id === this.spiritItemId) ?? null;
+    const state = spiritState(item);
+
+    return {
+      enchantMode: this.mode,
+      spiritWeapons: weapons.map(i => {
+        const s = spiritState(i);
+        return {
+          id: i.id, name: i.name, img: i.img,
+          ancestral: s.isAncestral,
+          earned: s.earned,
+          selected: i.id === this.spiritItemId
+        };
+      }),
+      spiritItem: item && { id: item.id, name: item.name },
+      spirit: item ? {
+        ...state,
+        // A progress bar reads better than two numbers when the whole point
+        // is how far off awakening still is.
+        percent: Math.min(100, Math.round((state.earned / SPIRIT_TOTAL) * 100)),
+        awakenAt: SPIRIT_AWAKEN,
+        total: SPIRIT_TOTAL
+      } : null,
+      spiritLadder: item ? abilityLadder(item) : [],
+      spiritDeeds: SPIRIT_DEEDS,
+      // Remnants the wielder is carrying, with what each is worth as points.
+      spiritRemnants: item && !state.remnantSpent
+        ? remnantsFrom(caster?.parts ?? [])
+            .map(r => ({ id: r.id, name: r.name, points: remnantValue(r.name) }))
+            .filter(r => r.points > 0)
+        : [],
+      isGM: caster?.isGM ?? false
     };
   }
 
@@ -127,9 +184,18 @@ export class EnchantPanel {
     });
 
     pick("pick-enchant-item", "itemId");
+    pick("pick-spirit-item", "spiritItemId");
     pick("pick-enchantment", "enchantment");
     pick("pick-remnant", "remnantId");
     pick("pick-enchant-component", "componentId");
+
+    html.on("click", "[data-action='enchant-mode']", ev => {
+      const mode = ev.currentTarget.dataset.mode;
+      if (mode !== "bind" && mode !== "evolve") return;
+      if (mode === this.mode) return;
+      this.mode = mode;
+      rerender();
+    });
 
     html.on("change", "[data-action='enchant-toggle']", ev => {
       const field = ev.currentTarget.dataset.field;
