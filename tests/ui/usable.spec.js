@@ -272,14 +272,16 @@ test.describe("enchanting", () => {
     await expect(components).not.toContainText("Essence");
   });
 
-  test("dims what the chosen item cannot take, rather than hiding it", async ({ page }) => {
-    // A player should be able to see what a different item would allow.
+  test("names what the chosen item cannot take, without listing it", async ({ page }) => {
+    // A player should still see that other kinds exist and how many — but
+    // listing every pill they cannot click pushed the remnant picker off the
+    // bottom of the card, which is how it came to be reported as missing.
     await page.setContent(hubPage({
       tab: "enchanting", caster: fullCaster(), enchant: { itemId: "w1" }
     }));
     const dim = page.locator(".rnr-tier-dim");
     await expect(dim.first()).toBeVisible();
-    await expect(dim.first()).toContainText("needs a different item");
+    await expect(dim.first()).toContainText(/\d+ for a different item/);
   });
 
   test("shows the binding, and says the remnant raised it", async ({ page }) => {
@@ -646,5 +648,53 @@ test.describe("enchanting is for spellcasters", () => {
   test("crafting is open to anyone", async ({ page }) => {
     await page.setContent(hubPage({ tab: "crafting", crafter: fullCrafter() }));
     await expect(page.locator(".rnr-crafter .warning")).toHaveCount(0);
+  });
+});
+
+test.describe("the enchanting steps are all reachable", () => {
+  const chosen = { itemId: "a1", enchantment: "Enduring" };
+
+  test("all four numbered steps fit without scrolling", async ({ page }) => {
+    // Reported twice as "there is no remnant selection". It was rendering the
+    // whole time — 775px of content in a 598px card, with step 4 below the
+    // fold. Two thirds of that was enchantments for item kinds the player had
+    // not chosen and could not click.
+    await page.setContent(hubPage({ tab: "enchanting", caster: fullCaster(), enchant: chosen }));
+
+    const hidden = await page.evaluate(() => {
+      const cat = document.querySelector(".rnr-catalogue");
+      const box = cat.getBoundingClientRect();
+      return [...cat.querySelectorAll(".rnr-tier-header")]
+        .filter(h => {
+          const r = h.getBoundingClientRect();
+          return r.top >= box.bottom || r.bottom <= box.top;
+        })
+        .map(h => h.textContent.trim().replace(/\s+/g, " ").slice(0, 30));
+    });
+    expect(hidden, "a step is below the fold").toEqual([]);
+  });
+
+  test("the remnant picker is one of them", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "enchanting", caster: fullCaster(), enchant: chosen }));
+    const picker = page.locator("[data-action='pick-remnant']").first();
+    await expect(picker).toBeVisible();
+    await expect(picker).toBeInViewport();
+  });
+
+  test("a group for another item kind is named but not listed", async ({ page }) => {
+    // Nothing is hidden — the header still says how many are there — but the
+    // pills nobody can click no longer take the room.
+    await page.setContent(hubPage({ tab: "enchanting", caster: fullCaster(), enchant: chosen }));
+    const dim = page.locator(".rnr-tier-dim").first();
+    await expect(dim).toContainText(/for a different item/);
+    await expect(dim.locator("[data-action='pick-enchantment']")).toHaveCount(0);
+  });
+
+  test("the group that does fit is listed in full", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "enchanting", caster: fullCaster(), enchant: chosen }));
+    const fitting = page.locator(".rnr-tier:not(.rnr-tier-dim)")
+      .filter({ hasText: "Armour" }).first();
+    expect(await fitting.locator("[data-action='pick-enchantment']").count())
+      .toBeGreaterThan(4);
   });
 });

@@ -148,9 +148,13 @@ export class EnchantPanel {
       .sort((a, b) => (b === kind) - (a === kind))
       .map(k => ({
         label: KIND_LABEL[k],
-        // Dimmed rather than hidden, so a player can see what a different
-        // item would let them make before they go and make it.
+        // Named but COLLAPSED when it does not fit. Listing all three kinds
+        // in full ran the column to 775px in a 598px card and pushed the
+        // remnant picker below the fold — a player reported it as missing.
+        // The header still says what is there, so nothing is hidden, only
+        // the pills nobody can click.
         fits: !kind || k === kind,
+        count: enchantmentsFor(k).length,
         items: enchantmentsFor(k)
           .sort((a, b) => rarityRank(a.rarity) - rarityRank(b.rarity))
           .map(e => ({

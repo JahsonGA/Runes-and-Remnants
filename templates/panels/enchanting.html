@@ -59,19 +59,23 @@
         <div class="rnr-tier {{#unless this.fits}}rnr-tier-dim{{/unless}}">
           <div class="rnr-tier-header">
             2 · {{this.label}}
-            {{#unless this.fits}}<span class="rnr-num muted">needs a different item</span>{{/unless}}
+            {{#unless this.fits}}
+              <span class="rnr-num muted">{{this.count}} for a different item</span>
+            {{/unless}}
           </div>
-          <ul class="rnr-list rnr-pool">
-            {{#each this.items}}
-              <li>
-                <button type="button" class="rnr-add {{#if this.selected}}rnr-picked{{/if}}"
-                        data-action="pick-enchantment" data-value="{{this.name}}"
-                        title="{{this.effect}} — needs a {{this.property}} component, {{this.rarity}} or better">
-                  {{this.name}} <span class="rnr-dcmod">{{this.rarity}}</span>
-                </button>
-              </li>
-            {{/each}}
-          </ul>
+          {{#if this.fits}}
+            <ul class="rnr-list rnr-pool">
+              {{#each this.items}}
+                <li>
+                  <button type="button" class="rnr-add {{#if this.selected}}rnr-picked{{/if}}"
+                          data-action="pick-enchantment" data-value="{{this.name}}"
+                          title="{{this.effect}} — needs a {{this.property}} component, {{this.rarity}} or better">
+                    {{this.name}} <span class="rnr-dcmod">{{this.rarity}}</span>
+                  </button>
+                </li>
+              {{/each}}
+            </ul>
+          {{/if}}
         </div>
       {{/each}}
 
