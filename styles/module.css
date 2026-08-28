@@ -546,6 +546,16 @@ tr.rnr-missing td {
   flex: none;
 }
 
+/* A reagent the player has set aside. Still listed, so it can be put back —
+   struck through rather than removed, because a part that vanishes when you
+   click it reads as destroyed. */
+.rnr-add-off {
+  opacity: 0.5;
+  text-decoration: line-through;
+  border-style: dashed;
+}
+.rnr-add-off:hover { opacity: 0.8; }
+
 /* ---- Ancestral weapons: spirit points ---- */
 /* A bar rather than two numbers, because the thing a player actually wants to
    know is how far off awakening still is. */

@@ -130,13 +130,15 @@ function harvestData() {
  */
 export function hubPage({ tab = "crafting", recipe = null, bench = [], mode = null,
                           crafter = null, enchant = null, caster = null,
-                          crafterActor = undefined } = {}) {
+                          crafterActor = undefined, craft = null,
+                          castersOnly = false, availableForCrafter = undefined } = {}) {
   registerOnce();
 
   const panel = new CraftPanel();
   if (mode) panel.mode = mode;
   if (recipe) panel.recipe = recipe;
   panel.bench = bench;
+  Object.assign(panel, craft ?? {});
 
   const ench = new EnchantPanel();
   Object.assign(ench, enchant ?? {});
@@ -153,7 +155,8 @@ export function hubPage({ tab = "crafting", recipe = null, bench = [], mode = nu
     crafterActor: crafterActor === undefined
       ? { id: "h1", name: "Harvester", img: "icons/svg/mystery-man.svg", inherited: true }
       : crafterActor,
-    availableForCrafter: [
+    castersOnly,
+    availableForCrafter: availableForCrafter ?? [
       { id: "a1", name: "Someone Else", img: "icons/svg/mystery-man.svg" },
       { id: "a2", name: "A Third Party", img: "icons/svg/mystery-man.svg" }
     ]

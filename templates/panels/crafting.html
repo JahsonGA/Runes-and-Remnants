@@ -126,13 +126,23 @@
               <ul class="rnr-list rnr-pool">
                 {{#each plan.reagents.used}}
                   <li>
-                    <span class="rnr-add rnr-picked" title="{{#if this.creatureType}}{{this.creatureType}} · {{/if}}potency {{this.potency}}">
+                    <button type="button" data-action="toggle-reagent" data-value="{{this.id}}"
+                            class="rnr-add {{#if this.spending}}rnr-picked{{/if}}{{#if this.excluded}} rnr-add-off{{/if}}"
+                            title="{{#if this.excluded}}Set aside — click to put it back{{else if this.spending}}Will be spent — click to keep it{{else}}Held back for now; the build does not need it{{/if}}{{#if this.creatureType}} · from a {{this.creatureType}}{{/if}}">
                       {{this.name}} <span class="rnr-num">{{this.potency}}</span>
                       {{#if this.assumed}}<span class="rnr-src-badge" title="Unlabelled — valued at the least it could be worth">?</span>{{/if}}
-                    </span>
+                    </button>
                   </li>
                 {{/each}}
               </ul>
+              <p class="muted rnr-hint">
+                {{#if plan.reagents.spendingCount}}
+                  Highlighted parts are the ones going in — cheapest first, so
+                  trophies survive. Click any to keep it back.
+                {{else}}
+                  Click a part to put it back in play.
+                {{/if}}
+              </p>
             {{/if}}
 
             {{#if plan.reagents.unknownStock}}

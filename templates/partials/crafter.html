@@ -25,6 +25,13 @@
       {{/if}}
       <button type="button" data-action="remove-crafter" title="Choose someone else">✕</button>
     </div>
+
+    {{#if crafterActor.wrongForRole}}
+      <p class="warning">
+        {{crafterActor.name}} casts no spells — only a spellcaster can bind a
+        remnant. Choose someone else.
+      </p>
+    {{/if}}
   {{else}}
     {{#if availableForCrafter.length}}
       <div class="rnr-dropdown">
@@ -41,7 +48,12 @@
       </div>
     {{else}}
       <p class="muted rnr-hint">
-        No characters you own. A GM sees every actor; a player sees their own.
+        {{#if castersOnly}}
+          No spellcasters to choose from — only a spellcaster can bind a
+          remnant. Crafting is open to anyone.
+        {{else}}
+          No characters you own. A GM sees every actor; a player sees their own.
+        {{/if}}
       </p>
     {{/if}}
   {{/if}}

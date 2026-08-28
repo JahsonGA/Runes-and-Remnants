@@ -72,12 +72,16 @@ export async function executeCraft(payload = {}) {
    MANUFACTURING
 --------------------------------------------- */
 
-async function craftItem({ actorId, recipe: recipeName }) {
+async function craftItem({ actorId, recipe: recipeName, exclude = [] }) {
   const actor = game.actors?.get(actorId);
   const recipe = getRecipe(recipeName);
   if (!actor || !recipe) return null;
 
   const crafter = crafterFrom(actor);
+  // Parts the player set aside in the panel. Honoured here rather than only
+  // in the display, or the bench would promise one thing and spend another.
+  const held = new Set(exclude);
+  crafter.parts = crafter.parts.filter(p => !held.has(p.id));
   const plan = planManufacture(recipe, crafter, crafter.parts);
   const selection = selectReagents(recipe, crafter.parts);
 

@@ -84,6 +84,24 @@ export class CraftPanel {
     this.bench = [];
     /** Catalogue filter text. A hundred recipes is too many to scan. */
     this.filter = "";
+    /**
+     * Parts the player has switched off, by item id.
+     *
+     * Selection is automatic by default — cheapest first, so scraps go before
+     * trophies — but a player who wants to keep a particular part has to be
+     * able to say so. The pills looked clickable long before they were.
+     */
+    this.reagentExcluded = new Set();
+  }
+
+  /** What is still in play: everything held, less what has been switched off. */
+  includedParts(parts = []) {
+    return (parts ?? []).filter(p => !this.reagentExcluded.has(p?.id));
+  }
+
+  /** Ids switched off, for the request that actually does the spending. */
+  excludedIds() {
+    return [...this.reagentExcluded];
   }
 
   /**
@@ -141,7 +159,7 @@ export class CraftPanel {
       };
     }
 
-    const plan = planManufacture(recipe, crafter, crafter.parts ?? []);
+    const plan = planManufacture(recipe, crafter, this.includedParts(crafter.parts));
     if (plan.blocked) {
       return {
         canCraft: true,
@@ -152,7 +170,7 @@ export class CraftPanel {
       };
     }
 
-    const selection = selectReagents(recipe, crafter.parts ?? []);
+    const selection = selectReagents(recipe, this.includedParts(crafter.parts));
     return {
       canCraft: true,
       craftLabel: "Craft it",
@@ -191,6 +209,14 @@ export class CraftPanel {
     html.on("click", "[data-action='remove-ingredient']", ev => {
       const i = Number(ev.currentTarget.closest("[data-index]")?.dataset.index);
       if (Number.isInteger(i)) this.bench.splice(i, 1);
+      rerender();
+    });
+
+    html.on("click", "[data-action='toggle-reagent']", ev => {
+      const id = ev.currentTarget.dataset.value;
+      if (!id) return;
+      if (this.reagentExcluded.has(id)) this.reagentExcluded.delete(id);
+      else this.reagentExcluded.add(id);
       rerender();
     });
 
@@ -303,7 +329,7 @@ export class CraftPanel {
       };
     }
 
-    const plan = planManufacture(recipe, crafter, crafter.parts ?? []);
+    const plan = planManufacture(recipe, crafter, this.includedParts(crafter.parts));
     return {
       ...plan,
       // planManufacture picks the one tool they can actually use; fall back
@@ -325,8 +351,17 @@ export class CraftPanel {
    * qualify, and a player can only act on that if they can see it.
    */
   _reagents(recipe, parts, unknownStock = false) {
-    const check = checkReagents(recipe, parts);
-    if (!check.required) return null;
+    // Everything matching, so a part the player has switched off is still on
+    // screen and can be switched back on.
+    const all = checkReagents(recipe, parts);
+    if (!all.required) return null;
+
+    const kept = this.includedParts(parts);
+    const check = checkReagents(recipe, kept);
+    const selection = selectReagents(recipe, kept);
+    // selectReagents works in units, so one stack can appear several times;
+    // what matters here is only whether an item is drawn on at all.
+    const spending = new Set(selection.parts.map(p => p.id));
 
     const need = reagentRequirement(recipe);
     const properties = check.properties ?? [];
@@ -347,15 +382,23 @@ export class CraftPanel {
       themed: check.themed,
       themeLabel: (need?.theme ?? []).join(" or "),
       dcAdjust: check.dcAdjust,
-      used: check.used.map(p => ({
+      // Three states, because "will be spent" and "could be spent" are
+      // different things and the panel used to draw them identically — four
+      // Bones all looking chosen when only one was going in.
+      used: all.used.map(p => ({
+        id: p.id,
         name: p.name,
         potency: p.potency,
         creatureType: p.creatureType ?? null,
+        excluded: this.reagentExcluded.has(p.id),
+        spending: spending.has(p.id),
         // A part with no recorded origin was valued at the lowest DC it
         // could be, which is worth saying out loud — the player may be owed
         // more if the GM remembers what it came off.
         assumed: !p.stamped
       })),
+      spendingCount: spending.size,
+      excludedCount: all.used.filter(p => this.reagentExcluded.has(p.id)).length,
       // A sample, not the list of 60: enough to point somewhere useful.
       suggestions: check.met ? [] : componentsWithProperty(properties).slice(0, 8)
     };

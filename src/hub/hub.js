@@ -97,7 +97,8 @@ export class RunesHub extends HarvestMenu {
         this.activeTab === "enchanting" ? "Enchanter" : "Crafter",
         this.activeTab === "enchanting"
           ? "icons/skills/trades/academics-book-study-purple.webp"
-          : "icons/skills/trades/academics-merchant-scribe.webp"),
+          : "icons/skills/trades/academics-merchant-scribe.webp",
+        this.activeTab === "enchanting"),
       activeTab: this.activeTab,
       tabs: HUB_TABS.map(t => ({ ...t, active: t.id === this.activeTab }))
     };
@@ -116,10 +117,24 @@ export class RunesHub extends HarvestMenu {
         ?? null;
   }
 
-  /** What the crafter picker renders. */
-  _crafterRole(label, icon) {
+  /**
+   * What the crafter picker renders.
+   *
+   * @param {boolean} [castersOnly] Enchanting is spellcasters only, so the
+   *   picker offers only spellcasters rather than letting someone choose a
+   *   fighter and then be told no by a blocker further down the panel.
+   */
+  _crafterRole(label, icon, castersOnly = false) {
     const actor = this._crafterActor();
     const taken = this.crafter?.actorId ?? null;
+
+    let available = this._getAvailableActors();
+    if (castersOnly) {
+      available = available.filter(a => {
+        const doc = game.actors?.get(a.id);
+        return doc ? casterFrom(doc).isCaster : false;
+      });
+    }
 
     return {
       crafterLabel: label,
@@ -129,9 +144,13 @@ export class RunesHub extends HarvestMenu {
         name: actor.name,
         img: this._getPortrait(actor),
         // Flagged so a player can tell an inherited choice from a made one.
-        inherited: !taken
+        inherited: !taken,
+        // An inherited harvester may well not be a caster. Saying so on the
+        // picker beats leaving them to wonder why nothing will bind.
+        wrongForRole: castersOnly && !casterFrom(actor).isCaster
       },
-      availableForCrafter: this._getAvailableActors()
+      castersOnly,
+      availableForCrafter: available
     };
   }
 
@@ -212,10 +231,13 @@ export class RunesHub extends HarvestMenu {
       : (() => {
           const recipe = getRecipe(this.craft.recipe);
           if (!recipe || !crafter) return null;
+          // The same set the panel weighed, so the dialog cannot promise a
+          // part the player has set aside.
+          const parts = this.craft.includedParts(crafter.parts);
           return craftSummary({
             recipe,
-            plan: planManufacture(recipe, crafter, crafter.parts ?? []),
-            selection: selectReagents(recipe, crafter.parts ?? [])
+            plan: planManufacture(recipe, crafter, parts),
+            selection: selectReagents(recipe, parts)
           });
         })();
 
@@ -275,7 +297,7 @@ export class RunesHub extends HarvestMenu {
 
       await requestCraft(this.craft.mode === "alchemy"
         ? { actorId, bench: [...this.craft.bench] }
-        : { actorId, recipe: this.craft.recipe });
+        : { actorId, recipe: this.craft.recipe, exclude: this.craft.excludedIds() });
 
       this.render(true);   // inventory changed; the bench must catch up
     });

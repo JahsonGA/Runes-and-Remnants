@@ -564,3 +564,87 @@ test.describe("ancestral weapons", () => {
     expect(over).toEqual([]);
   });
 });
+
+test.describe("choosing reagents", () => {
+  const bones = () => ([
+    { id: "b1", name: "Bone", dc: 10, stamped: true },
+    { id: "b2", name: "Bone", dc: 10, stamped: true },
+    { id: "b3", name: "Bone", dc: 10, stamped: true },
+    { id: "b4", name: "Bone", dc: 10, stamped: true }
+  ]);
+
+  test("reagent pills are buttons, not decoration", async ({ page }) => {
+    // They carried the same class as the clickable catalogue and did nothing.
+    await page.setContent(hubPage({
+      tab: "crafting", recipe: "Leather", crafter: fullCrafter(bones())
+    }));
+    const pills = page.locator("[data-action='toggle-reagent']");
+    await expect(pills).toHaveCount(4);
+    for (const pill of await pills.all()) {
+      await expect(pill).toBeEnabled();
+      const box = await pill.boundingBox();
+      expect(box.height).toBeGreaterThanOrEqual(MIN_HIT);
+    }
+  });
+
+  test("only the parts actually going in are highlighted", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "crafting", recipe: "Leather", crafter: fullCrafter(bones())
+    }));
+    await expect(page.locator("[data-action='toggle-reagent'].rnr-picked")).toHaveCount(1);
+  });
+
+  test("a switched-off part stays visible, struck through", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "crafting", recipe: "Leather", crafter: fullCrafter(bones()),
+      craft: { reagentExcluded: new Set(["b1"]) }
+    }));
+    const off = page.locator("[data-action='toggle-reagent'].rnr-add-off");
+    await expect(off).toHaveCount(1);
+    await expect(off).toBeVisible();
+    await expect(off).toHaveCSS("text-decoration-line", "line-through");
+  });
+
+  test("each pill says what clicking it will do", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "crafting", recipe: "Leather", crafter: fullCrafter(bones()),
+      craft: { reagentExcluded: new Set(["b1"]) }
+    }));
+    await expect(page.locator("[data-action='toggle-reagent'][data-value='b1']"))
+      .toHaveAttribute("title", /click to put it back/i);
+    await expect(page.locator("[data-action='toggle-reagent'].rnr-picked").first())
+      .toHaveAttribute("title", /click to keep it/i);
+  });
+});
+
+test.describe("enchanting is for spellcasters", () => {
+  test("the picker offers nobody who casts no spells", async ({ page }) => {
+    // Better than letting someone pick a fighter and then be refused by a
+    // blocker further down the panel.
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: fullCaster(),
+      crafterActor: null, castersOnly: true, availableForCrafter: []
+    }));
+    await expect(page.locator("[data-action='set-crafter']")).toHaveCount(0);
+    await expect(page.locator(".rnr-crafter")).toContainText(/only a spellcaster/i);
+  });
+
+  test("says so when the chosen enchanter cannot cast", async ({ page }) => {
+    await page.setContent(hubPage({
+      tab: "enchanting", caster: fullCaster({ isCaster: false }),
+      crafterActor: { id: "h1", name: "Bruiser", img: "icons/svg/mystery-man.svg",
+                      inherited: true, wrongForRole: true }
+    }));
+    await expect(page.locator(".rnr-crafter .warning")).toContainText("casts no spells");
+  });
+
+  test("stays quiet when the enchanter can cast", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "enchanting", caster: fullCaster() }));
+    await expect(page.locator(".rnr-crafter .warning")).toHaveCount(0);
+  });
+
+  test("crafting is open to anyone", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "crafting", crafter: fullCrafter() }));
+    await expect(page.locator(".rnr-crafter .warning")).toHaveCount(0);
+  });
+});
