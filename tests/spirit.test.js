@@ -196,8 +196,8 @@ describe("patches", () => {
 
 describe("spending a remnant for points", () => {
   it("values a remnant by its tier", () => {
-    expect(remnantValue("Essence (Frail)")).toBe(REMNANT_SPIRIT_VALUE.Frail);
-    expect(remnantValue("Essence (Deific)")).toBe(REMNANT_SPIRIT_VALUE.Deific);
+    expect(remnantValue("Remnant (Frail)")).toBe(REMNANT_SPIRIT_VALUE.Frail);
+    expect(remnantValue("Remnant (Deific)")).toBe(REMNANT_SPIRIT_VALUE.Deific);
   });
 
   it("values every remnant tier the harvest table can drop", () => {
@@ -215,7 +215,7 @@ describe("spending a remnant for points", () => {
   it("closes the door on enchanting, in the same patch", () => {
     // Forgetting this silently would be the worst kind of bug — the player
     // would only find out much later, with no way back.
-    const spirit = spendRemnantPatch(blade(2), "Essence (Potent)")[`flags.${MODULE_ID}.spirit`];
+    const spirit = spendRemnantPatch(blade(2), "Remnant (Potent)")[`flags.${MODULE_ID}.spirit`];
     expect(spirit.earned).toBe(2 + REMNANT_SPIRIT_VALUE.Potent);
     expect(spirit.remnantSpent).toBe(true);
   });

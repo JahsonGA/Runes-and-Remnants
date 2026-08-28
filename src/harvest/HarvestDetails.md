@@ -33,7 +33,7 @@ No Foundry dependency at module scope, so every export below is unit-testable.
 
 | Export | Signature | Purpose |
 |---|---|---|
-| `getEssenceByCR` | `(cr) → { name, rarity, dc }` | Selects the essence tier for a CR. CR 0–2 falls back to `Essence (Frail)` at DC 20 |
+| `getEssenceByCR` | `(cr) → { name, rarity, dc }` | Selects the essence tier for a CR. CR 0–2 falls back to `Remnant (Frail)` at DC 20 |
 | `computeHarvestDC` | `({ cr, type, rarity, rarityMultiplier, baseDC }) → number` | CR/type/rarity-scaled DC. **Not used by the harvest workflow** — retained for macros and third-party callers |
 | `bestSkillFor` | `(actor, skills[]) → { key, mod }` | Highest-modifier skill from a candidate list |
 | `rollSkillCheck` | `async (actor, skillKey, label) → { total, roll }` | Generic skill roll + chat card. *Uses the Foundry `Roll` global* |

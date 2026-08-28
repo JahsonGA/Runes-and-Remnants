@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { ESSENCE_TABLE, getEssenceByCR } from "../src/harvest/logic.js";
+import { ESSENCE_TABLE, getEssenceByCR, essenceDC, isEssenceName, lowestComponentDC } from "../src/harvest/logic.js";
 
 // ─── ESSENCE_TABLE structure ───────────────────────────────────────────────────
 
@@ -8,11 +8,42 @@ describe("ESSENCE_TABLE — structure", () => {
     expect(ESSENCE_TABLE.length).toBe(5);
   });
 
-  it("all names follow 'Essence (X)' format to match compendium", () => {
+  it("all names follow 'Remnant (X)' format to match compendium", () => {
     for (const entry of ESSENCE_TABLE) {
       expect(entry.name, `"${entry.name}" does not match compendium format`).toMatch(
+        /^Remnant \(\w+\)$/
+      );
+    }
+  });
+
+  it("still recognises the old 'Essence (X)' name every entry was renamed from", () => {
+    // Worlds already hold items under the old name. Matching is by name, so
+    // dropping the legacy spelling would make a party's hard-won remnants
+    // invisible to enchanting overnight.
+    for (const entry of ESSENCE_TABLE) {
+      expect(entry.legacyName, `"${entry.name}" has no legacy name`).toMatch(
         /^Essence \(\w+\)$/
       );
+      expect(essenceDC(entry.legacyName), `"${entry.legacyName}" no longer resolves`)
+        .toBe(entry.dc);
+      expect(essenceDC(entry.name)).toBe(entry.dc);
+    }
+  });
+
+  it("knows a remnant from an ordinary component", () => {
+    // lowestComponentDC only scanned HARVEST_TABLE, so an unstamped remnant
+    // resolved to null, partFromItem dropped it, and the Enchanting tab
+    // reported none while one sat in the pack.
+    expect(isEssenceName("Remnant (Potent)")).toBe(true);
+    expect(isEssenceName("Essence (Potent)")).toBe(true);
+    expect(isEssenceName("Heart")).toBe(false);
+    expect(isEssenceName(null)).toBe(false);
+  });
+
+  it("values an unstamped remnant off its name alone", () => {
+    for (const entry of ESSENCE_TABLE) {
+      expect(lowestComponentDC(entry.name), entry.name).toBe(entry.dc);
+      expect(lowestComponentDC(entry.legacyName), entry.legacyName).toBe(entry.dc);
     }
   });
 
@@ -54,36 +85,36 @@ describe("ESSENCE_TABLE — structure", () => {
 // ─── getEssenceByCR — CR range mapping ────────────────────────────────────────
 
 describe("getEssenceByCR — CR range mapping", () => {
-  it("CR 0-2 → fallback Essence (Frail)", () => {
+  it("CR 0-2 → fallback Remnant (Frail)", () => {
     for (const cr of [0, 1, 2]) {
-      expect(getEssenceByCR(cr).name, `CR ${cr}`).toBe("Essence (Frail)");
+      expect(getEssenceByCR(cr).name, `CR ${cr}`).toBe("Remnant (Frail)");
     }
   });
 
-  it("CR 3-6 → Essence (Frail)", () => {
-    expect(getEssenceByCR(3).name).toBe("Essence (Frail)");
-    expect(getEssenceByCR(6).name).toBe("Essence (Frail)");
+  it("CR 3-6 → Remnant (Frail)", () => {
+    expect(getEssenceByCR(3).name).toBe("Remnant (Frail)");
+    expect(getEssenceByCR(6).name).toBe("Remnant (Frail)");
   });
 
-  it("CR 7-11 → Essence (Robust)", () => {
-    expect(getEssenceByCR(7).name).toBe("Essence (Robust)");
-    expect(getEssenceByCR(11).name).toBe("Essence (Robust)");
+  it("CR 7-11 → Remnant (Robust)", () => {
+    expect(getEssenceByCR(7).name).toBe("Remnant (Robust)");
+    expect(getEssenceByCR(11).name).toBe("Remnant (Robust)");
   });
 
-  it("CR 12-17 → Essence (Potent)", () => {
-    expect(getEssenceByCR(12).name).toBe("Essence (Potent)");
-    expect(getEssenceByCR(17).name).toBe("Essence (Potent)");
+  it("CR 12-17 → Remnant (Potent)", () => {
+    expect(getEssenceByCR(12).name).toBe("Remnant (Potent)");
+    expect(getEssenceByCR(17).name).toBe("Remnant (Potent)");
   });
 
-  it("CR 18-24 → Essence (Mythic)", () => {
-    expect(getEssenceByCR(18).name).toBe("Essence (Mythic)");
-    expect(getEssenceByCR(24).name).toBe("Essence (Mythic)");
+  it("CR 18-24 → Remnant (Mythic)", () => {
+    expect(getEssenceByCR(18).name).toBe("Remnant (Mythic)");
+    expect(getEssenceByCR(24).name).toBe("Remnant (Mythic)");
   });
 
-  it("CR 25+ → Essence (Deific)", () => {
-    expect(getEssenceByCR(25).name).toBe("Essence (Deific)");
-    expect(getEssenceByCR(30).name).toBe("Essence (Deific)");
-    expect(getEssenceByCR(99).name).toBe("Essence (Deific)");
+  it("CR 25+ → Remnant (Deific)", () => {
+    expect(getEssenceByCR(25).name).toBe("Remnant (Deific)");
+    expect(getEssenceByCR(30).name).toBe("Remnant (Deific)");
+    expect(getEssenceByCR(99).name).toBe("Remnant (Deific)");
   });
 });
 
@@ -92,18 +123,18 @@ describe("getEssenceByCR — CR range mapping", () => {
 describe("getEssenceByCR — boundaries", () => {
   it("handles exact tier boundaries correctly", () => {
     // Lower bound of each tier
-    expect(getEssenceByCR(3).name).toBe("Essence (Frail)");
-    expect(getEssenceByCR(7).name).toBe("Essence (Robust)");
-    expect(getEssenceByCR(12).name).toBe("Essence (Potent)");
-    expect(getEssenceByCR(18).name).toBe("Essence (Mythic)");
-    expect(getEssenceByCR(25).name).toBe("Essence (Deific)");
+    expect(getEssenceByCR(3).name).toBe("Remnant (Frail)");
+    expect(getEssenceByCR(7).name).toBe("Remnant (Robust)");
+    expect(getEssenceByCR(12).name).toBe("Remnant (Potent)");
+    expect(getEssenceByCR(18).name).toBe("Remnant (Mythic)");
+    expect(getEssenceByCR(25).name).toBe("Remnant (Deific)");
   });
 
   it("handles upper boundary of each tier correctly", () => {
-    expect(getEssenceByCR(6).name).toBe("Essence (Frail)");
-    expect(getEssenceByCR(11).name).toBe("Essence (Robust)");
-    expect(getEssenceByCR(17).name).toBe("Essence (Potent)");
-    expect(getEssenceByCR(24).name).toBe("Essence (Mythic)");
+    expect(getEssenceByCR(6).name).toBe("Remnant (Frail)");
+    expect(getEssenceByCR(11).name).toBe("Remnant (Robust)");
+    expect(getEssenceByCR(17).name).toBe("Remnant (Potent)");
+    expect(getEssenceByCR(24).name).toBe("Remnant (Mythic)");
   });
 });
 

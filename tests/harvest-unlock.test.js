@@ -21,13 +21,13 @@ describe("getComponentDC", () => {
   });
 
   it("prices essence by CR rather than creature type", () => {
-    expect(getComponentDC("dragon", "Essence (Robust)", 10)).toBe(30);
-    expect(getComponentDC("beast", "Essence (Robust)", 10)).toBe(30);
+    expect(getComponentDC("dragon", "Remnant (Robust)", 10)).toBe(30);
+    expect(getComponentDC("beast", "Remnant (Robust)", 10)).toBe(30);
   });
 
   it("only matches the essence for the creature's own CR", () => {
     // A CR 10 creature has robust essence; deific is not on its table.
-    expect(getComponentDC("dragon", "Essence (Deific)", 10)).toBeNull();
+    expect(getComponentDC("dragon", "Remnant (Deific)", 10)).toBeNull();
   });
 
   it("returns null for a component the creature does not have", () => {
@@ -46,7 +46,7 @@ describe("buildHarvestList — cumulative DCs", () => {
     // Pouch of teeth (10), Eye (5), Eye (5), Breath sac (25), essence (30)
     // -> Harvest DCs 10, 15, 20, 45, 75
     const list = buildHarvestList(
-      ["Pouch of Teeth", "Eye", "Eye", "Breath Sac", "Essence (Robust)"],
+      ["Pouch of Teeth", "Eye", "Eye", "Breath Sac", "Remnant (Robust)"],
       "dragon",
       10
     );
@@ -105,7 +105,7 @@ describe("buildHarvestList — unknown components", () => {
 
 describe("resolveHarvest", () => {
   const list = () => buildHarvestList(
-    ["Pouch of Teeth", "Eye", "Eye", "Breath Sac", "Essence (Robust)"],
+    ["Pouch of Teeth", "Eye", "Eye", "Breath Sac", "Remnant (Robust)"],
     "dragon",
     10
   );
@@ -113,7 +113,7 @@ describe("resolveHarvest", () => {
   it("matches the source example — a 37 takes the teeth and both eyes", () => {
     const { awarded, missed } = resolveHarvest(list(), 37);
     expect(awarded.map(e => e.name)).toEqual(["Pouch of Teeth", "Eye", "Eye"]);
-    expect(missed.map(e => e.name)).toEqual(["Breath Sac", "Essence (Robust)"]);
+    expect(missed.map(e => e.name)).toEqual(["Breath Sac", "Remnant (Robust)"]);
   });
 
   it("awards a component when the check exactly equals its Harvest DC", () => {

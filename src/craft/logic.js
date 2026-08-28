@@ -17,7 +17,7 @@ import {
   ENCHANTMENT_BASE,
   MAX_MODIFIERS
 } from "../data/alchemy.js";
-import { MODULE_ID, lowestComponentDC } from "../harvest/logic.js";
+import { MODULE_ID, lowestComponentDC, isEssenceName } from "../harvest/logic.js";
 import {
   COMPONENT_PROPERTIES,
   POTENCY_BY_DC,
@@ -369,7 +369,10 @@ export function partFromItem(item) {
     dc,
     creatureType: origin.creatureType ?? null,
     cr: origin.cr ?? null,
-    essence: Boolean(origin.essence),
+    // Read off the name as well as the stamp: a remnant handed out by a GM,
+    // or granted before origin stamping shipped, is still a remnant and must
+    // be weighed on the heavier scale.
+    essence: Boolean(origin.essence) || isEssenceName(item.name),
     quantity: Number(item.system?.quantity) || 1,
     stamped: Boolean(origin.dc),
     id: item.id ?? item._id ?? null

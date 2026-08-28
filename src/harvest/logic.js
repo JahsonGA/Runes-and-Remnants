@@ -47,21 +47,32 @@ export const RARITY_MOD = {
    ESSENCE / REMNANT TABLE
 --------------------------------------------- */
 // Names match compendium item names exactly (runes-and-remnants.harvest-items).
+/**
+ * The remnant a corpse yields, by CR.
+ *
+ * Called "Essence" until the module was named for these; `legacyName` keeps
+ * items already in a world working, since everything here is matched by name
+ * and a rename would otherwise make a party's hard-won essences invisible.
+ */
 export const ESSENCE_TABLE = [
-  { crMin: 3,  crMax: 6,  dc: 25, name: "Essence (Frail)",  rarity: "uncommon" },
-  { crMin: 7,  crMax: 11, dc: 30, name: "Essence (Robust)", rarity: "rare"      },
-  { crMin: 12, crMax: 17, dc: 35, name: "Essence (Potent)", rarity: "veryRare"  },
-  { crMin: 18, crMax: 24, dc: 40, name: "Essence (Mythic)", rarity: "legendary" },
-  { crMin: 25, crMax: 99, dc: 50, name: "Essence (Deific)", rarity: "artifact"  }
+  { crMin: 3,  crMax: 6,  dc: 25, name: "Remnant (Frail)",  legacyName: "Essence (Frail)",  rarity: "uncommon"  },
+  { crMin: 7,  crMax: 11, dc: 30, name: "Remnant (Robust)", legacyName: "Essence (Robust)", rarity: "rare"      },
+  { crMin: 12, crMax: 17, dc: 35, name: "Remnant (Potent)", legacyName: "Essence (Potent)", rarity: "veryRare"  },
+  { crMin: 18, crMax: 24, dc: 40, name: "Remnant (Mythic)", legacyName: "Essence (Mythic)", rarity: "legendary" },
+  { crMin: 25, crMax: 99, dc: 50, name: "Remnant (Deific)", legacyName: "Essence (Deific)", rarity: "artifact"  }
 ];
 
 /**
- * Determines which essence type drops based on CR.
- * CR 0-2 creatures drop the lowest tier by default.
+ * Which remnant a corpse yields, by CR.
+ *
+ * CR 0–2 falls through to the weakest tier — at a slightly easier DC, since
+ * nothing that small is hiding much. Taken from the table rather than written
+ * out again, so a rename can never leave this one line behind.
  */
 export function getEssenceByCR(cr) {
   const entry = ESSENCE_TABLE.find(e => cr >= e.crMin && cr <= e.crMax);
-  return entry ?? { name: "Essence (Frail)", rarity: "uncommon", dc: 20 };
+  if (entry) return entry;
+  return { ...ESSENCE_TABLE[0], dc: 20 };
 }
 
 /* ---------------------------------------------
@@ -238,7 +249,31 @@ export function lowestComponentDC(name) {
       if (lowest === null || tier.dc < lowest) lowest = tier.dc;
     }
   }
+
+  // Essences are not in HARVEST_TABLE — they have their own CR-scaled ladder.
+  // Without this an unstamped essence returned null, partFromItem dropped it,
+  // and the Enchanting tab reported no remnants while one sat in the pack.
+  if (lowest === null) return essenceDC(name);
   return lowest;
+}
+
+/** True when this name is one of the essences, whatever its origin says. */
+export function isEssenceName(name) {
+  return essenceDC(name) !== null;
+}
+
+/**
+ * The DC of a named remnant, or null if it is not one.
+ *
+ * Matches the old "Essence (…)" spelling as well, so a party's existing
+ * remnants keep working after the rename.
+ */
+export function essenceDC(name) {
+  if (!name) return null;
+  const key = String(name).toLowerCase();
+  const found = ESSENCE_TABLE.find(e =>
+    e.name.toLowerCase() === key || e.legacyName?.toLowerCase() === key);
+  return found?.dc ?? null;
 }
 
 /**

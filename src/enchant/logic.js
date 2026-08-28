@@ -49,7 +49,7 @@ export function rarityRank(rarity) {
 /**
  * The tier a remnant belongs to.
  *
- * Accepts the essence item's name as harvest grants it — "Essence (Potent)" —
+ * Accepts the essence item's name as harvest grants it — "Remnant (Potent)" —
  * or the bare tier word, so a GM handing one out by hand still works.
  */
 export function remnantTier(name) {

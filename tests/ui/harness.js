@@ -70,8 +70,8 @@ export function fullCaster(over = {}) {
       { id: "a1", name: "Half Plate", type: "equipment", system: { armor: { type: "medium" } } }
     ],
     parts: [
-      { id: "r1", name: "Essence (Potent)", dc: 35, creatureType: "dragon", essence: true },
-      { id: "r2", name: "Essence (Frail)", dc: 25, creatureType: "beast", essence: true },
+      { id: "r1", name: "Remnant (Potent)", dc: 35, creatureType: "dragon", essence: true },
+      { id: "r2", name: "Remnant (Frail)", dc: 25, creatureType: "beast", essence: true },
       { id: "c1", name: "Pouch of Teeth", dc: 10, creatureType: "dragon" },
       { id: "c2", name: "Poison Gland (Poison)", dc: 20, creatureType: "monstrosity" },
       { id: "c3", name: "Heart", dc: 20, creatureType: "dragon" }

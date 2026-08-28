@@ -167,7 +167,7 @@ describe("enchantSummary", () => {
   const plan = () => enchantPlan({
     enchantment: "Keen",
     item: { name: "Longsword", type: "weapon" },
-    remnant: { name: "Essence (Potent)", creatureType: "dragon" },
+    remnant: { name: "Remnant (Potent)", creatureType: "dragon" },
     component: { name: "Pouch of Teeth" },
     caster: { ability: "int", abilityMod: 4, skills: ["Survival"], proficiency: 3, isCaster: true }
   });
@@ -183,7 +183,7 @@ describe("enchantSummary", () => {
 
   it("lists the remnant and the component", () => {
     expect(enchantSummary({ plan: plan() }).consumed)
-      .toEqual(["Essence (Potent)", "Pouch of Teeth"]);
+      .toEqual(["Remnant (Potent)", "Pouch of Teeth"]);
   });
 
   it("says when a stronger remnant raised the rarity", () => {

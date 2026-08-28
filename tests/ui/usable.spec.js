@@ -291,7 +291,7 @@ test.describe("enchanting", () => {
 
   test("names what will be consumed before the click", async ({ page }) => {
     await page.setContent(hubPage({ tab: "enchanting", caster: fullCaster(), enchant: bound }));
-    await expect(page.locator(".rnr-craft-hint")).toContainText("Essence (Potent)");
+    await expect(page.locator(".rnr-craft-hint")).toContainText("Remnant (Potent)");
     await expect(page.locator(".rnr-craft-hint")).toContainText("whatever the roll");
   });
 

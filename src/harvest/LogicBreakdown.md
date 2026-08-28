@@ -118,7 +118,7 @@ rather than critical success.
 
 ```js
 ESSENCE_TABLE.find(e => cr >= e.crMin && cr <= e.crMax)
-  ?? { name: "Essence (Frail)", rarity: "uncommon", dc: 20 }
+  ?? { name: "Remnant (Frail)", rarity: "uncommon", dc: 20 }
 ```
 
 The table starts at CR 3, so **CR 0–2 hits the fallback** — same name as the

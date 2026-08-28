@@ -119,8 +119,8 @@ describe("rarity", () => {
 
 describe("remnants", () => {
   it("reads the essence names harvest actually grants", () => {
-    expect(remnantTier("Essence (Potent)").rarity).toBe("very rare");
-    expect(remnantTier("Essence (Deific)").rarity).toBe("artifact");
+    expect(remnantTier("Remnant (Potent)").rarity).toBe("very rare");
+    expect(remnantTier("Remnant (Deific)").rarity).toBe("artifact");
   });
 
   it("reads a bare tier word, for a GM handing one out by hand", () => {
@@ -136,8 +136,8 @@ describe("remnants", () => {
   it("picks remnants out of a pack, weakest first", () => {
     const found = remnantsFrom([
       { name: "Heart" },
-      { name: "Essence (Mythic)" },
-      { name: "Essence (Frail)" },
+      { name: "Remnant (Mythic)" },
+      { name: "Remnant (Frail)" },
       { name: "Bone" }
     ]);
     expect(found.map(r => r.tier.remnant)).toEqual(["Frail", "Mythic"]);
@@ -174,7 +174,7 @@ describe("enchantPlan", () => {
     // A wizard working a dragon's remnant rolls Intelligence (Survival).
     const plan = enchantPlan({
       enchantment: "Keen", item: sword,
-      remnant: { name: "Essence (Frail)", creatureType: "dragon" },
+      remnant: { name: "Remnant (Frail)", creatureType: "dragon" },
       component: { name: "Pouch of Teeth" }, caster: caster()
     });
     expect(plan.ability).toBe("int");
@@ -185,7 +185,7 @@ describe("enchantPlan", () => {
   it("takes the skill from the remnant's creature, not the caster's choice", () => {
     const plan = enchantPlan({
       enchantment: "Keen", item: sword,
-      remnant: { name: "Essence (Frail)", creatureType: "undead" },
+      remnant: { name: "Remnant (Frail)", creatureType: "undead" },
       component: { name: "Bone" }, caster: caster()
     });
     expect(plan.skill).toBe("Medicine");
@@ -196,7 +196,7 @@ describe("enchantPlan", () => {
   it("uses the recipe's rarity when the remnant only just meets it", () => {
     const plan = enchantPlan({
       enchantment: "Keen", item: sword,                    // asks uncommon
-      remnant: { name: "Essence (Frail)", creatureType: "dragon" },
+      remnant: { name: "Remnant (Frail)", creatureType: "dragon" },
       component: { name: "Bone" }, caster: caster()
     });
     expect(plan.rarity).toBe("uncommon");
@@ -207,7 +207,7 @@ describe("enchantPlan", () => {
   it("a stronger remnant raises the rarity, the DC and the hours together", () => {
     const plan = enchantPlan({
       enchantment: "Keen", item: sword,                    // asks uncommon
-      remnant: { name: "Essence (Potent)", creatureType: "dragon" },
+      remnant: { name: "Remnant (Potent)", creatureType: "dragon" },
       component: { name: "Bone" }, caster: caster()
     });
     expect(plan.rarity).toBe("very rare");
@@ -219,7 +219,7 @@ describe("enchantPlan", () => {
   it("a remnant too weak to hold the enchantment blocks it", () => {
     const plan = enchantPlan({
       enchantment: "Lifedrinker", item: sword,             // asks rare
-      remnant: { name: "Essence (Frail)", creatureType: "dragon" },
+      remnant: { name: "Remnant (Frail)", creatureType: "dragon" },
       component: { name: "Heart" }, caster: caster()
     });
     expect(plan.valid).toBe(false);
@@ -230,7 +230,7 @@ describe("enchantPlan", () => {
     const plan = enchantPlan({
       enchantment: "Shadowweave",                          // armour only
       item: sword,
-      remnant: { name: "Essence (Frail)", creatureType: "beast" },
+      remnant: { name: "Remnant (Frail)", creatureType: "beast" },
       component: { name: "Fur" }, caster: caster()
     });
     expect(plan.blockers.join(" ")).toMatch(/cannot be worked into a weapon/i);
@@ -239,7 +239,7 @@ describe("enchantPlan", () => {
   it("refuses a component of the wrong property", () => {
     const plan = enchantPlan({
       enchantment: "Venomous", item: sword,
-      remnant: { name: "Essence (Frail)", creatureType: "beast" },
+      remnant: { name: "Remnant (Frail)", creatureType: "beast" },
       component: { name: "Bone" }, caster: caster()
     });
     expect(plan.blockers.join(" ")).toMatch(/not a virulent component/i);
@@ -248,7 +248,7 @@ describe("enchantPlan", () => {
   it("only a spellcaster can bind a remnant", () => {
     const plan = enchantPlan({
       enchantment: "Keen", item: sword,
-      remnant: { name: "Essence (Frail)", creatureType: "dragon" },
+      remnant: { name: "Remnant (Frail)", creatureType: "dragon" },
       component: { name: "Bone" }, caster: caster({ isCaster: false })
     });
     expect(plan.blockers.join(" ")).toMatch(/spellcaster/i);
@@ -258,7 +258,7 @@ describe("enchantPlan", () => {
     const plan = enchantPlan({
       enchantment: "Lifedrinker",
       item: { name: "Plate", type: "equipment", system: { armor: { type: "heavy" } } },
-      remnant: { name: "Essence (Frail)", creatureType: "beast" },
+      remnant: { name: "Remnant (Frail)", creatureType: "beast" },
       component: { name: "Bone" }, caster: caster()
     });
     expect(plan.blockers.length).toBeGreaterThanOrEqual(3);
@@ -266,7 +266,7 @@ describe("enchantPlan", () => {
 
   it("attunement doubles the hours; a consumable takes a fraction", () => {
     const base = { enchantment: "Keen", item: sword, component: { name: "Bone" },
-                   remnant: { name: "Essence (Frail)", creatureType: "dragon" }, caster: caster() };
+                   remnant: { name: "Remnant (Frail)", creatureType: "dragon" }, caster: caster() };
     const plain = enchantPlan(base);
     expect(enchantPlan({ ...base, attunement: true }).hours)
       .toBe(plain.hours * ATTUNEMENT_MULTIPLIER);
@@ -295,7 +295,7 @@ describe("componentsFor", () => {
   });
 
   it("never offers a remnant as a component — they do different jobs", () => {
-    const parts = [{ name: "Essence (Mythic)" }, { name: "Bone" }];
+    const parts = [{ name: "Remnant (Mythic)" }, { name: "Bone" }];
     expect(componentsFor("Keen", parts).map(p => p.name)).toEqual(["Bone"]);
   });
 });
