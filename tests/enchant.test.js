@@ -362,3 +362,39 @@ describe("resolveEnchant", () => {
     expect(() => resolveEnchant()).not.toThrow();
   });
 });
+
+// ─── Blockers a player can act on ─────────────────────────────────────────────
+
+describe("blocker wording", () => {
+  const armour = { name: "Leather Armor", type: "equipment", system: { armor: { type: "light" } } };
+
+  it("asks for a remnant when none is chosen, and names the floor", () => {
+    // This read "Enduring needs at least a Frail remnant; no remnant is too
+    // weak to hold it" — the two cases were folded into one sentence that
+    // says the opposite of what it means.
+    const plan = enchantPlan({ enchantment: "Enduring", item: armour, caster: caster() });
+    const said = plan.blockers.join(" ");
+    expect(said).toMatch(/choose a remnant/i);
+    expect(said).toMatch(/Frail/);
+    expect(said, "still says a missing remnant is too weak").not.toMatch(/too weak/i);
+  });
+
+  it("says which remnant is too weak, when one was actually chosen", () => {
+    const plan = enchantPlan({
+      enchantment: "Lifedrinker", item: { name: "Longsword", type: "weapon" },
+      remnant: { name: "Remnant (Frail)", creatureType: "beast" },
+      component: { name: "Heart" }, caster: caster()
+    });
+    expect(plan.blockers.join(" ")).toMatch(/Frail is too weak/i);
+  });
+
+  it("names the property a component has to carry", () => {
+    const plan = enchantPlan({
+      enchantment: "Enduring", item: armour,
+      remnant: { name: "Remnant (Potent)", creatureType: "beast" },
+      component: { name: "Bone" }, caster: caster()
+    });
+    // Bone is structural; Enduring wants vital.
+    expect(plan.blockers.join(" ")).toMatch(/Bone is not a vital component/);
+  });
+});

@@ -150,10 +150,19 @@ export function enchantPlan({
   const askedRank = rarityRank(spec.rarity);
   const heldRank = rarityRank(tier.rarity);
 
-  if (heldRank < askedRank) {
+  // "No remnant chosen" and "the one you chose is too weak" are different
+  // problems and need different sentences. Folding them together produced
+  // "Enduring needs at least a Frail remnant; no remnant is too weak to hold
+  // it" — which reads as the opposite of what it means.
+  if (!remnant) {
+    const floor = REMNANT_TIERS[askedRank]?.remnant;
+    blockers.push(floor
+      ? `Choose a remnant — ${spec.name} needs a ${floor} one or better.`
+      : "Choose a remnant to bind.");
+  } else if (heldRank < askedRank) {
     blockers.push(
-      `${spec.name} needs at least a ${REMNANT_TIERS[askedRank].remnant ?? "common"} remnant; `
-      + `${tier.remnant ?? "no remnant"} is too weak to hold it.`
+      `${tier.remnant} is too weak to hold ${spec.name}; `
+      + `it needs a ${REMNANT_TIERS[askedRank].remnant} remnant or better.`
     );
   }
 
