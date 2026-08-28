@@ -20,6 +20,7 @@ not here.
 | [`extras.js`](extras.js) | Reads third-party recipes from the world's compendiums |
 | [`execute.js`](execute.js) | Rolls, spends, grants. GM-authoritative |
 | [`summary.js`](summary.js) | What the confirmation says. Pure |
+| [`grant.js`](grant.js) | Finds the real dnd5e item a recipe produces |
 
 Data lives in [`src/data/manufacturing.js`](../data/DataDetails.md) and
 [`src/data/alchemy.js`](../data/DataDetails.md).
@@ -234,6 +235,44 @@ The dialog itself is [`src/ui/confirm.js`](../ui/confirm.js), which feature-
 detects `DialogV2` (v13+) and falls back to `Dialog` (v11/v12). Closing the
 window counts as a refusal, never a silent yes. A world setting turns the
 confirmations off for a table that already knows the numbers.
+
+### Handing over the item
+
+Crafting Leather Armour has to produce **Leather Armour** — a real dnd5e
+`equipment` item with an AC, a weight and a price. It used to produce a
+`loot` item called "Leather", because the only place it looked was this
+module own harvest pack, which holds monster components rather than gear.
+
+**Looked up by name, not by id.** The dnd5e system ships the SRD as
+compendiums, so the proper item is almost always already in the world.
+Hardcoding ids would tie the module to one dnd5e release — ids are
+regenerated between versions and differ in localised builds.
+
+Several spellings are tried in order, generated rather than tabulated
+wherever a rule covers it:
+
+| Recipe | Tries |
+|---|---|
+| Leather | Leather Armor → Leather → Leather Armour |
+| Crossbow, Light | Light Crossbow → Crossbow, Light |
+| Arrows (20) | Arrows (20) → Arrows |
+| Longsword | Longsword |
+
+Only the genuine mismatches sit in `SYSTEM_ITEM_NAME`; a test rejects any
+entry differing only in capitalisation, since the lookup is already
+case-insensitive and such a mapping is dead weight.
+
+Search order is the system compendiums, then world packs, then other modules,
+then the world own loose items. **The harvest pack is skipped entirely** — a
+recipe sharing a name with a component would otherwise produce a lump of
+monster instead of a sword. A third-party recipe loaded through
+`extras.js` carries its own `uuid`, which is used directly and beats every
+name guess.
+
+When nothing is found the item is still built, with the **right type** for its
+category — weapon, equipment or consumable, never `loot` — plus base AC for
+armour, so it can at least be equipped. It is flagged `improvised` and says so
+in its description, and a notification points at importing the SRD.
 
 ### Not yet
 

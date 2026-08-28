@@ -20,6 +20,7 @@ import {
   alchemyModifier
 } from "./logic.js";
 import { resolveCraft, consumptionPlan, OUTCOME } from "./outcome.js";
+import { grantCrafted } from "./grant.js";
 import { pickExecutorId } from "../harvest/logic.js";
 
 export const MODULE_ID = "runes-and-remnants";
@@ -175,30 +176,10 @@ async function evaluate(formula) {
   return { roll, total: roll.total, natural: kept[0]?.result ?? null };
 }
 
-/** Puts the finished item in the crafter's hands. */
-async function grantCrafted(actor, recipe) {
-  const pack = game.packs?.get(`${MODULE_ID}.harvest-items`);
-  const index = pack ? await pack.getIndex() : null;
-  const entry = index?.find(e => e.name === recipe.name);
-
-  if (entry) {
-    const doc = await pack.getDocument(entry._id);
-    const data = doc.toObject();
-    data.flags = { ...(data.flags ?? {}), [MODULE_ID]: { crafted: true } };
-    await actor.createEmbeddedDocuments("Item", [data]);
-    return;
-  }
-
-  // Not in the pack — most of the catalogue is SRD gear the world already
-  // has, or third-party content we deliberately do not ship. Make a plain
-  // item rather than failing after the materials are already spent.
-  await actor.createEmbeddedDocuments("Item", [{
-    name: recipe.name,
-    type: recipe.category === "Potion" || recipe.category === "Consumable" ? "consumable" : "loot",
-    system: { quantity: 1, description: { value: `Crafted by ${actor.name}.` } },
-    flags: { [MODULE_ID]: { crafted: true, category: recipe.category } }
-  }]);
-}
+// Granting lives in grant.js. It used to look only in this module's own
+// harvest pack, which holds monster components — so crafting Leather Armour
+// produced a `loot` item called "Leather" rather than armour anyone could
+// wear. See src/craft/grant.js for how the real item is found.
 
 /** Removes what the build consumed. */
 async function spend(actor, parts) {
