@@ -250,10 +250,16 @@
 /* Layout */
 .rnr-columns {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  /* A grid row defaults to sizing itself to its content. minmax(0, 1fr) lets
-     it shrink to the space available so the cards inside can scroll. */
-  grid-template-rows: minmax(0, 1fr);
+  /* Two columns while there is room for both, one when there is not.
+     A fixed two-column grid squeezed each card to 169px in a narrow window —
+     the pickers were all still there, just too cramped to use, which reads as
+     "the option is missing". auto-fit stacks them instead. */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  /* auto-rows, not template-rows: stacked there are two rows, and defining
+     only the first would leave the second sized to its content and hanging
+     off the bottom of the window. Every row is constrained, so each card
+     scrolls inside its own share of the height either way. */
+  grid-auto-rows: minmax(0, 1fr);
   gap: 14px;
   align-items: stretch;
   min-height: 0;

@@ -278,3 +278,59 @@ test.describe("scroll position survives a re-render", () => {
     expect(dead, "scrollY selectors that match nothing in any panel").toEqual([]);
   });
 });
+
+test.describe("a narrow window stacks rather than squeezes", () => {
+  const narrow = (page, tab, width, extra = {}) => page.setContent(
+    hubPage({ tab, ...extra }).replace(`width: ${HUB_WIDTH}px`, `width: ${width}px`));
+
+  test("two columns while there is room for both", async ({ page }) => {
+    await narrow(page, "enchanting", HUB_WIDTH, { caster: fullCaster() });
+    const rows = await page.evaluate(() => {
+      const [a, b] = [...document.querySelector(".rnr-columns").children];
+      return a.getBoundingClientRect().top === b.getBoundingClientRect().top;
+    });
+    expect(rows, "should sit side by side at the default width").toBe(true);
+  });
+
+  test("one column when there is not", async ({ page }) => {
+    // A fixed two-column grid squeezed each card to 169px in a narrow window.
+    // Everything was still rendered, just too cramped to use — which reads as
+    // "the option is missing" rather than "the option is tiny".
+    await narrow(page, "enchanting", 400, { caster: fullCaster() });
+    const { stacked, width } = await page.evaluate(() => {
+      const [a, b] = [...document.querySelector(".rnr-columns").children];
+      return {
+        stacked: a.getBoundingClientRect().top !== b.getBoundingClientRect().top,
+        width: a.getBoundingClientRect().width
+      };
+    });
+    expect(stacked).toBe(true);
+    expect(width, "a stacked card should take the full width").toBeGreaterThan(300);
+  });
+
+  test("every picker stays reachable at any width", async ({ page }) => {
+    for (const width of [HUB_WIDTH, 520, 400]) {
+      await narrow(page, "enchanting", width, {
+        caster: fullCaster(), enchant: { itemId: "a1", enchantment: "Enduring" }
+      });
+      for (const action of ["pick-enchant-item", "pick-enchantment", "pick-remnant"]) {
+        const control = page.locator(`[data-action="${action}"]`).first();
+        await expect(control, `"${action}" is unreachable at ${width}px`).toBeVisible();
+        const box = await control.boundingBox();
+        expect(box.width, `"${action}" is too narrow at ${width}px`).toBeGreaterThan(40);
+      }
+    }
+  });
+
+  test("nothing hangs off the bottom once stacked", async ({ page }) => {
+    // Stacked there are two grid rows; constraining only the first would let
+    // the second size to its content and run off the window.
+    await narrow(page, "enchanting", 400, { caster: fullCaster() });
+    const overflows = await page.evaluate(() => {
+      const frame = document.getElementById("app").getBoundingClientRect();
+      return [...document.querySelector(".rnr-columns").children]
+        .filter(c => c.getBoundingClientRect().bottom > frame.bottom + 1).length;
+    });
+    expect(overflows, "a card runs past the bottom of the window").toBe(0);
+  });
+});

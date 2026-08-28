@@ -1,9 +1,9 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **463 tests across 20 files**,
+Vitest suite plus a standalone packaging check. **469 tests across 20 files**,
 all runnable without a Foundry runtime.
 
-A second suite runs in a real browser. **70 Playwright tests** render the
+A second suite runs in a real browser. **74 Playwright tests** render the
 module's own templates and stylesheet and check that the result is usable —
 the class of bug string assertions cannot see.
 
