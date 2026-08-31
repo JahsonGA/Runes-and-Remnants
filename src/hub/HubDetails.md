@@ -63,17 +63,22 @@ a second Application:
 | Partial | Template | State |
 |---|---|---|
 | `rnrHarvestPanel` | [`panels/harvest.html`](../../templates/panels/harvest.html) | Live |
-| `rnrCraftingPanel` | [`panels/crafting.html`](../../templates/panels/crafting.html) | Reference only — Phase 4 |
-| `rnrEnchantingPanel` | [`panels/enchanting.html`](../../templates/panels/enchanting.html) | Reference only — Phase 5 |
+| `rnrCraftingPanel` | [`panels/crafting.html`](../../templates/panels/crafting.html) | Live — Gear and Alchemy |
+| `rnrEnchantingPanel` | [`panels/enchanting.html`](../../templates/panels/enchanting.html) | Live — Bind and Evolve |
+| `rnrCrafterPicker` | [`partials/crafter.html`](../../templates/partials/crafter.html) | Shared by the latter two |
 
-The two unbuilt panels are **not** empty stubs. They carry the actual rules —
-manufacturing costs and tool/ability pairings, enchanting rarity/DC/time, the
-flaw table, and the Ancestral Weapons spirit-point limits — so they earn their
-place as an in-app reference before any of it is automated. Each states plainly
-that it is not yet automated, which `tests/hub-tabs.test.js` enforces.
+All three systems roll, spend and grant. `HUB_TABS` keeps its three-state
+`status` (`live` / `partial` / `planned`) even though nothing is currently
+below `live` — a system genuinely can be in between, and crafting sat at
+`partial` for a while with a usable catalogue and no execution.
 
-Locked tabs stay **clickable**. A greyed-out tab reads as broken; a dormant one
-that opens a reference card reads as a roadmap.
+**The reference tables stayed** when each system was automated. Manufacturing
+costs and tool pairings, the enchanting rarity ladder, the flaw table and the
+spirit-point limits are what a table reads at the bench, and they are no less
+true now that the module rolls the dice.
+
+An unbuilt tab would stay **clickable**. A greyed-out tab reads as broken; a
+dormant one that opens a reference card reads as a roadmap.
 
 ## Icons
 

@@ -99,11 +99,18 @@ folder; `*Breakdown.md` files are deep dives into intricate logic.
 | **Harvest system** | [`src/harvest/HarvestDetails.md`](src/harvest/HarvestDetails.md) | Full export reference for `logic.js` and `menu.js` |
 | ↳ *deep dive* | [`src/harvest/LogicBreakdown.md`](src/harvest/LogicBreakdown.md) | The DC model, unlock resolution, essence gating |
 | ↳ *deep dive* | [`src/harvest/MenuBreakdown.md`](src/harvest/MenuBreakdown.md) | `_startHarvest()` step by step, render behaviour |
+| **Crafting** | [`src/craft/CraftDetails.md`](src/craft/CraftDetails.md) | Manufacturing, Alchemy, reagents, graded failure |
+| **Enchanting** | [`src/enchant/EnchantDetails.md`](src/enchant/EnchantDetails.md) | Binding remnants, flaws, ancestral weapons |
+| **Hub** | [`src/hub/HubDetails.md`](src/hub/HubDetails.md) | The tab shell and who is at the bench |
+| **Shared UI** | [`src/ui/UiDetails.md`](src/ui/UiDetails.md) | The confirmation dialog, version-shimmed |
 | **Game data** | [`src/data/DataDetails.md`](src/data/DataDetails.md) | `HARVEST_TABLE` contract and how to extend it |
 | **Compendium** | [`packs/PacksDetails.md`](packs/PacksDetails.md) | Pack invariants and the Foundry→repo authoring workflow |
 | **Templates** | [`templates/TemplatesDetails.md`](templates/TemplatesDetails.md) | Handlebars context and `data-action` conventions |
+| ↳ *panels* | [`templates/panels/PanelsDetails.md`](templates/panels/PanelsDetails.md) | One per tab; layout and control conventions |
+| ↳ *partials* | [`templates/partials/PartialsDetails.md`](templates/partials/PartialsDetails.md) | The shared crafter picker |
 | **Styles** | [`styles/StylesDetails.md`](styles/StylesDetails.md) | Theme tokens, class conventions, animations |
 | **Tests** | [`tests/TestDetails.md`](tests/TestDetails.md) | What each suite protects and what isn't covered |
+| ↳ *browser* | [`tests/ui/UiDetails.md`](tests/ui/UiDetails.md) | Playwright: layout, reachability, contrast |
 | **CI/CD** | [`.github/workflows/WorkflowsDetails.md`](.github/workflows/WorkflowsDetails.md) | Branch model and version-triggered releases |
 | **Planning** | [`docs/DocsDetails.md`](docs/DocsDetails.md) → [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phased plan and design rationale |
 
@@ -111,7 +118,7 @@ folder; `*Breakdown.md` files are deep dives into intricate logic.
 
 | File | Purpose |
 |---|---|
-| `index.js` | Foundry entry point — registers the `playersCanOpenHarvest` setting, the `eq` Handlebars helper, the socket listener, and the Token HUD cleaver button |
+| `index.js` | Foundry entry point — registers settings, the `eq` helper, every panel and partial, the socket listener (harvest, craft, enchant), the Token HUD cleaver button and the scene control |
 | `module.json` | Manifest — id `runes-and-remnants`, dnd5e, Foundry v11–v12, declares the `harvest-items` pack. **Bumping `version` here triggers a release** |
 | `package.json` | Dev tooling only (`vitest`, `glob`); `npm test` and `npm run check:assets` |
 
