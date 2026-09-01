@@ -57,10 +57,18 @@ jobs:
         id: build
         run: |
           NAME="Runes-and-Remnants-v${{ steps.read.outputs.version }}.zip"
-          zip -r "$NAME" . \
-            -x ".git/*" ".github/*" "node_modules/*" "tests/*" "scripts/*" \
-               "*.psd" "*.ai" "*.blend" ".DS_Store" "README*.md"
+          # An allowlist, not a blocklist. Name what Foundry loads and nothing
+          # else, so a new dev file cannot leak into a release by default —
+          # which is how docs/, test-results/, .agents/, both test configs and
+          # fourteen *Details.md files ended up in user downloads.
+          zip -r "$NAME" \
+            module.json index.js LICENSE \
+            src styles templates packs \
+            -x "*Details.md" "*Breakdown.md" "*.psd" "*.ai" "*.blend" ".DS_Store"
           echo "zip_name=$NAME" >> $GITHUB_OUTPUT
+
+      - name: Show what shipped
+        run: unzip -l "${{ steps.build.outputs.zip_name }}"
 
       - name: Publish Stable Release
         uses: softprops/action-gh-release@v2

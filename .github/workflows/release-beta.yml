@@ -74,10 +74,17 @@ jobs:
         if: steps.tagcheck.outputs.should_release == 'true'
         run: |
           NAME="Runes-and-Remnants-v${{ steps.read.outputs.version }}-beta.zip"
-          zip -r "$NAME" . \
-            -x ".git/*" ".github/*" "node_modules/*" "tests/*" "scripts/*" \
-               "*.psd" "*.ai" "*.blend" ".DS_Store" "README*.md"
+          # Kept identical to release-merge.yml on purpose: a beta zip that
+          # holds different files from the stable one tests the wrong package.
+          zip -r "$NAME" \
+            module.json index.js LICENSE \
+            src styles templates packs \
+            -x "*Details.md" "*Breakdown.md" "*.psd" "*.ai" "*.blend" ".DS_Store"
           echo "zip_name=$NAME" >> $GITHUB_OUTPUT
+
+      - name: Show what shipped
+        if: steps.tagcheck.outputs.should_release == 'true'
+        run: unzip -l "${{ steps.build.outputs.zip_name }}"
 
       - name: Create GitHub Release
         if: steps.tagcheck.outputs.should_release == 'true'
