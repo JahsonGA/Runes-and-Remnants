@@ -140,7 +140,7 @@ async function craftConcoction({ actorId, bench = [] }) {
       const found = await findCraftedItem({ name });
       if (found) { delete found._id; data = found; break; }
     }
-    data ??= concoctionItemData(concoction, bench, actor.name);
+    data ??= concoctionItemData(concoction, bench, actor.name, bonus);
 
     if (data) {
       data.system = { ...(data.system ?? {}), quantity: 1 };

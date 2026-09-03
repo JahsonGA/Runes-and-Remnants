@@ -21,6 +21,8 @@ const REQUIRED = [
   "src/data/spirit.js",
   "src/craft/summary.js",
   "src/craft/grant.js",
+  "src/craft/concoct.js",
+  "src/data/alchemy-effects.js",
   "src/ui/confirm.js",
   "src/data/enchanting.js",
   "src/data/harvest-table.js",

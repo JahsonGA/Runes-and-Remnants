@@ -21,6 +21,7 @@ not here.
 | [`execute.js`](execute.js) | Rolls, spends, grants. GM-authoritative |
 | [`summary.js`](summary.js) | What the confirmation says. Pure |
 | [`grant.js`](grant.js) | Finds the real dnd5e item a recipe produces |
+| [`concoct.js`](concoct.js) | Composes a brew into a rollable formula. Pure |
 
 Data lives in [`src/data/manufacturing.js`](../data/DataDetails.md) and
 [`src/data/alchemy.js`](../data/DataDetails.md).

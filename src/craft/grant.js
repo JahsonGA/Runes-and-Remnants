@@ -19,6 +19,7 @@
 // =========================================================
 
 import { ALCHEMY_SRD_ITEM } from "../data/alchemy.js";
+import { composeEffect, describeEffect } from "./concoct.js";
 
 export const MODULE_ID = "runes-and-remnants";
 
@@ -246,7 +247,7 @@ export function concoctionItemNames(concoction) {
   return names;
 }
 
-export function concoctionItemData(concoction, bench = [], crafterName = "someone") {
+export function concoctionItemData(concoction, bench = [], crafterName = "someone", alchemyMod = null) {
   if (!concoction?.valid) return null;
 
   const base = concoction.effects?.[0] ?? null;
@@ -254,8 +255,25 @@ export function concoctionItemData(concoction, bench = [], crafterName = "someon
   const name = base ? `${kind} of ${base.name}` : kind;
   const modifiers = concoction.modifiers ?? [];
 
+  // What the vial actually does, with every modifier already folded in. The
+  // item used to list its ingredients and leave the drinker to work it out.
+  const composed = base
+    ? composeEffect(base.name, modifiers.map(m => m.name), alchemyMod)
+    : null;
+  const summary = composed ? describeEffect(composed) : "";
+
   const lines = [];
-  if (base) lines.push(`<p><b>${escapeHtml(base.name)}</b> — ${escapeHtml(base.effect)}</p>`);
+  // The composed line leads, because it is the one a player acts on.
+  if (summary) lines.push(`<p><b>${escapeHtml(summary)}</b></p>`);
+  for (const rider of composed?.riders ?? []) {
+    lines.push(`<p>${escapeHtml(rider)}</p>`);
+  }
+  if (composed?.inverted) {
+    lines.push('<p class="rnr-danger">Inverted — the GM decides what this brew does instead.</p>');
+  }
+
+  lines.push("<hr>");
+  if (base) lines.push(`<p><i>${escapeHtml(base.name)} — ${escapeHtml(base.effect)}</i></p>`);
   if (modifiers.length) {
     lines.push("<h4>Modifiers</h4><ul>"
       + modifiers.map(m => `<li><b>${escapeHtml(m.name)}</b> — ${escapeHtml(m.effect)}</li>`).join("")
@@ -278,6 +296,19 @@ export function concoctionItemData(concoction, bench = [], crafterName = "someon
         concoction: true,
         kind: concoction.kind,
         dc: concoction.dc,
+        // The composed effect, machine-readable. A macro or a later version
+        // that wires this into a dnd5e activity reads it from here rather
+        // than parsing the description back out of prose.
+        effect: composed && {
+          formula: composed.formula,
+          damageType: composed.damageType,
+          perRound: composed.perRound,
+          condition: composed.condition,
+          duration: composed.duration,
+          save: composed.save,
+          riders: composed.riders,
+          inverted: composed.inverted
+        },
         // The exact bench, so two brews sharing a name are still tellable
         // apart — and so a GM can see what went in months later.
         ingredients: [...bench]

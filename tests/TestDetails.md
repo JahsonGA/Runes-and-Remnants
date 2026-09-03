@@ -1,6 +1,6 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **491 tests across 20 files**,
+Vitest suite plus a standalone packaging check. **525 tests across 21 files**,
 all runnable without a Foundry runtime.
 
 A second suite runs in a real browser. **80 Playwright tests** render the
@@ -40,6 +40,7 @@ collects the Playwright files and fails on the missing runner.
 | [`spirit.test.js`](spirit.test.js) | 46 | Spirit ladder integrity, prerequisite chains, awakening, the one-way remnant door |
 | [`craft-grant.test.js`](craft-grant.test.js) | 40 | Item name candidates, fallback types, which packs are searched |
 | [`craft-panel.test.js`](craft-panel.test.js) | 11 | Reagent include/exclude, and the button promising what the list shows |
+| [`craft-concoct.test.js`](craft-concoct.test.js) | 34 | Formula composition: dice doubling, die stepping, stacking rules, riders |
 | [`templates.test.js`](templates.test.js) | 13 | Handlebars templates compile and render against real panel data |
 | [`check-assets.mjs`](check-assets.mjs) | — | Not Vitest. Standalone packaging guard |
 
