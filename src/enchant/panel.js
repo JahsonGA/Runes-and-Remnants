@@ -14,7 +14,7 @@ import {
   getEnchantment, itemKind, rarityRank
 } from "./logic.js";
 import {
-  spiritState, abilityLadder, remnantValue,
+  spiritState, abilityLadder, remnantValue, canRelock, minEarned,
   SPIRIT_AWAKEN, SPIRIT_TOTAL
 } from "./spirit.js";
 import { SPIRIT_DEEDS } from "../data/spirit.js";
@@ -131,6 +131,15 @@ export class EnchantPanel {
       } : null,
       spiritLadder: item ? abilityLadder(item) : [],
       spiritDeeds: SPIRIT_DEEDS,
+      // What a GM can take back. Awarding is reversible or it is a trap: a
+      // deed credited by mistake had no way out at all before this.
+      spiritTakeBack: item ? state.unlocked.map(name => {
+        const check = canRelock(name, item);
+        return { name, refund: check.refund ?? 0, blocked: !check.ok, reason: check.reasons[0] ?? null };
+      }) : [],
+      // Points cannot drop below what is already committed to abilities.
+      spiritFloor: item ? minEarned(item) : 0,
+      spiritAtFloor: item ? state.earned <= state.spent : false,
       // Remnants the wielder is carrying, with what each is worth as points.
       spiritRemnants: item && !state.remnantSpent
         ? remnantsFrom(caster?.parts ?? [])

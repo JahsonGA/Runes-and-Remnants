@@ -145,6 +145,21 @@ No single remnant is worth 20 points, so deeds have to do most of the work.
 A test pins that, because the moment a Deific essence could awaken a weapon on
 its own the currency stops meaning anything.
 
+### Undoing it
+
+Awarding has to be reversible or it is a trap. A GM can take points back, and
+relock an ability to refund its cost — `spent` is derived from `unlocked`, so
+dropping the name *is* the refund; there is no second number to keep in step.
+
+Two rules hold it together. Points never drop **below what is already
+committed to abilities**, because everything downstream assumes
+`spent <= earned`. And relocking is **refused while something depends on it**
+rather than cascading, since cascading would silently strip abilities the GM
+never named.
+
+`resetPatch` returns a weapon to ordinary and clears `remnantSpent` with it —
+the one-way door is a rule about play, not a scar in the data.
+
 ### These costs are not a book's
 
 Ancestral Weapons is a commercial supplement. Its ability list and point costs

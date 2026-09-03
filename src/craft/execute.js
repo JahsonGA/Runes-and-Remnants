@@ -20,7 +20,7 @@ import {
   alchemyModifier
 } from "./logic.js";
 import { resolveCraft, consumptionPlan, OUTCOME } from "./outcome.js";
-import { grantCrafted } from "./grant.js";
+import { grantCrafted, concoctionItemData } from "./grant.js";
 import { pickExecutorId } from "../harvest/logic.js";
 
 export const MODULE_ID = "runes-and-remnants";
@@ -127,12 +127,20 @@ async function craftConcoction({ actorId, bench = [] }) {
   const roll = await evaluate(`1d20 + ${bonus}`);
   const result = resolveCraft({ total: roll.total, dc: concoction.dc, natural: roll.natural });
 
+  // A success used to grant nothing at all — it rolled, wrote a chat card and
+  // stopped, leaving the crafter holding an empty vial's worth of nothing.
+  let brewed = null;
+  if (result.success) {
+    const data = concoctionItemData(concoction, bench, actor.name);
+    if (data) [brewed] = await actor.createEmbeddedDocuments("Item", [data]);
+  }
+
   // Alchemy spends plant ingredients rather than harvested parts; those are
   // GM-tracked for now, so nothing is deducted here. Said plainly in chat
   // rather than left for someone to discover.
   await report({
     actor,
-    title: concoction.effects[0] ?? "Concoction",
+    title: brewed?.name ?? concoction.kindLabel ?? "Concoction",
     plan: { dc: concoction.dc, hours: 1, tool: concoction.tools?.[0] ?? "Alchemist's supplies" },
     roll, result, spent: [],
     footer: `Ingredients used: ${bench.join(", ")}. Deduct them by hand — alchemy stock is not tracked yet.`

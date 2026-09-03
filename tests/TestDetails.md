@@ -1,6 +1,6 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **469 tests across 20 files**,
+Vitest suite plus a standalone packaging check. **484 tests across 20 files**,
 all runnable without a Foundry runtime.
 
 A second suite runs in a real browser. **78 Playwright tests** render the
@@ -37,8 +37,8 @@ collects the Playwright files and fails on the missing runner.
 | [`craft-outcome.test.js`](craft-outcome.test.js) | 22 | Roll grading, graded failure, reagent selection, stack consumption |
 | [`enchant.test.js`](enchant.test.js) | 42 | Remnant tiers, rarity normalising, the plan, flaws on failure |
 | [`craft-summary.test.js`](craft-summary.test.js) | 28 | Confirmation content: hours, cost, what is consumed, escaping |
-| [`spirit.test.js`](spirit.test.js) | 38 | Spirit ladder integrity, prerequisite chains, awakening, the one-way remnant door |
-| [`craft-grant.test.js`](craft-grant.test.js) | 26 | Item name candidates, fallback types, which packs are searched |
+| [`spirit.test.js`](spirit.test.js) | 46 | Spirit ladder integrity, prerequisite chains, awakening, the one-way remnant door |
+| [`craft-grant.test.js`](craft-grant.test.js) | 33 | Item name candidates, fallback types, which packs are searched |
 | [`craft-panel.test.js`](craft-panel.test.js) | 11 | Reagent include/exclude, and the button promising what the list shows |
 | [`templates.test.js`](templates.test.js) | 13 | Handlebars templates compile and render against real panel data |
 | [`check-assets.mjs`](check-assets.mjs) | — | Not Vitest. Standalone packaging guard |

@@ -274,6 +274,18 @@ category — weapon, equipment or consumable, never `loot` — plus base AC for
 armour, so it can at least be equipped. It is flagged `improvised` and says so
 in its description, and a notification points at importing the SRD.
 
+### What alchemy hands over
+
+There is no SRD item to look up for a brew — a concoction is defined by what
+went into it, so the item is built. `concoctionItemData` names it after its
+effect rather than its vessel (*Potion of Wild Sageroot*, *Poison of
+Wyrmtongue Petals*), composes the base and every modifier into the
+description, takes its rarity from the rarest ingredient, and records the
+exact bench in flags so two brews sharing a name stay tellable apart.
+
+Before this, a successful brew rolled, wrote a chat card and granted
+**nothing at all**.
+
 ### Not yet
 
 Alchemy consumes no plant stock — those ingredients are not tracked as items

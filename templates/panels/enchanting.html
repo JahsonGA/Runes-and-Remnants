@@ -330,7 +330,48 @@
               <button type="button" data-action="earn-spirit" data-value="3">+3</button>
               <button type="button" data-action="earn-spirit" data-value="5">+5</button>
             </div>
+            <div class="rnr-loot-controls">
+              <button type="button" data-action="earn-spirit" data-value="-1"
+                      {{#if spiritAtFloor}}disabled{{/if}}>−1 point</button>
+              <button type="button" data-action="earn-spirit" data-value="-3"
+                      {{#if spiritAtFloor}}disabled{{/if}}>−3</button>
+              <button type="button" data-action="earn-spirit" data-value="-5"
+                      {{#if spiritAtFloor}}disabled{{/if}}>−5</button>
+            </div>
+            {{#if spiritAtFloor}}
+              <p class="muted rnr-hint">
+                Cannot go below {{spiritFloor}} — that many points are already
+                committed to abilities. Take one back first.
+              </p>
+            {{/if}}
           </div>
+
+          {{#if spiritTakeBack.length}}
+            <div class="rnr-tier">
+              <div class="rnr-tier-header">
+                Take an ability back <span class="rnr-num muted">GM</span>
+              </div>
+              <ul class="rnr-list rnr-pool">
+                {{#each spiritTakeBack}}
+                  <li>
+                    <button type="button" class="rnr-add {{#if this.blocked}}rnr-add-locked{{/if}}"
+                            data-action="relock-ability" data-value="{{this.name}}"
+                            title="{{#if this.blocked}}{{this.reason}}{{else}}Refunds {{this.refund}} spirit point{{#unless (eq this.refund 1)}}s{{/unless}}{{/if}}">
+                      {{this.name}} <span class="rnr-dcmod">−{{this.refund}}</span>
+                    </button>
+                  </li>
+                {{/each}}
+              </ul>
+              <p class="muted rnr-hint">
+                Refunds the points. An ability another one depends on cannot be
+                removed until the dependent goes first.
+              </p>
+            </div>
+
+            <div class="actions">
+              <button type="button" data-action="reset-spirit">Reset this weapon entirely</button>
+            </div>
+          {{/if}}
         {{/if}}
 
         {{#if spiritRemnants.length}}

@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
   itemNameCandidates, normaliseName, fallbackItemData,
-  searchablePacks, SYSTEM_ITEM_NAME, FALLBACK_TYPE, FALLBACK_ARMOUR
+  searchablePacks, SYSTEM_ITEM_NAME, FALLBACK_TYPE, FALLBACK_ARMOUR,
+  concoctionItemData
 } from "../src/craft/grant.js";
 import { MANUFACTURING_TABLE, MANUFACTURING_CATEGORIES } from "../src/data/manufacturing.js";
-import { getRecipe } from "../src/craft/logic.js";
+import { getRecipe, analyseConcoction } from "../src/craft/logic.js";
 
 // ─── Names ────────────────────────────────────────────────────────────────────
 
@@ -189,5 +190,59 @@ describe("searchablePacks", () => {
   it("survives no packs at all", () => {
     expect(searchablePacks(null)).toEqual([]);
     expect(searchablePacks([])).toEqual([]);
+  });
+});
+
+// ─── Alchemy produces something ───────────────────────────────────────────────
+
+describe("concoctionItemData", () => {
+  const brew = bench => concoctionItemData(analyseConcoction(bench), bench, "Ash");
+
+  it("names the brew after what it does, not the vessel", () => {
+    // Alchemy used to grant nothing at all, and a "Potion base" from the gear
+    // catalogue was the only thing an alchemist ended up holding.
+    expect(brew(["Wild Sageroot"]).name).toBe("Potion of Wild Sageroot");
+    expect(brew(["Wyrmtongue Petals"]).name).toBe("Poison of Wyrmtongue Petals");
+    expect(brew(["Elemental Water", "Scillia Beans"]).name).toBe("Elixir of Scillia Beans");
+  });
+
+  it("is a consumable, not loot", () => {
+    expect(brew(["Wild Sageroot"]).type).toBe("consumable");
+    expect(brew(["Wild Sageroot"]).system.quantity).toBe(1);
+  });
+
+  it("composes the base effect and every modifier into the description", () => {
+    // The whole point of the modifier system is that the combination does
+    // something none of the parts do alone, so the item has to say so.
+    const value = brew(["Wild Sageroot", "Milkweed Seeds", "Dried Ephedra"]).system.description.value;
+    expect(value).toContain("Wild Sageroot");
+    expect(value).toContain("Milkweed Seeds");
+    expect(value).toContain("Dried Ephedra");
+    expect(value).toMatch(/Heals 2d4/);
+  });
+
+  it("takes its rarity from the rarest thing that went in", () => {
+    expect(brew(["Wild Sageroot"]).system.rarity).toBe("common");
+    expect(brew(["Wild Sageroot", "Dried Ephedra"]).system.rarity).toBe("uncommon");
+  });
+
+  it("records the exact bench, so two brews sharing a name are tellable apart", () => {
+    const flags = brew(["Wild Sageroot", "Milkweed Seeds"]).flags["runes-and-remnants"];
+    expect(flags.ingredients).toEqual(["Wild Sageroot", "Milkweed Seeds"]);
+    expect(flags.concoction).toBe(true);
+    expect(flags.dc).toBe(analyseConcoction(["Wild Sageroot", "Milkweed Seeds"]).dc);
+  });
+
+  it("escapes ingredient text it does not own", () => {
+    const data = concoctionItemData(
+      { valid: true, kind: "potion", dc: 12,
+        effects: [{ name: "<script>x</script>", effect: "bad" }], modifiers: [] },
+      [], "Ash");
+    expect(data.system.description.value).not.toContain("<script>");
+  });
+
+  it("refuses to build anything from an invalid mixture", () => {
+    expect(concoctionItemData(analyseConcoction(["Milkweed Seeds"]), ["Milkweed Seeds"])).toBeNull();
+    expect(concoctionItemData(null)).toBeNull();
   });
 });

@@ -7,7 +7,8 @@ import { REMNANT_TIERS } from "../src/data/enchanting.js";
 import {
   spiritState, canUnlock, unlockPatch, earnPatch, abilityCost, getAbility,
   remnantValue, spendRemnantPatch, canStillEnchant, abilityLadder,
-  registerSpiritAbilities, clearSpiritAbilities, allAbilities
+  registerSpiritAbilities, clearSpiritAbilities, allAbilities,
+  canRelock, relockPatch, resetPatch, minEarned
 } from "../src/enchant/spirit.js";
 
 const MODULE_ID = "runes-and-remnants";
@@ -287,5 +288,60 @@ describe("registering a table's own abilities", () => {
 
   it("ignores entries with no name or no tier", () => {
     expect(registerSpiritAbilities([{ name: "No tier" }, { tier: "lesser" }, null])).toBe(0);
+  });
+});
+
+// ─── Taking it back ───────────────────────────────────────────────────────────
+
+describe("undoing spirit points", () => {
+  it("a GM can take back points credited by mistake", () => {
+    // Awarding has to be reversible or it is a trap — there was no way out.
+    const spirit = earnPatch(blade(12, ["Whetted"]), -5)[`flags.${MODULE_ID}.spirit`];
+    expect(spirit.earned).toBe(7);
+  });
+
+  it("never below what is already committed to abilities", () => {
+    // Everything downstream assumes spent <= earned. Breaking it would show
+    // a weapon owing points it cannot give back.
+    const b = blade(5, ["Whetted", "Keen Spirit"]);          // spent = 4
+    expect(earnPatch(b, -5)[`flags.${MODULE_ID}.spirit`].earned).toBe(4);
+    expect(minEarned(b)).toBe(4);
+  });
+
+  it("relocking an ability refunds its cost", () => {
+    const b = blade(10, ["Whetted", "Keen Spirit"]);
+    expect(spiritState(b).spent).toBe(4);
+    const after = relockPatch("Keen Spirit", b)[`flags.${MODULE_ID}.spirit`];
+    expect(after.unlocked).toEqual(["Whetted"]);
+    // spent is derived from unlocked, so the refund needs no second number.
+    expect(spiritState(blade(after.earned, after.unlocked)).spent).toBe(1);
+  });
+
+  it("refuses while something still depends on it", () => {
+    // Cascading would silently strip abilities the GM never named.
+    const check = canRelock("Whetted", blade(10, ["Whetted", "Keen Spirit"]));
+    expect(check.ok).toBe(false);
+    expect(check.reasons.join(" ")).toMatch(/Keen Spirit still depends on Whetted/);
+    expect(relockPatch("Whetted", blade(10, ["Whetted", "Keen Spirit"]))).toBeNull();
+  });
+
+  it("allows it once the dependent is gone", () => {
+    expect(canRelock("Whetted", blade(10, ["Whetted"])).ok).toBe(true);
+  });
+
+  it("refuses an ability that was never awakened", () => {
+    expect(canRelock("Keen Spirit", blade(10)).reasons.join(" ")).toMatch(/not awakened/i);
+  });
+
+  it("a reset returns the weapon to ordinary, door and all", () => {
+    // The one-way door is a rule about play, not a scar in the data — a GM
+    // undoing a mistake must be able to undo all of it.
+    const spirit = resetPatch()[`flags.${MODULE_ID}.spirit`];
+    expect(spirit).toEqual({ ancestral: false, earned: 0, unlocked: [], remnantSpent: false });
+    expect(canStillEnchant({ flags: { [MODULE_ID]: { spirit } } })).toBe(true);
+  });
+
+  it("adding still works, and still cannot exceed the cap", () => {
+    expect(earnPatch(blade(24), 50)[`flags.${MODULE_ID}.spirit`].earned).toBe(SPIRIT_TOTAL);
   });
 });

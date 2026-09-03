@@ -22,7 +22,10 @@ import { requestCraft } from "../craft/execute.js";
 import { EnchantPanel } from "../enchant/panel.js";
 import { requestEnchant, casterFrom } from "../enchant/execute.js";
 import { enchantPlan } from "../enchant/logic.js";
-import { unlockPatch, canUnlock, earnPatch, spendRemnantPatch, remnantValue } from "../enchant/spirit.js";
+import {
+  unlockPatch, canUnlock, earnPatch, spendRemnantPatch, remnantValue,
+  relockPatch, canRelock, resetPatch
+} from "../enchant/spirit.js";
 
 export { HUB_TABS };
 
@@ -370,6 +373,39 @@ export class RunesHub extends HarvestMenu {
 
       const points = Number(ev.currentTarget.dataset.value) || 1;
       await item.update(earnPatch(item, points));
+      this.render(true);
+    });
+
+    html.on("click", "[data-action='relock-ability']", async ev => {
+      if (!game.user.isGM) return ui.notifications?.warn("Only a GM can take an ability back.");
+      const item = this._spiritWeapon();
+      if (!item) return;
+
+      const name = ev.currentTarget.dataset.value;
+      const patch = relockPatch(name, item);
+      // The template disables a blocked one, but say why rather than doing
+      // nothing if it is reached some other way.
+      if (!patch) return ui.notifications?.warn(canRelock(name, item).reasons[0]);
+
+      await item.update(patch);
+      this.render(true);
+    });
+
+    html.on("click", "[data-action='reset-spirit']", async () => {
+      if (!game.user.isGM) return ui.notifications?.warn("Only a GM can reset a weapon.");
+      const item = this._spiritWeapon();
+      if (!item) return;
+
+      const agreed = await confirmSpend({
+        title: `Reset ${item.name}?`,
+        confirmLabel: "Reset it",
+        content: '<div class="rnr-confirm"><p class="warning">Clears every spirit point '
+               + 'and every awakened ability, and reopens enchanting if a remnant closed '
+               + 'it. The weapon becomes ordinary again.</p></div>'
+      });
+      if (!agreed) return;
+
+      await item.update(resetPatch());
       this.render(true);
     });
 

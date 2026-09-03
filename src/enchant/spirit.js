@@ -162,9 +162,14 @@ export function unlockPatch(ability, item) {
  */
 export function earnPatch(item, points = 1) {
   const state = spiritState(item);
-  const n = Math.max(0, Math.round(Number(points) || 0));
-  // A weapon cannot be carried past what it can hold.
-  const earned = Math.min(SPIRIT_TOTAL, state.earned + n);
+  const n = Math.round(Number(points) || 0);
+
+  // Negative awards are allowed — a GM has to be able to take back a deed
+  // credited by mistake. But never below what is already committed to
+  // abilities: everything downstream assumes spent <= earned, and breaking
+  // that would show a weapon owing points it cannot give back. To go lower,
+  // relock an ability first, which the panel says.
+  const earned = Math.min(SPIRIT_TOTAL, Math.max(state.spent, state.earned + n));
 
   return {
     [`flags.${MODULE_ID}.spirit`]: {
@@ -172,6 +177,81 @@ export function earnPatch(item, points = 1) {
       earned,
       unlocked: state.unlocked,
       remnantSpent: state.remnantSpent
+    }
+  };
+}
+
+/** The floor a GM can take a weapon down to without relocking something. */
+export function minEarned(item) {
+  return spiritState(item).spent;
+}
+
+/**
+ * Can this ability be taken back?
+ *
+ * Refused while another unlocked ability depends on it. Cascading instead
+ * would silently strip abilities the GM did not name — a worse surprise than
+ * being told to remove them in order.
+ */
+export function canRelock(ability, item) {
+  const spec = typeof ability === "string" ? getAbility(ability) : ability;
+  const state = spiritState(item);
+  const reasons = [];
+
+  if (!spec) return { ok: false, reasons: ["No such ability."] };
+  if (!state.unlocked.some(n => n.toLowerCase() === spec.name.toLowerCase())) {
+    reasons.push(`${spec.name} is not awakened in this weapon.`);
+  }
+
+  const dependents = state.unlocked.filter(name => {
+    const held = getAbility(name);
+    return held?.requires?.toLowerCase() === spec.name.toLowerCase();
+  });
+  if (dependents.length) {
+    reasons.push(`${dependents.join(" and ")} still depend${dependents.length > 1 ? "" : "s"} on `
+               + `${spec.name}; remove ${dependents.length > 1 ? "those" : "that"} first.`);
+  }
+
+  return { ok: reasons.length === 0, reasons, refund: abilityCost(spec) };
+}
+
+/**
+ * Take an ability back, returning its points to the pool.
+ *
+ * `spent` is derived from `unlocked`, so dropping the name refunds the cost
+ * on its own — there is no second number to keep in step.
+ */
+export function relockPatch(ability, item) {
+  const check = canRelock(ability, item);
+  if (!check.ok) return null;
+
+  const spec = typeof ability === "string" ? getAbility(ability) : ability;
+  const state = spiritState(item);
+
+  return {
+    [`flags.${MODULE_ID}.spirit`]: {
+      ancestral: true,
+      earned: state.earned,
+      unlocked: state.unlocked.filter(n => n.toLowerCase() !== spec.name.toLowerCase()),
+      remnantSpent: state.remnantSpent
+    }
+  };
+}
+
+/**
+ * Wipe a weapon back to ordinary.
+ *
+ * Clears `remnantSpent` too — the one-way door is a rule about play, not a
+ * scar in the data, and a GM undoing a mistake must be able to undo all of
+ * it. Nothing in the module calls this on its own.
+ */
+export function resetPatch() {
+  return {
+    [`flags.${MODULE_ID}.spirit`]: {
+      ancestral: false,
+      earned: 0,
+      unlocked: [],
+      remnantSpent: false
     }
   };
 }

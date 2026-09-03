@@ -194,6 +194,84 @@ export function fallbackItemData(recipe, crafterName = "someone") {
 }
 
 /* ---------------------------------------------
+   Alchemy
+--------------------------------------------- */
+
+/** What a brew is called, by what it is. */
+const CONCOCTION_KIND = { potion: "Potion", poison: "Poison", enchantment: "Elixir" };
+
+/** Weakest to strongest, for taking a brew's rarity from its ingredients. */
+const RARITY_RANK = ["common", "uncommon", "rare", "veryRare", "legendary", "artifact"];
+
+/**
+ * The item a successful brew produces.
+ *
+ * Alchemy used to grant nothing at all — it rolled, wrote a chat card, and
+ * stopped, so a success left the crafter holding an empty vial's worth of
+ * nothing. There is no SRD item to look up here either: a concoction is
+ * defined by the ingredients that went into it, so the item has to be built.
+ *
+ * The description composes the source's own effect text for the base and
+ * every modifier, which is what makes the result worth reading — the whole
+ * point of the modifier system is that the combination does something none of
+ * the parts do alone.
+ */
+export function concoctionItemData(concoction, bench = [], crafterName = "someone") {
+  if (!concoction?.valid) return null;
+
+  const base = concoction.effects?.[0] ?? null;
+  const kind = CONCOCTION_KIND[concoction.kind] ?? "Concoction";
+  const name = base ? `${kind} of ${base.name}` : kind;
+  const modifiers = concoction.modifiers ?? [];
+
+  const lines = [];
+  if (base) lines.push(`<p><b>${escapeHtml(base.name)}</b> — ${escapeHtml(base.effect)}</p>`);
+  if (modifiers.length) {
+    lines.push("<h4>Modifiers</h4><ul>"
+      + modifiers.map(m => `<li><b>${escapeHtml(m.name)}</b> — ${escapeHtml(m.effect)}</li>`).join("")
+      + "</ul>");
+  }
+  lines.push(`<p><i>Brewed by ${escapeHtml(crafterName)} against DC ${concoction.dc}.</i></p>`);
+
+  return {
+    name,
+    type: "consumable",
+    system: {
+      quantity: 1,
+      // A brew is only as refined as its rarest ingredient.
+      rarity: highestRarity([base, ...modifiers].filter(Boolean)),
+      description: { value: lines.join("") }
+    },
+    flags: {
+      [MODULE_ID]: {
+        crafted: true,
+        concoction: true,
+        kind: concoction.kind,
+        dc: concoction.dc,
+        // The exact bench, so two brews sharing a name are still tellable
+        // apart — and so a GM can see what went in months later.
+        ingredients: [...bench]
+      }
+    }
+  };
+}
+
+function highestRarity(ingredients = []) {
+  let best = "common";
+  for (const i of ingredients) {
+    if (RARITY_RANK.indexOf(i?.rarity) > RARITY_RANK.indexOf(best)) best = i.rarity;
+  }
+  return best;
+}
+
+/** Ingredient names and effect text come from data this module does not own. */
+function escapeHtml(text) {
+  return String(text ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[c]);
+}
+
+/* ---------------------------------------------
    Foundry
 --------------------------------------------- */
 
