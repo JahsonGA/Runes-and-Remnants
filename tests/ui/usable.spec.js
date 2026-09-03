@@ -698,3 +698,34 @@ test.describe("the enchanting steps are all reachable", () => {
       .toBeGreaterThan(4);
   });
 });
+
+test.describe("button labels fit their buttons", () => {
+  test("no control button clips its own label", async ({ page }) => {
+    // "Alchemy" spilled out of its button in Foundry but not in this harness,
+    // because Foundry stretches buttons inside an application to their
+    // container's full width and the harness did not model that. .rnr-add
+    // overrides it; .rnr-loot-controls button never did, so both mode
+    // switches were squeezed to the same width and the longer word overflowed.
+    for (const tab of ["harvest", "crafting", "enchanting"]) {
+      await page.setContent(hubPage({ tab, crafter: fullCrafter(), caster: fullCaster() }));
+      const clipped = await page.evaluate(() =>
+        [...document.querySelectorAll(".rnr-hub button")]
+          .filter(el => el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1)
+          .map(el => ({ text: el.textContent.trim().slice(0, 30),
+                        box: Math.round(el.getBoundingClientRect().width),
+                        needs: el.scrollWidth })));
+      expect(clipped, `a button clips its label on the "${tab}" tab`).toEqual([]);
+    }
+  });
+
+  test("each mode switch sizes to its own word, not its neighbour's", async ({ page }) => {
+    await page.setContent(hubPage({ tab: "crafting" }));
+    const widths = await page.evaluate(() =>
+      [...document.querySelectorAll("[data-action='craft-mode']")]
+        .map(el => ({ t: el.textContent.trim(), w: Math.round(el.getBoundingClientRect().width) })));
+    const gear = widths.find(w => w.t === "Gear");
+    const alchemy = widths.find(w => w.t === "Alchemy");
+    expect(alchemy.w, "the longer label should get the wider button")
+      .toBeGreaterThan(gear.w);
+  });
+});

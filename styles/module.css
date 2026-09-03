@@ -407,6 +407,14 @@
   font-size: 0.75rem;
   cursor: pointer;
   line-height: 1.4;
+  /* Foundry stretches buttons inside an application to their container's
+     full width. .rnr-add overrides that; this rule never did, so "Alchemy"
+     was squeezed to the same width as "Gear" and spilled out of its box.
+     max-content beats the .rnr-hub * { min-width: 0 } rule above. */
+  width: auto;
+  flex: 0 0 auto;
+  min-width: max-content;
+  white-space: nowrap;
 }
 .rnr-loot-controls button:hover {
   border-color: var(--rnr-red);

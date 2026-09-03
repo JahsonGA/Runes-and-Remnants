@@ -151,6 +151,41 @@ export const ALCHEMY_INGREDIENTS = [
 ];
 
 /** Tools that can make each kind of concoction. */
+/**
+ * Ingredients whose brew IS a named SRD item.
+ *
+ * Where one exists, granting the real dnd5e item beats building our own: it
+ * arrives with its own description, activation and rolls already wired, and a
+ * table gets a potion that works rather than one they have to read.
+ *
+ * Only the ones whose own effect text names an SRD item are here. Wild
+ * Sageroot heals 2d4 + Alchemy modifier, which is NOT a Potion of Healing —
+ * mapping it would quietly swap the mechanics for something similar-looking,
+ * so it is left to be built (or overridden by a world item of that name).
+ *
+ * Applied only to an UNMODIFIED brew. A modifier makes it something the SRD
+ * has no item for, and substituting the vanilla potion would throw away the
+ * very thing the alchemist added.
+ */
+export const ALCHEMY_SRD_ITEM = {
+  "Scillia Beans":      "Potion of Climbing",
+  "Hydrathistle":       "Potion of Water Breathing",
+  "Verdant Nettle":     "Potion of Animal Friendship",
+  "Ironwood Heart":     "Potion of Growth",
+  "Nightshade Berries": "Oil of Slipperiness",
+  "Blue Toadshade":     "Potion of Gaseous Form",
+  "Cosmos Glond":       "Potion of Clairvoyance",
+  "Fiend's Ivy":        "Potion of Mind Reading",
+  "Luminous Cap Dust":  "Potion of Heroism",
+  "Rock Vine":          "Potion of Invulnerability",
+  "Wrackwort Bulbs":    "Potion of Diminution",
+  "Devil's Bloodleaf":  "Potion of Vitality",
+  "Mortflesh Powder":   "Potion of Longevity",
+  "Tail Leaf":          "Potion of Speed",
+  "Voidroot":           "Potion of Flying",
+  "Wisp Stalks":        "Potion of Invisibility"
+};
+
 export const ALCHEMY_TOOLS = {
   potion:      ["Alchemist's supplies", "Herbalism kit"],
   enchantment: ["Alchemist's supplies", "Herbalism kit"],

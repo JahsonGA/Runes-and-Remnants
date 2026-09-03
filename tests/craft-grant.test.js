@@ -2,10 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   itemNameCandidates, normaliseName, fallbackItemData,
   searchablePacks, SYSTEM_ITEM_NAME, FALLBACK_TYPE, FALLBACK_ARMOUR,
-  concoctionItemData
+  concoctionItemData, concoctionItemNames
 } from "../src/craft/grant.js";
 import { MANUFACTURING_TABLE, MANUFACTURING_CATEGORIES } from "../src/data/manufacturing.js";
 import { getRecipe, analyseConcoction } from "../src/craft/logic.js";
+import { ALCHEMY_SRD_ITEM, ALCHEMY_INGREDIENTS } from "../src/data/alchemy.js";
 
 // ─── Names ────────────────────────────────────────────────────────────────────
 
@@ -244,5 +245,70 @@ describe("concoctionItemData", () => {
   it("refuses to build anything from an invalid mixture", () => {
     expect(concoctionItemData(analyseConcoction(["Milkweed Seeds"]), ["Milkweed Seeds"])).toBeNull();
     expect(concoctionItemData(null)).toBeNull();
+  });
+});
+
+describe("concoctionItemNames — prefer a real item", () => {
+  const names = bench => concoctionItemNames(analyseConcoction(bench));
+
+  it("asks for the SRD potion first when the brew is one", () => {
+    // A real item arrives with its activation and rolls already wired; a
+    // built one can only describe itself.
+    expect(names(["Elemental Water", "Scillia Beans"])[0]).toBe("Potion of Climbing");
+    expect(names(["Elemental Water", "Wisp Stalks"])[0]).toBe("Potion of Invisibility");
+  });
+
+  it("still offers the built name, so a world item can override", () => {
+    // Authoring "Elixir of Scillia Beans" in the world is the intended way
+    // to give a custom brew real mechanics.
+    expect(names(["Elemental Water", "Scillia Beans"])).toContain("Elixir of Scillia Beans");
+  });
+
+  it("drops the SRD substitution the moment a modifier is added", () => {
+    // A modifier makes it something the SRD has no item for; handing over the
+    // vanilla potion would throw away what the alchemist added.
+    //
+    // Built by hand rather than from a bench, because every ingredient
+    // currently mapped is enchantment-role and enchantments take no
+    // modifiers — so no real mixture can reach this branch today. The guard
+    // stays because a table registering its own data can map a potion-effect
+    // ingredient, and then it matters.
+    const mapped = Object.keys(ALCHEMY_SRD_ITEM)[0];
+    const spec = ALCHEMY_INGREDIENTS.find(i => i.name === mapped);
+    const withModifier = concoctionItemNames({
+      valid: true, kind: "potion", dc: 12,
+      effects: [spec], modifiers: [{ name: "Lavender Sprig", effect: "Steadies it." }]
+    });
+    expect(withModifier).not.toContain(ALCHEMY_SRD_ITEM[mapped]);
+    expect(withModifier).toHaveLength(1);
+  });
+
+  it("offers only the built name where no SRD item matches", () => {
+    expect(names(["Elemental Water", "Arrow Root"])).toEqual(["Elixir of Arrow Root"]);
+  });
+
+  it("offers nothing for a mixture that will not hold", () => {
+    expect(names(["Milkweed Seeds"])).toEqual([]);
+  });
+});
+
+describe("ALCHEMY_SRD_ITEM", () => {
+  it("maps only real ingredients", () => {
+    const known = new Set(ALCHEMY_INGREDIENTS.map(i => i.name));
+    for (const name of Object.keys(ALCHEMY_SRD_ITEM)) {
+      expect(known.has(name), `"${name}" is mapped but is not an ingredient`).toBe(true);
+    }
+  });
+
+  it("maps only ingredients whose own text names that item", () => {
+    // Wild Sageroot heals 2d4 + Alchemy modifier, which is not a Potion of
+    // Healing. Mapping it would quietly swap the mechanics for something that
+    // merely looks similar.
+    for (const [ingredient, item] of Object.entries(ALCHEMY_SRD_ITEM)) {
+      const spec = ALCHEMY_INGREDIENTS.find(i => i.name === ingredient);
+      const subject = item.replace(/^(Potion|Oil) of /, "").toLowerCase();
+      expect(spec.effect.toLowerCase(), `"${ingredient}" does not describe "${item}"`)
+        .toContain(subject);
+    }
   });
 });

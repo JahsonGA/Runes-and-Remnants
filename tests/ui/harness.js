@@ -190,6 +190,14 @@ export function hubPage({ tab = "crafting", recipe = null, bench = [], mode = nu
     padding: 8px;
     box-sizing: border-box;
   }
+  /* Foundry stretches buttons inside an application to the full width of
+     their container. The module has to override it every time, and a rule
+     that forgets to is how "Alchemy" came to spill out of its button — a bug
+     this harness could not see until it modelled the default. */
+  .window-content button {
+    width: 100%;
+    font-family: inherit;
+  }
 ${read("styles/module.css")}
 </style></head>
 <body>

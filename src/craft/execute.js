@@ -20,7 +20,7 @@ import {
   alchemyModifier
 } from "./logic.js";
 import { resolveCraft, consumptionPlan, OUTCOME } from "./outcome.js";
-import { grantCrafted, concoctionItemData } from "./grant.js";
+import { grantCrafted, concoctionItemData, concoctionItemNames, findCraftedItem } from "./grant.js";
 import { pickExecutorId } from "../harvest/logic.js";
 
 export const MODULE_ID = "runes-and-remnants";
@@ -131,8 +131,28 @@ async function craftConcoction({ actorId, bench = [] }) {
   // stopped, leaving the crafter holding an empty vial's worth of nothing.
   let brewed = null;
   if (result.success) {
-    const data = concoctionItemData(concoction, bench, actor.name);
-    if (data) [brewed] = await actor.createEmbeddedDocuments("Item", [data]);
+    // A real item first — the SRD's own, or one the table authored under the
+    // brew's name. Either arrives with its activation and rolls already
+    // wired, which a built item cannot have. Only fall back to building one
+    // when nothing exists to hand over.
+    let data = null;
+    for (const name of concoctionItemNames(concoction)) {
+      const found = await findCraftedItem({ name });
+      if (found) { delete found._id; data = found; break; }
+    }
+    data ??= concoctionItemData(concoction, bench, actor.name);
+
+    if (data) {
+      data.system = { ...(data.system ?? {}), quantity: 1 };
+      data.flags = {
+        ...(data.flags ?? {}),
+        [MODULE_ID]: {
+          ...(data.flags?.[MODULE_ID] ?? {}),
+          crafted: true, concoction: true, ingredients: [...bench]
+        }
+      };
+      [brewed] = await actor.createEmbeddedDocuments("Item", [data]);
+    }
   }
 
   // Alchemy spends plant ingredients rather than harvested parts; those are

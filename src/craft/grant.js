@@ -18,6 +18,8 @@
 // functions touch Foundry.
 // =========================================================
 
+import { ALCHEMY_SRD_ITEM } from "../data/alchemy.js";
+
 export const MODULE_ID = "runes-and-remnants";
 
 /**
@@ -216,6 +218,34 @@ const RARITY_RANK = ["common", "uncommon", "rare", "veryRare", "legendary", "art
  * point of the modifier system is that the combination does something none of
  * the parts do alone.
  */
+/**
+ * Names to look for before building a brew from scratch, best first.
+ *
+ * A real item beats a built one: it arrives with its own activation and rolls
+ * wired up, so the table gets a potion that works rather than one they read.
+ * The synthesised name comes second so a world item authored under it — the
+ * intended way to give a custom brew real mechanics — is found too.
+ *
+ * The SRD name is offered ONLY for an unmodified brew. A modifier makes it
+ * something the SRD has no item for, and handing over the vanilla potion
+ * would throw away exactly what the alchemist added.
+ */
+export function concoctionItemNames(concoction) {
+  if (!concoction?.valid) return [];
+
+  const base = concoction.effects?.[0] ?? null;
+  const names = [];
+
+  if (base && !(concoction.modifiers ?? []).length) {
+    const srd = ALCHEMY_SRD_ITEM[base.name];
+    if (srd) names.push(srd);
+  }
+
+  const built = concoctionItemData(concoction)?.name;
+  if (built && !names.includes(built)) names.push(built);
+  return names;
+}
+
 export function concoctionItemData(concoction, bench = [], crafterName = "someone") {
   if (!concoction?.valid) return null;
 
