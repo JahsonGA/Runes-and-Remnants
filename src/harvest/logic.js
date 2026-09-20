@@ -150,7 +150,7 @@ export async function rollSkillCheck(actor, skillKey, label = "Harvest Check") {
  * This roll identifies harvesting method and weak points.
  */
 export async function rollAssessment(actor, creatureType = "other", options = {}) {
-  const skillName = HARVEST_SKILL_BY_TYPE[String(creatureType).toLowerCase()] ?? "Survival";
+  const skillName = skillForType(creatureType);
   const skillKey = skillName.toLowerCase().slice(0, 3);
 
   const intMod = actor.system?.abilities?.int?.mod ?? 0;
@@ -175,7 +175,7 @@ export async function rollAssessment(actor, creatureType = "other", options = {}
  * This roll extracts materials from the target.
  */
 export async function rollCarving(actor, creatureType = "other", options = {}) {
-  const skillName = HARVEST_SKILL_BY_TYPE[String(creatureType).toLowerCase()] ?? "Survival";
+  const skillName = skillForType(creatureType);
   const skillKey = skillName.toLowerCase().slice(0, 3);
 
   const dexMod = actor.system?.abilities?.dex?.mod ?? 0;
@@ -399,9 +399,54 @@ export function pickExecutorId(users = []) {
  * Returns an array of { dc, items[] } tiers sourced from HARVEST_TABLE.
  * Falls back to "other" if the type is unrecognized.
  */
+/**
+ * Reduce whatever a stat block calls itself to a type this table knows.
+ *
+ * The module never knows a monster's name — it reads the creature type — so
+ * anything from any book harvests without being added here. What it does
+ * have to survive is the several shapes that type arrives in:
+ *
+ *   "monstrosity"                    the plain case
+ *   { value: "beast", swarm: "tiny" }  dnd5e's object form
+ *   { value: "custom", custom: "Monstrosity (Shapechanger)" }
+ *   "Humanoid (any race)"            a subtype in the string itself
+ *
+ * Exact matching handled only the first, so a shapechanger or a custom type
+ * fell through to the generic table and lost two thirds of its components.
+ * Books past the SRD lean on subtypes and custom types far more than the SRD
+ * does, which is exactly where this bit.
+ */
+export function normaliseCreatureType(type) {
+  // dnd5e stores this as an object; a custom type puts the real name aside.
+  const raw = typeof type === "object" && type !== null
+    ? (String(type.value).toLowerCase() === "custom" ? type.custom : type.value)
+    : type;
+
+  const text = String(raw ?? "").toLowerCase().trim();
+  if (!text) return "other";
+  if (HARVEST_TABLE[text]) return text;
+
+  // "monstrosity (shapechanger)" → "monstrosity"
+  const bare = text.replace(/\s*\(.*$/, "").trim();
+  if (HARVEST_TABLE[bare]) return bare;
+
+  // "swarm of tiny beasts" and friends — the first word that names a type,
+  // singularised, since a swarm is described in the plural.
+  for (const word of text.split(/[^a-z]+/)) {
+    if (HARVEST_TABLE[word]) return word;
+    const singular = word.replace(/s$/, "");
+    if (HARVEST_TABLE[singular]) return singular;
+  }
+  return "other";
+}
+
+/** The skill a creature's type is read with. Normalised, so subtypes work. */
+export function skillForType(type) {
+  return HARVEST_SKILL_BY_TYPE[normaliseCreatureType(type)] ?? HARVEST_SKILL_BY_TYPE.other;
+}
+
 export function getHarvestOptions(type) {
-  const t = String(type || "other").toLowerCase();
-  return HARVEST_TABLE[t] ?? HARVEST_TABLE.other ?? [];
+  return HARVEST_TABLE[normaliseCreatureType(type)] ?? HARVEST_TABLE.other ?? [];
 }
 
 /* ---------------------------------------------

@@ -9,6 +9,7 @@ import {
   MODULE_ID,
   grantMaterial,
   getHarvestOptions,
+  normaliseCreatureType,
   rollAssessment,
   rollCarving,
   buildHarvestList,
@@ -99,7 +100,12 @@ export class HarvestMenu extends Application {
   }
 
   _actorSummary(actor) {
-    const type = actor?.system?.details?.type?.value ?? actor?.system?.details?.type ?? "Unknown";
+    // The whole type object, not just `.value` — a custom type keeps its real
+    // name in `.custom` while `.value` reads "custom", and normaliseCreatureType
+    // knows how to unpick that. This is what lets a creature from any book
+    // harvest without the module ever knowing its name.
+    const raw = actor?.system?.details?.type ?? "Unknown";
+    const type = normaliseCreatureType(raw);
     const cr = actor?.system?.details?.cr ?? actor?.system?.details?.challenge ?? "—";
     return { type, cr };
   }

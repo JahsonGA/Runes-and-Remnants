@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getHarvestOptions } from "../src/harvest/logic.js";
+import { getHarvestOptions, normaliseCreatureType, skillForType } from "../src/harvest/logic.js";
 
 // getHarvestOptions is the component-DC lookup for a creature type. It says
 // what a creature can yield and what each part costs; it does NOT decide what
@@ -142,5 +142,76 @@ describe("getHarvestOptions — per-type spot-checks", () => {
 
   it("undead DC 20 yields Undying Heart", () => {
     expect(find("undead", 20)?.items).toContain("Undying Heart");
+  });
+});
+
+// ─── Creature types from books past the SRD ───────────────────────────────────
+
+describe("normaliseCreatureType", () => {
+  // The module never knows a monster's NAME — it reads the creature type. That
+  // is why anything from Volo's, Mordenkainen's, Tasha's or a homebrew folder
+  // harvests without being added to any table here. What it has to survive is
+  // the several shapes a type arrives in.
+
+  it("passes a plain type through", () => {
+    expect(normaliseCreatureType("monstrosity")).toBe("monstrosity");
+  });
+
+  it("reads dnd5e's object form", () => {
+    expect(normaliseCreatureType({ value: "beast", subtype: "", swarm: "tiny" })).toBe("beast");
+  });
+
+  it("unpicks a custom type, where .value only ever reads 'custom'", () => {
+    // Books past the SRD lean on custom types far more than the SRD does,
+    // and this fell through to the generic 8-component table.
+    expect(normaliseCreatureType({ value: "custom", custom: "Monstrosity (Shapechanger)" }))
+      .toBe("monstrosity");
+  });
+
+  it("drops a subtype carried in the string itself", () => {
+    expect(normaliseCreatureType("Humanoid (any race)")).toBe("humanoid");
+    expect(normaliseCreatureType("Fiend (Demon)")).toBe("fiend");
+  });
+
+  it("finds the type inside a swarm's description, plural and all", () => {
+    expect(normaliseCreatureType("swarm of tiny beasts")).toBe("beast");
+  });
+
+  it("is not thrown by case or whitespace", () => {
+    expect(normaliseCreatureType("  Fiend  ")).toBe("fiend");
+  });
+
+  it("falls back rather than throwing on something genuinely unknown", () => {
+    // A homebrew type should still harvest, just from the generic table.
+    expect(normaliseCreatureType("clockwork horror")).toBe("other");
+    expect(normaliseCreatureType(null)).toBe("other");
+    expect(normaliseCreatureType({})).toBe("other");
+  });
+
+  it("gives a subtyped creature its full table, not the generic one", () => {
+    const full = getHarvestOptions("monstrosity").reduce((n, t) => n + t.items.length, 0);
+    const sub = getHarvestOptions("Monstrosity (Shapechanger)").reduce((n, t) => n + t.items.length, 0);
+    const generic = getHarvestOptions("nonsense").reduce((n, t) => n + t.items.length, 0);
+
+    expect(sub).toBe(full);
+    expect(sub).toBeGreaterThan(generic);
+  });
+});
+
+describe("skillForType", () => {
+  it("reads a creature with the skill its type calls for", () => {
+    expect(skillForType("undead")).toBe("Medicine");
+    expect(skillForType("aberration")).toBe("Arcana");
+  });
+
+  it("normalises first, so a subtype does not silently become Survival", () => {
+    // Both roll helpers looked this up by exact match, so a custom or
+    // subtyped creature rolled the fallback skill instead of its own.
+    expect(skillForType("Fiend (Demon)")).toBe("Religion");
+    expect(skillForType({ value: "custom", custom: "Ooze (Gelatinous)" })).toBe("Nature");
+  });
+
+  it("falls back for an unknown type", () => {
+    expect(skillForType("clockwork horror")).toBe("Survival");
   });
 });
