@@ -1,0 +1,6 @@
+# LevelDB compendium packs are binary data. Git must not touch line endings
+# anywhere inside them: a CRLF in CURRENT makes LevelDB look for a manifest
+# file whose name ends in \r, which does not exist, and the pack silently
+# fails to open. Only bites on a fresh clone with autocrlf on, which means
+# it bites a collaborator rather than whoever committed it.
+packs/*/** -text -diff
