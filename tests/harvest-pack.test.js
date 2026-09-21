@@ -1,17 +1,18 @@
 import { describe, it, expect } from "vitest";
-import fs from "node:fs";
 import { HARVEST_TABLE } from "../src/data/harvest-table.js";
 import { ESSENCE_TABLE } from "../src/harvest/logic.js";
+import { readPack } from "./read-pack.mjs";
 
 // Item NAMES are the join key between HARVEST_TABLE and the shipped compendium.
 // These tests guard that contract — a rename on either side breaks harvesting
 // silently at runtime, so it must break loudly here instead.
+//
+// The pack is a LevelDB directory, which is what Foundry has produced since
+// v11 and what editing a compendium in Foundry writes back. Reading it needs
+// an await, so the load happens once at module scope and every assertion
+// below stays synchronous.
 
-const items = fs
-  .readFileSync("packs/harvest-items.db", "utf8")
-  .split(/\r?\n/)
-  .filter(Boolean)
-  .map(line => JSON.parse(line));
+const items = await readPack("packs/harvest-items");
 
 const names = items.map(i => i.name);
 const nameSet = new Set(names);

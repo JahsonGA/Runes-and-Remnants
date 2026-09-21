@@ -4,19 +4,41 @@ Foundry compendium packs shipped with the module.
 
 ## Files
 
-| File | Entries | Type | Declared as |
+| Pack | Entries | Type | Declared as |
 |---|---|---|---|
-| `harvest-items.db` | 70 | `Item` (dnd5e) | `runes-and-remnants.harvest-items` |
+| `harvest-items/` | 70 | `Item` (dnd5e) | `runes-and-remnants.harvest-items` |
+| `alchemy-items/` | — | `Item` (dnd5e) | `runes-and-remnants.alchemy-items` |
 
 Registered in [`module.json`](../module.json) under `packs`, and bundled into
 every release zip.
 
 ---
 
-## `harvest-items.db`
+## Format: LevelDB directories, not `.db` files
 
-NeDB format — **one JSON document per line**, no wrapping array. Do not
-pretty-print it; Foundry parses it line-by-line.
+Foundry has stored packs as **LevelDB directories** since v11. The old
+single-file NeDB `.db` format still loads — Foundry migrates it on world load
+— but editing a compendium in Foundry writes LevelDB back, so that is what
+the repo ships.
+
+A pack directory holds:
+
+| File | Keep? | What it is |
+|---|---|---|
+| `000005.ldb` | **yes** | the data |
+| `MANIFEST-…`, `CURRENT` | **yes** | which files make up the current state |
+| `000009.log` | **yes** | write-ahead log; carries data not yet compacted |
+| `LOCK`, `LOG` | **no** | runtime artifacts, gitignored |
+
+`LOCK` and `LOG` are recreated whenever Foundry opens a pack, and a stale
+`LOCK` copied from another machine can stop one opening at all.
+
+`harvest-items.db` was removed once the LevelDB directory was verified to hold
+the same 70 items under the same `_id`s. It remains in git history.
+
+Reading a pack outside Foundry needs a LevelDB client — see
+[`tests/read-pack.mjs`](../tests/read-pack.mjs), which both the pack tests and
+any ad-hoc inspection go through.
 
 ### Contents
 
@@ -65,11 +87,17 @@ Parenthetical qualifiers are the naming convention for variants — see also
 The pack is edited **in Foundry**, then synced back to the repo:
 
 1. Create or edit items in the Foundry compendium
-2. Export/sync into the module's pack file
-3. Copy the updated `.db` into `packs/`
+2. Close the world, so LevelDB finishes writing and releases its lock
+3. Copy the pack **directory** into `packs/` — not a `.db` file; there isn't one
 4. **Run `npm test`** — `harvest-pack.test.js` catches missing `_id`s, duplicate
    names, world-item links and broken table references before they ship
 5. Commit, then bump `module.json` to trigger a release
+
+`npm run check:assets` separately verifies that every pack declared in
+`module.json` exists on disk and is a LevelDB directory. That guard was added
+after the manifest spent a while pointing at `packs/alchemy-items.db` while the
+pack sat at `packs/alchemy-items` — a pack that does not load is silent at
+runtime, so it has to be loud here.
 
 > Step 4 is the important one. Foundry's own export does not guarantee the
 > invariants above — the `_id`-less, world-linked state that prompted these

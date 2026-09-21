@@ -29,9 +29,16 @@
   ],
   "packs": [
     {
+      "name": "alchemy-items",
+      "label": "Alchemy Items",
+      "path": "packs/alchemy-items",
+      "type": "Item",
+      "system": "dnd5e"
+    },
+    {
       "name": "harvest-items",
       "label": "Harvest Items",
-      "path": "packs/harvest-items.db",
+      "path": "packs/harvest-items",
       "type": "Item",
       "system": "dnd5e"
     }

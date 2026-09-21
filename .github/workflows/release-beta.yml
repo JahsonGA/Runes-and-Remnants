@@ -79,7 +79,8 @@ jobs:
           zip -r "$NAME" \
             module.json index.js LICENSE \
             src styles templates packs \
-            -x "*Details.md" "*Breakdown.md" "*.psd" "*.ai" "*.blend" ".DS_Store"
+            -x "*Details.md" "*Breakdown.md" "*.psd" "*.ai" "*.blend" ".DS_Store" \
+               "packs/*/LOCK" "packs/*/LOG" "packs/*/LOG.old"
           echo "zip_name=$NAME" >> $GITHUB_OUTPUT
 
       - name: Show what shipped
