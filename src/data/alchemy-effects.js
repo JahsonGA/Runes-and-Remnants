@@ -19,6 +19,54 @@
 export const DIE_LADDER = [4, 6, 8, 10, 12];
 
 /**
+ * What a home-brewed remedy is actually called.
+ *
+ * "Potion of Wild Sageroot" reads like something bought off a shelf. These
+ * are made at a camp fire out of what grew nearby, so they are named the way
+ * folk medicine is named — by its *form*, and the form fits the function:
+ *
+ *   poultice   mashed and pressed to a wound       heals
+ *   decoction  roots boiled long and drunk          draws out sickness
+ *   tincture   steeped strong, taken in drops       fast, small dose
+ *   compress   soaked cloth, held against the skin  warmth, endurance
+ *   mash       food, not medicine                   sustenance
+ *   extract    concentrated, painted on a blade     poison
+ *   vapour     breathed rather than swallowed       hits the lungs
+ *   liniment   rubbed into a grip or a limb         steadies the hand
+ *   balm       thick, salved on                     lasting change
+ *   infusion   steeped gently and sipped            slow-acting power
+ *
+ * Only the brews with no SRD equivalent are here. Anything unlisted falls
+ * back to "<Potion|Poison|Elixir> of <ingredient>", so a new ingredient works
+ * without an entry and gets a better name by adding one.
+ *
+ * These are the lookup keys for a hand-authored item, so renaming one here
+ * means renaming the item in Foundry to match. `alchemy-pack.test.js` is
+ * what catches it if the two drift.
+ */
+export const REMEDY_NAME = {
+  // ---- healing ----
+  "Wild Sageroot":     "Sageroot Poultice",
+
+  // ---- cures ----
+  "Mandrake Root":     "Mandrake Decoction",
+  "Hyancinth Nectar":  "Hyancinth Tincture",
+
+  // ---- buffs ----
+  "Fennel Silk":       "Fennel Silk Compress",
+  "Arrow Root":        "Arrow Root Liniment",
+  "Primordial Balm":   "Primordial Balm",
+  "Silver Hibiscus":   "Silver Hibiscus Infusion",
+
+  // ---- sustenance ----
+  "Bloodgrass":        "Bloodgrass Mash",
+
+  // ---- poison and debuff ----
+  "Wyrmtongue Petals": "Wyrmtongue Extract",
+  "Basilisk Breath":   "Basilisk Breath Vapour"
+};
+
+/**
  * What a base effect rolls.
  *
  * `mod: true` means the crafter's Alchemy modifier is added — that is what

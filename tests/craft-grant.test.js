@@ -7,6 +7,7 @@ import {
 import { MANUFACTURING_TABLE, MANUFACTURING_CATEGORIES } from "../src/data/manufacturing.js";
 import { getRecipe, analyseConcoction } from "../src/craft/logic.js";
 import { ALCHEMY_SRD_ITEM, ALCHEMY_INGREDIENTS } from "../src/data/alchemy.js";
+import { REMEDY_NAME } from "../src/data/alchemy-effects.js";
 
 // ─── Names ────────────────────────────────────────────────────────────────────
 
@@ -199,12 +200,31 @@ describe("searchablePacks", () => {
 describe("concoctionItemData", () => {
   const brew = bench => concoctionItemData(analyseConcoction(bench), bench, "Ash");
 
-  it("names the brew after what it does, not the vessel", () => {
-    // Alchemy used to grant nothing at all, and a "Potion base" from the gear
-    // catalogue was the only thing an alchemist ended up holding.
-    expect(brew(["Wild Sageroot"]).name).toBe("Potion of Wild Sageroot");
-    expect(brew(["Wyrmtongue Petals"]).name).toBe("Poison of Wyrmtongue Petals");
+  it("names a brew as the remedy it is", () => {
+    // These are made at a camp fire out of what grew nearby, so they are
+    // named the way folk medicine is — by form. "Potion of Wild Sageroot"
+    // read like something bought off a shelf.
+    expect(brew(["Wild Sageroot"]).name).toBe("Sageroot Poultice");
+    expect(brew(["Wyrmtongue Petals"]).name).toBe("Wyrmtongue Extract");
+    expect(brew(["Mandrake Root"]).name).toBe("Mandrake Decoction");
+  });
+
+  it("falls back to the generic pattern for an ingredient with no remedy name", () => {
+    // A new ingredient has to work with no entry at all; adding one is an
+    // improvement, not a requirement.
     expect(brew(["Elemental Water", "Scillia Beans"]).name).toBe("Elixir of Scillia Beans");
+  });
+
+  it("every brew needing its own item has a remedy name", () => {
+    // The ones with an SRD equivalent never build an item, so they do not
+    // need one. The ten that do are exactly the ten authored by hand.
+    const needsOwn = ALCHEMY_INGREDIENTS.filter(i =>
+      /^(potion-effect|toxin-effect|enchantment)$/.test(i.role) && !ALCHEMY_SRD_ITEM[i.name]);
+
+    for (const i of needsOwn) {
+      expect(REMEDY_NAME, `"${i.name}" still builds a shelf-bought name`).toHaveProperty(i.name);
+    }
+    expect(Object.keys(REMEDY_NAME).length).toBe(needsOwn.length);
   });
 
   it("is a consumable, not loot", () => {
@@ -284,7 +304,7 @@ describe("concoctionItemNames — prefer a real item", () => {
   });
 
   it("offers only the built name where no SRD item matches", () => {
-    expect(names(["Elemental Water", "Arrow Root"])).toEqual(["Elixir of Arrow Root"]);
+    expect(names(["Elemental Water", "Arrow Root"])).toEqual(["Arrow Root Liniment"]);
   });
 
   it("offers nothing for a mixture that will not hold", () => {

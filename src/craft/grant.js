@@ -20,6 +20,7 @@
 
 import { ALCHEMY_SRD_ITEM } from "../data/alchemy.js";
 import { composeEffect, describeEffect } from "./concoct.js";
+import { REMEDY_NAME } from "../data/alchemy-effects.js";
 
 export const MODULE_ID = "runes-and-remnants";
 
@@ -252,7 +253,12 @@ export function concoctionItemData(concoction, bench = [], crafterName = "someon
 
   const base = concoction.effects?.[0] ?? null;
   const kind = CONCOCTION_KIND[concoction.kind] ?? "Concoction";
-  const name = base ? `${kind} of ${base.name}` : kind;
+  // A remedy name where one is written, because these are made at a camp fire
+  // out of what grew nearby rather than bought off a shelf. Falls back to the
+  // generic pattern so a new ingredient works with no entry at all.
+  const name = base
+    ? (REMEDY_NAME[base.name] ?? `${kind} of ${base.name}`)
+    : kind;
   const modifiers = concoction.modifiers ?? [];
 
   // What the vial actually does, with every modifier already folded in. The
