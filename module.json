@@ -41,6 +41,12 @@
       "path": "packs/harvest-items",
       "type": "Item",
       "system": "dnd5e"
+    },
+    {
+      "name": "recipes",
+      "label": "Crafting Recipes",
+      "path": "packs/recipes",
+      "type": "JournalEntry"
     }
   ],
   "url": "https://github.com/JahsonGA/Runes-and-Remnants",

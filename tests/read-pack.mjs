@@ -16,15 +16,17 @@ const TOP_LEVEL_SEGMENTS = 3;   // "", "items", "<id>"
 
 /**
  * Every top-level document in a pack.
- * @param {string} dir  path to the pack directory, e.g. "packs/harvest-items"
+ * @param {string} dir   path to the pack directory, e.g. "packs/harvest-items"
+ * @param {string} type  document key, "items" or "journal"
  * @returns {Promise<object[]>}
  */
-export async function readPack(dir) {
+export async function readPack(dir, type = "items") {
+  const prefix = `!${type}!`;
   const db = new ClassicLevel(dir, { valueEncoding: "json" });
   const docs = [];
   try {
     for await (const [key, value] of db.iterator()) {
-      if (!key.startsWith("!items!")) continue;
+      if (!key.startsWith(prefix)) continue;
       if (key.split("!").length > TOP_LEVEL_SEGMENTS) continue;
       docs.push(value);
     }
@@ -34,4 +36,23 @@ export async function readPack(dir) {
     await db.close();
   }
   return docs;
+}
+
+/**
+ * The pages belonging to a journal entry.
+ *
+ * Stored under their own key — `!journal.pages!<entryId>.<pageId>` — rather
+ * than inside the entry, which is why readPack's top-level filter skips them.
+ */
+export async function readJournalPages(dir) {
+  const db = new ClassicLevel(dir, { valueEncoding: "json" });
+  const pages = [];
+  try {
+    for await (const [key, value] of db.iterator()) {
+      if (key.startsWith("!journal.pages!")) pages.push(value);
+    }
+  } finally {
+    await db.close();
+  }
+  return pages.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
 }

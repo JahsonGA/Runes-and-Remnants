@@ -1,6 +1,6 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **536 tests across 21 files**,
+Vitest suite plus a standalone packaging check. **549 tests across 22 files**,
 all runnable without a Foundry runtime.
 
 A second suite runs in a real browser. **80 Playwright tests** render the
@@ -41,6 +41,7 @@ collects the Playwright files and fails on the missing runner.
 | [`craft-grant.test.js`](craft-grant.test.js) | 40 | Item name candidates, fallback types, which packs are searched |
 | [`craft-panel.test.js`](craft-panel.test.js) | 11 | Reagent include/exclude, and the button promising what the list shows |
 | [`craft-concoct.test.js`](craft-concoct.test.js) | 34 | Formula composition: dice doubling, die stepping, stacking rules, riders |
+| [`recipe-journal.test.js`](recipe-journal.test.js) | 11 | The generated journal still matches the tables it is built from |
 | [`templates.test.js`](templates.test.js) | 13 | Handlebars templates compile and render against real panel data |
 | [`check-assets.mjs`](check-assets.mjs) | — | Not Vitest. Standalone packaging guard |
 
@@ -50,9 +51,10 @@ collects the Playwright files and fails on the missing runner.
 
 ### `harvest-pack.test.js` — the highest-value file
 
-The only test that reads the shipped `.db`. It guards the contract that item
-**names** are the join key between `HARVEST_TABLE` and the compendium — a break
-there fails silently at runtime (the item just never appears), so it must fail
+Reads the shipped compendium — a LevelDB directory, via
+[`read-pack.mjs`](read-pack.mjs). It guards the contract that item **names**
+are the join key between `HARVEST_TABLE` and the compendium: a break there
+fails silently at runtime (the item just never appears), so it must fail
 loudly here.
 
 Asserts: every entry has a unique 16-char `_id`; names are unique; no
@@ -121,6 +123,21 @@ modifiers, modifier type matching its base, `locked` ingredients refusing
 modification, and the separate enchantment path (Elemental Water base, exactly
 one enchantment, no modifiers). `analyseConcoction` returns *every* violation,
 not just the first, and the tests assert that.
+
+### `recipe-journal.test.js`
+
+The in-world journal is **generated**, not authored —
+[`scripts/build-recipe-journal.mjs`](../scripts/build-recipe-journal.mjs)
+reads the same tables the crafting code reads and writes `packs/recipes`.
+This file is what makes "cannot drift" true rather than merely intended: add
+a recipe without running `npm run build:journal` and the journal no longer
+lists it, which fails here instead of quietly lying to a player.
+
+Asserts every manufacturing recipe appears with its DC and hours, every
+alchemy ingredient appears on the page for its role, and every home remedy
+names what it is brewed from. Also pins the page ids as stable 16-character
+strings derived from names — random ids would churn the pack on every
+rebuild and break any link into it.
 
 ### `craft-reagents.test.js`
 
