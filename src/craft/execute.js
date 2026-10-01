@@ -22,6 +22,7 @@ import {
 } from "./logic.js";
 import { resolveCraft, consumptionPlan, OUTCOME } from "./outcome.js";
 import { grantCrafted, concoctionItemData, concoctionItemNames, findCraftedItem, specialiseBrew } from "./grant.js";
+import { showRewardToOwner } from "../ui/reward-panel.js";
 import { composeEffect } from "./concoct.js";
 import { pickExecutorId } from "../harvest/logic.js";
 
@@ -98,7 +99,30 @@ async function craftItem({ actorId, recipe: recipeName, exclude = [] }) {
   const result = resolveCraft({ total: roll.total, dc: plan.dc, natural: roll.natural });
 
   if (result.consumesReagents) await spend(actor, selection.parts);
-  if (result.success) await grantCrafted(actor, recipe);
+
+  // Only a success grants anything, so only a success has something to show
+  // in the reward panel. A near-miss or a spoiled batch still gets its full
+  // status in chat, same as always — the reward panel is the payoff, not
+  // the record of what happened.
+  const granted = result.success ? await grantCrafted(actor, recipe) : null;
+  if (granted) {
+    showRewardToOwner(actor, {
+      title: result.label,
+      subtitle: recipe.name,
+      crest: "⚒",   // hammer and pick
+      flavour: result.note,
+      items: [{
+        name: granted.name,
+        img: granted.img,
+        rarity: granted.system?.rarity,
+        quantity: granted.system?.quantity,
+        detail: `${plan.hours} hrs`
+      }],
+      notes: granted.flags?.[MODULE_ID]?.improvised
+        ? ["The world had no copy of this to grant — built from the recipe instead."]
+        : []
+    });
+  }
 
   await report({ actor, title: recipe.name, plan, roll, result, spent: selection.parts });
   return result;
@@ -164,6 +188,25 @@ async function craftConcoction({ actorId, bench = [] }) {
       };
       [brewed] = await actor.createEmbeddedDocuments("Item", [data]);
     }
+  }
+
+  if (brewed) {
+    showRewardToOwner(actor, {
+      title: result.label,
+      subtitle: concoction.kindLabel,
+      crest: "⚗",   // alembic
+      flavour: result.note,
+      items: [{
+        name: brewed.name,
+        img: brewed.img,
+        rarity: brewed.system?.rarity,
+        quantity: brewed.system?.quantity,
+        // The brewer's own numbers, already baked into the item — pulled
+        // back out of its flags rather than recomposed here.
+        detail: brewed.flags?.[MODULE_ID]?.effect?.formula ?? null
+      }],
+      notes: []
+    });
   }
 
   // Alchemy spends plant ingredients rather than harvested parts; those are

@@ -37,7 +37,8 @@ const REQUIRED = [
   "templates/partials/crafter.html",
   "templates/reward.html",
   "src/ui/reward.js",
-  "src/ui/reward-panel.js"
+  "src/ui/reward-panel.js",
+  "src/ui/reward-broadcast.js"
 ];
 
 let missing = [];

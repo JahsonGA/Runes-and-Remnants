@@ -9,6 +9,7 @@ import { executeCraft, isCraftExecutor } from "./src/craft/execute.js";
 import { executeEnchant, isEnchantExecutor } from "./src/enchant/execute.js";
 import { registerConfirmSetting } from "./src/ui/confirm.js";
 import { RewardPanel } from "./src/ui/reward-panel.js";
+import { isRecipient } from "./src/ui/reward-broadcast.js";
 
 const MODULE_ID = "runes-and-remnants";
 
@@ -93,6 +94,15 @@ Hooks.once("ready", () => {
     if (payload.action === "showReward") {
       // Harvest runs GM-side, so the player who did the carving only
       // sees their own reward because it is broadcast.
+      //
+      // `recipients` is craft/enchant's addition — a crafted dagger is not a
+      // party moment the way a kill is, so those target the actor's owner
+      // rather than the table. Harvest never sets this field, so a missing
+      // `recipients` keeps meaning "show to everyone," exactly as before.
+      const recipients = payload.recipients;
+      if (Array.isArray(recipients) && !isRecipient(recipients, game.user.id, game.user.isGM)) {
+        return;
+      }
       RewardPanel.show(payload.reward ?? {});
       return;
     }

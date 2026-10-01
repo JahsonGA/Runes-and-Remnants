@@ -8,6 +8,7 @@
 // =========================================================
 
 import { rewardData, MODULE_ID } from "./reward.js";
+import { actorOwners, isRecipient } from "./reward-broadcast.js";
 
 export class RewardPanel extends Application {
   constructor(data = {}, resolve = () => {}) {
@@ -60,4 +61,31 @@ export class RewardPanel extends Application {
   static show(data = {}) {
     return new Promise(resolve => new RewardPanel(data, resolve).render(true));
   }
+}
+
+/**
+ * Show a reward to whoever owns the actor, not the whole table.
+ *
+ * Crafting and enchanting are GM-authoritative: a player's request is
+ * executed on the GM's client, so `game.user` here is often the GM, not the
+ * player who asked. This client only renders locally when it is itself a
+ * recipient (solo play, or a GM-owned test character); otherwise it relies
+ * entirely on the broadcast reaching the owner's own session, where the same
+ * check runs again and passes.
+ */
+export function showRewardToOwner(actor, reward) {
+  const recipients = actorOwners(actor);
+
+  if (isRecipient(recipients, game.user.id, game.user.isGM)) {
+    RewardPanel.show(reward);
+  }
+
+  // Foundry's socket relay does not echo back to the sender, so this is what
+  // reaches every other connected client — including the actual owner, who
+  // was not reachable any other way from here.
+  game.socket?.emit(`module.${MODULE_ID}`, {
+    action: "showReward",
+    reward,
+    recipients
+  });
 }
