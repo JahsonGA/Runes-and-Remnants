@@ -219,10 +219,30 @@ fs.rmSync(PACK, { recursive: true, force: true });
 fs.mkdirSync(PACK, { recursive: true });
 const db = new ClassicLevel(PACK, { valueEncoding: "json" });
 await db.open();
+
+// rmSync is not enough on its own. A LevelDB directory that is open, locked,
+// or mid-compaction can survive it, and the leftover keys then sit alongside
+// the new ones — which is how the pack ended up with two Wyrmtongue Extracts
+// under different ids. clear() empties the store itself, whatever is on disk.
+await db.clear();
+
 for (const item of items) {
   await db.put(`!items!${item._id}`, { ...item, _key: `!items!${item._id}` });
 }
 await db.close();
+
+// Read it back before claiming success. A generator that cannot prove what
+// it wrote is how a corrupt pack reaches a commit.
+const check = new ClassicLevel(PACK, { valueEncoding: "json" });
+const written = [];
+for await (const [key] of check.iterator()) written.push(key);
+await check.close();
+
+if (written.length !== items.length) {
+  console.error(`✗ wrote ${items.length} items but the pack holds ${written.length}.`);
+  console.error("  Delete packs/alchemy-items and run again.");
+  process.exit(1);
+}
 
 console.log(`Built ${items.length} remedies`);
 console.log(`  ${OUT_DIR}/  — one JSON each, importable by hand`);
