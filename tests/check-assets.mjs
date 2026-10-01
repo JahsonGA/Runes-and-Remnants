@@ -34,7 +34,10 @@ const REQUIRED = [
   "templates/panels/harvest.html",
   "templates/panels/crafting.html",
   "templates/panels/enchanting.html",
-  "templates/partials/crafter.html"
+  "templates/partials/crafter.html",
+  "templates/reward.html",
+  "src/ui/reward.js",
+  "src/ui/reward-panel.js"
 ];
 
 let missing = [];

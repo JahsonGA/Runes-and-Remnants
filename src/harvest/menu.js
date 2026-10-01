@@ -21,6 +21,7 @@ import {
   findCompendiumEntry,
   HARVEST_SKILL_BY_TYPE
 } from "./logic.js";
+import { RewardPanel } from "../ui/reward-panel.js";
 
 export class HarvestMenu extends Application {
   constructor(initialTokenDoc = null, options = {}) {
@@ -472,6 +473,10 @@ export class HarvestMenu extends Application {
     // whether it came off a dragon or a goblin.
     const essenceName = getEssenceByCR(Number(cr) || 0)?.name;
     const dropPoint = targetToken?.object?.center ?? null;
+    // What actually made it into a pack, for the reward panel. Built from
+    // the granted documents rather than the requested names, so anything
+    // that failed to grant is absent from the panel too.
+    const granted = [];
     for (const entry of awarded) {
       const itemName = entry.name;
       const indexEntry = findCompendiumEntry(loot, itemName, typeKey);
@@ -481,6 +486,12 @@ export class HarvestMenu extends Application {
       }
       try {
         const itemDoc = await pack.getDocument(indexEntry._id);
+        granted.push({
+          name: itemDoc.name,
+          img: itemDoc.img,
+          rarity: itemDoc.system?.rarity ?? "",
+          detail: entry.componentDC ? `DC ${entry.componentDC}` : null
+        });
         await grantMaterial({
           item: itemDoc,
           qty: 1,
@@ -497,6 +508,26 @@ export class HarvestMenu extends Application {
         console.warn(`[${MODULE_ID}] Failed to grant "${itemName}":`, err);
       }
     }
+
+    // --- Show what came away ---
+    // Harvest runs GM-side, so a panel rendered only here would be seen by
+    // the one person who did not do the carving. Broadcast it, the same way
+    // the hub itself is opened for everyone.
+    const reward = {
+      title: result.label ?? "Harvested",
+      subtitle: `${targetActor?.name ?? "The corpse"}${Number(cr) ? ` · CR ${cr}` : ""}`,
+      crest: "☠",
+      flavour: granted.length
+        ? `${harvesterActor.name} worked the carcass over ${harvestList.length} cuts and `
+          + `came away with ${granted.length}.`
+        : `${harvesterActor.name} found nothing worth the knife.`,
+      items: granted,
+      notes: missed.length
+        ? [`${missed.length} deeper ${missed.length === 1 ? "cut was" : "cuts were"} beyond them — the carcass keeps those.`]
+        : []
+    };
+    RewardPanel.show(reward);
+    game.socket?.emit(`module.${MODULE_ID}`, { action: "showReward", reward });
 
     // --- Build Helper Breakdown ---
     const helperList = helperBreakdown.length

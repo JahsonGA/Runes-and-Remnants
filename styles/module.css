@@ -543,6 +543,208 @@ tr.rnr-missing td {
    that looks pressable invites a click that does nothing. */
 .rnr-confirm .rnr-add { cursor: default; }
 
+/* =========================================================
+   REWARD PANEL
+
+   What a kill, a craft or a binding yielded. Harvest hands back five things
+   at once and used to say so only in chat, where it scrolls away.
+
+   Rarity drives the frame colour, which is the one glance that matters when
+   six icons land together.
+   ========================================================= */
+
+/* The 5e ladder, warmed slightly to sit on a near-black ground rather than
+   the usual white. Each clears 4.5:1 against the tile, since the name below
+   is tinted to match. */
+.rnr-reward {
+  --rarity-common:    #9b9188;
+  --rarity-uncommon:  #6fbf73;
+  --rarity-rare:      #5aa9e6;
+  --rarity-veryrare:  #b98bd9;
+  --rarity-legendary: #e0962f;
+  --rarity-artifact:  #e0624a;
+
+  position: relative;
+  padding: 18px 20px 14px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(115, 74, 18, 0.18), transparent 60%),
+    var(--rnr-ink);
+  border: 1px solid var(--rnr-wood);
+  border-radius: 10px;
+  color: var(--rnr-text);
+}
+
+/* Corner flourishes, drawn rather than imaged — nothing to 404 and they
+   recolour with the theme. */
+.rnr-reward::before,
+.rnr-reward::after {
+  content: "";
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--rnr-brown);
+  pointer-events: none;
+}
+.rnr-reward::before {
+  top: 6px; left: 6px;
+  border-right: none; border-bottom: none; border-radius: 6px 0 0 0;
+}
+.rnr-reward::after {
+  bottom: 6px; right: 6px;
+  border-left: none; border-top: none; border-radius: 0 0 6px 0;
+}
+
+.rnr-reward-head { text-align: center; margin-bottom: 10px; }
+.rnr-reward-crest {
+  font-size: 1.5rem;
+  line-height: 1;
+  margin-bottom: 2px;
+  filter: saturate(0.7);
+}
+.rnr-reward-head h1 {
+  margin: 0;
+  border: none;
+  font-size: 1.35rem;
+  letter-spacing: 0.04em;
+  color: var(--rnr-brown-lit);
+}
+.rnr-reward-sub {
+  margin: 1px 0 0;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: #a3968a;
+}
+
+.rnr-reward-flavour {
+  margin: 0 0 12px;
+  text-align: center;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #cfc5b8;
+}
+
+/* A heading with rules either side, which is the one ornament this needs. */
+.rnr-reward-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+  border: none;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--rnr-brown-lit);
+}
+.rnr-reward-heading::before,
+.rnr-reward-heading::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--rnr-wood), transparent);
+}
+
+/* auto-fit so one reward centres and eight wrap, with no media query. */
+.rnr-reward-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 10px;
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  justify-items: center;
+}
+
+.rnr-reward-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+}
+
+.rnr-reward-tile {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  background: #14100f;
+  border: 2px solid var(--tile, var(--rarity-common));
+  border-radius: 6px;
+  box-shadow: 0 0 10px -2px var(--tile, transparent), inset 0 0 12px rgba(0, 0, 0, 0.6);
+}
+.rnr-reward-tile img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border: none;
+}
+
+/* A count sits on the tile rather than in the name, so "Bone" and "Bone x4"
+   are the same width in the grid. */
+.rnr-reward-qty {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  min-width: 17px;
+  padding: 0 3px;
+  background: var(--rnr-ink);
+  border: 1px solid var(--tile, var(--rarity-common));
+  border-radius: 9px;
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--rnr-text);
+}
+
+.rnr-reward-name {
+  font-size: 0.7rem;
+  line-height: 1.25;
+  color: var(--tile, var(--rnr-text));
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+.rnr-reward-detail {
+  font-size: 0.62rem;
+  color: #8a7a66;
+  font-variant-numeric: tabular-nums;
+}
+
+.rnr-rarity-common    { --tile: var(--rarity-common); }
+.rnr-rarity-uncommon  { --tile: var(--rarity-uncommon); }
+.rnr-rarity-rare      { --tile: var(--rarity-rare); }
+.rnr-rarity-veryrare  { --tile: var(--rarity-veryrare); }
+.rnr-rarity-legendary { --tile: var(--rarity-legendary); }
+.rnr-rarity-artifact  { --tile: var(--rarity-artifact); }
+
+.rnr-reward-empty,
+.rnr-reward-notes {
+  margin: 0 0 10px;
+  text-align: center;
+  font-size: 0.76rem;
+  color: #a3968a;
+}
+.rnr-reward-notes p { margin: 2px 0; }
+
+.rnr-reward-actions { display: flex; justify-content: center; }
+.rnr-reward-accept {
+  min-width: 170px;
+  padding: 6px 18px;
+  background: linear-gradient(180deg, #241616, #1a1010);
+  color: var(--rnr-text);
+  border: 1px solid var(--rnr-brown);
+  border-radius: 5px;
+  font-size: 0.88rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+.rnr-reward-accept:hover {
+  border-color: var(--rnr-red-lit);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(224, 82, 82, 0.35);
+}
+
 /* ---- Who is at the bench ---- */
 .rnr-crafter { margin-bottom: 8px; flex: none; }
 .rnr-crafter .rnr-dropdown { max-height: 120px; }

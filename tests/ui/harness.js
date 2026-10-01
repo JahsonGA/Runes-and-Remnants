@@ -21,6 +21,7 @@ import { CraftPanel } from "../../src/craft/panel.js";
 import { EnchantPanel } from "../../src/enchant/panel.js";
 import { HUB_TABS } from "../../src/data/hub-tabs.js";
 import { HARVEST_TABLE } from "../../src/data/harvest-table.js";
+import { rewardData } from "../../src/ui/reward.js";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = rel => fs.readFileSync(path.join(ROOT, rel), "utf8");
@@ -211,4 +212,51 @@ ${read("styles/module.css")}
 export async function allRecipeNames() {
   const { allRecipes } = await import("../../src/craft/logic.js");
   return allRecipes().map(r => r.name);
+}
+
+/**
+ * The reward panel on its own. It is a separate Application from the hub, so
+ * it gets a page rather than a tab.
+ */
+export function rewardPage(data = {}) {
+  registerOnce();
+  const tpl = Handlebars.compile(read("templates/reward.html"));
+
+  return `<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  body { margin: 0; padding: 20px; background: #2b2a29; font-family: "Signika", sans-serif; }
+  .app-window { width: 460px; background: #191813; border: 1px solid #000; border-radius: 6px; }
+  .window-content { padding: 8px; box-sizing: border-box; }
+${read("styles/module.css")}
+</style></head>
+<body>
+  <div class="app-window rnr-harvest grimdark rnr-reward-app" id="app">
+    <div class="window-content">${tpl(rewardData(data))}</div>
+  </div>
+</body></html>`;
+}
+
+/**
+ * A full harvest's worth of reward, rarities spread across the ladder.
+ * Six tiles is what a dragon actually yields, and the widest case is where
+ * the grid breaks.
+ */
+export function fullReward(over = {}) {
+  return {
+    title: "Harvested",
+    subtitle: "Adult Black Dragon · CR 14",
+    crest: "☠",
+    flavour: "Three cuts went clean before the hide turned the blade.",
+    items: [
+      { name: "Pouch of Teeth", rarity: "common", quantity: 4, detail: "DC 10" },
+      { name: "Eye", rarity: "common", detail: "DC 5" },
+      { name: "Heart", rarity: "uncommon", detail: "DC 15" },
+      { name: "Hide", rarity: "rare", detail: "DC 20" },
+      { name: "Breath Sac", rarity: "veryRare", detail: "DC 25" },
+      { name: "Remnant (Potent)", rarity: "veryRare", detail: "CR 14" }
+    ],
+    notes: ["The carcass is spent — nothing else will come away."],
+    ...over
+  };
 }

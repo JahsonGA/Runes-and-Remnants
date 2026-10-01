@@ -1,9 +1,9 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **586 tests across 23 files**,
+Vitest suite plus a standalone packaging check. **600 tests across 24 files**,
 all runnable without a Foundry runtime.
 
-A second suite runs in a real browser. **80 Playwright tests** render the
+A second suite runs in a real browser. **90 Playwright tests** render the
 module's own templates and stylesheet and check that the result is usable —
 the class of bug string assertions cannot see.
 
@@ -43,6 +43,7 @@ collects the Playwright files and fails on the missing runner.
 | [`craft-concoct.test.js`](craft-concoct.test.js) | 45 | Formula composition, stacking rules, riders, brew signatures |
 | [`alchemy-pack.test.js`](alchemy-pack.test.js) | 13 | Every brew resolves to a packed item; formulas are rollable |
 | [`recipe-journal.test.js`](recipe-journal.test.js) | 11 | The generated journal still matches the tables it is built from |
+| [`reward.test.js`](reward.test.js) | 14 | Reward shaping: rarity keys, quantities, the empty case |
 | [`templates.test.js`](templates.test.js) | 13 | Handlebars templates compile and render against real panel data |
 | [`check-assets.mjs`](check-assets.mjs) | — | Not Vitest. Standalone packaging guard |
 

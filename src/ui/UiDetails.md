@@ -5,6 +5,8 @@ Shared UI glue that no single system owns.
 | File | Purpose |
 |---|---|
 | [`confirm.js`](confirm.js) | The "are you sure" dialog, and the setting that turns it off |
+| [`reward.js`](reward.js) | What a reward panel shows. Pure |
+| [`reward-panel.js`](reward-panel.js) | The Application that renders it |
 
 ---
 

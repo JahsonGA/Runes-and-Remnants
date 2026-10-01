@@ -8,6 +8,7 @@ import { registerExtraSettings, loadExtraRecipes } from "./src/craft/extras.js";
 import { executeCraft, isCraftExecutor } from "./src/craft/execute.js";
 import { executeEnchant, isEnchantExecutor } from "./src/enchant/execute.js";
 import { registerConfirmSetting } from "./src/ui/confirm.js";
+import { RewardPanel } from "./src/ui/reward-panel.js";
 
 const MODULE_ID = "runes-and-remnants";
 
@@ -55,7 +56,7 @@ Hooks.once("init", async () => {
     rnrCrafterPicker:   `modules/${MODULE_ID}/templates/partials/crafter.html`
   };
 
-  await loadTemplates(Object.values(panels));
+  await loadTemplates([...Object.values(panels), `modules/${MODULE_ID}/templates/reward.html`]);
   for (const [name, path] of Object.entries(panels)) {
     Handlebars.registerPartial(name, Handlebars.partials[path] ?? (await getTemplate(path)));
   }
@@ -86,6 +87,13 @@ Hooks.once("ready", () => {
       const token = payload.tokenUuid ? await fromUuid(payload.tokenUuid) : null;
       const tokenDoc = token?.document ?? token ?? null;
       RunesHub.open({ tokenDoc, tab: "harvest" });
+      return;
+    }
+
+    if (payload.action === "showReward") {
+      // Harvest runs GM-side, so the player who did the carving only
+      // sees their own reward because it is broadcast.
+      RewardPanel.show(payload.reward ?? {});
       return;
     }
 
