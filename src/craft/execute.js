@@ -17,10 +17,12 @@ import {
   selectReagents,
   partsFromActor,
   analyseConcoction,
-  alchemyModifier
+  alchemyModifier,
+  hasAnyTool
 } from "./logic.js";
 import { resolveCraft, consumptionPlan, OUTCOME } from "./outcome.js";
-import { grantCrafted, concoctionItemData, concoctionItemNames, findCraftedItem } from "./grant.js";
+import { grantCrafted, concoctionItemData, concoctionItemNames, findCraftedItem, specialiseBrew } from "./grant.js";
+import { composeEffect } from "./concoct.js";
 import { pickExecutorId } from "../harvest/logic.js";
 
 export const MODULE_ID = "runes-and-remnants";
@@ -142,6 +144,15 @@ async function craftConcoction({ actorId, bench = [] }) {
     }
     data ??= concoctionItemData(concoction, bench, actor.name, bonus);
 
+    // An authored item carries base dice and no modifier — one item has to
+    // serve every brew of it. Write this vial's real numbers over them, or
+    // authoring an item would make brews WORSE than building one.
+    const base = concoction.effects?.[0]?.name ?? null;
+    const composed = base
+      ? composeEffect(base, (concoction.modifiers ?? []).map(m => m.name), bonus)
+      : null;
+    if (data && composed) data = specialiseBrew(data, composed);
+
     if (data) {
       data.system = { ...(data.system ?? {}), quantity: 1 };
       data.flags = {
@@ -181,8 +192,7 @@ function abilityMods(actor) {
 }
 
 function hasTool(actor, tools = []) {
-  const held = Array.from(actor.system?.traits?.toolProf?.value ?? []).map(String);
-  return tools.some(t => held.includes(t));
+  return hasAnyTool(actor.system?.traits?.toolProf?.value ?? [], tools);
 }
 
 function crafterFrom(actor) {

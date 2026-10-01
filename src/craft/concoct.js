@@ -101,6 +101,14 @@ export function composeEffect(effectName, modifierNames = [], alchemyMod = null)
   }
 
   out.formula = renderFormula(out, alchemyMod);
+
+  // A poison's save DC scales with whoever brewed it, so it can only be a
+  // real number once the brewer is known. Resolved here rather than at the
+  // item, so the arithmetic lives where it is tested.
+  if (out.save && Number.isFinite(alchemyMod)) {
+    out.saveDC = out.save.base + (out.save.mod ? alchemyMod : 0);
+  }
+
   return out;
 }
 

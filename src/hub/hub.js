@@ -15,7 +15,7 @@
 import { HarvestMenu } from "../harvest/menu.js";
 import { HUB_TABS, HUB_TAB_IDS, resolveTab, SCROLL_REGIONS } from "../data/hub-tabs.js";
 import { CraftPanel } from "../craft/panel.js";
-import { partsFromActor, getRecipe, planManufacture, selectReagents, alchemyModifier } from "../craft/logic.js";
+import { partsFromActor, getRecipe, planManufacture, selectReagents, alchemyModifier, hasAnyTool } from "../craft/logic.js";
 import { craftSummary, alchemySummary, enchantSummary, summaryToHtml } from "../craft/summary.js";
 import { confirmSpend } from "../ui/confirm.js";
 import { requestCraft } from "../craft/execute.js";
@@ -28,6 +28,9 @@ import {
 } from "../enchant/spirit.js";
 
 export { HUB_TABS };
+
+/** The same tool check `execute.js` makes before it rolls. */
+const toolProficient = (crafter, tools) => hasAnyTool(crafter?.tools, tools);
 
 export class RunesHub extends HarvestMenu {
   constructor(initialTokenDoc = null, options = {}) {
@@ -221,16 +224,24 @@ export class RunesHub extends HarvestMenu {
     const crafter = this._crafter();
 
     const summary = this.craft.mode === "alchemy"
-      ? alchemySummary({
-          concoction: this.craft._concoction(),
-          bench: this.craft.bench,
-          bonus: alchemyModifier({
-            int: crafter?.abilities?.int ?? 0,
-            wis: crafter?.abilities?.wis ?? 0,
-            proficient: (crafter?.tools ?? []).includes("Alchemist's supplies"),
-            proficiency: crafter?.proficiency ?? 2
-          })
-        })
+      ? (() => {
+          const concoction = this.craft._concoction();
+          return alchemySummary({
+            concoction,
+            bench: this.craft.bench,
+            bonus: alchemyModifier({
+              int: crafter?.abilities?.int ?? 0,
+              wis: crafter?.abilities?.wis ?? 0,
+              // Whichever tool THIS brew calls for, matching what execute.js
+              // rolls with. Hardcoding Alchemist's supplies meant a poisoner
+              // with a Poisoner's kit was shown a bonus lower than the one
+              // they then rolled — the exact mismatch this dialog exists to
+              // prevent.
+              proficient: toolProficient(crafter, concoction?.tools),
+              proficiency: crafter?.proficiency ?? 2
+            })
+          });
+        })()
       : (() => {
           const recipe = getRecipe(this.craft.recipe);
           if (!recipe || !crafter) return null;

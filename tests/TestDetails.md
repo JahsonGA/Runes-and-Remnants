@@ -1,6 +1,6 @@
 # Test Details
 
-Vitest suite plus a standalone packaging check. **549 tests across 22 files**,
+Vitest suite plus a standalone packaging check. **557 tests across 22 files**,
 all runnable without a Foundry runtime.
 
 A second suite runs in a real browser. **80 Playwright tests** render the
@@ -38,7 +38,7 @@ collects the Playwright files and fails on the missing runner.
 | [`enchant.test.js`](enchant.test.js) | 42 | Remnant tiers, rarity normalising, the plan, flaws on failure |
 | [`craft-summary.test.js`](craft-summary.test.js) | 28 | Confirmation content: hours, cost, what is consumed, escaping |
 | [`spirit.test.js`](spirit.test.js) | 46 | Spirit ladder integrity, prerequisite chains, awakening, the one-way remnant door |
-| [`craft-grant.test.js`](craft-grant.test.js) | 40 | Item name candidates, fallback types, which packs are searched |
+| [`craft-grant.test.js`](craft-grant.test.js) | 48 | Item name candidates, fallback types, pack search order, brew specialisation |
 | [`craft-panel.test.js`](craft-panel.test.js) | 11 | Reagent include/exclude, and the button promising what the list shows |
 | [`craft-concoct.test.js`](craft-concoct.test.js) | 34 | Formula composition: dice doubling, die stepping, stacking rules, riders |
 | [`recipe-journal.test.js`](recipe-journal.test.js) | 11 | The generated journal still matches the tables it is built from |

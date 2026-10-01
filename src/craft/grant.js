@@ -201,6 +201,56 @@ export function fallbackItemData(recipe, crafterName = "someone") {
    Alchemy
 --------------------------------------------- */
 
+/**
+ * Write a brew's real numbers onto a hand-authored item.
+ *
+ * A table authors `Sageroot Poultice` once, with base dice and no modifier —
+ * that one item has to serve every brew of it. The dice that actually belong
+ * to *this* vial depend on the brewer's Alchemy modifier and on whatever
+ * modifiers went in the pot, neither of which exist when the item is written.
+ *
+ * So the authored item is a **template**: it supplies the schema, the icon
+ * and the flavour, and this overwrites the formula with what was really
+ * brewed. Without it, authoring an item made brews *worse* than building one
+ * — the authored dice would silently replace the composed ones.
+ *
+ * The brewer's modifier is baked in as a number rather than left as roll
+ * data. `@abilities.int.mod` would resolve against whoever drinks it, and the
+ * potion's quality belongs to whoever made it.
+ *
+ * Shaped for dnd5e 3.x — `system.damage.parts` is `[[formula, type]]`.
+ */
+export function specialiseBrew(data, composed) {
+  if (!data || !composed) return data;
+
+  const out = { ...data, system: { ...(data.system ?? {}) } };
+
+  if (composed.formula) {
+    const type = composed.kind === "heal" ? "healing" : (composed.damageType ?? "");
+    out.system.damage = { ...(out.system.damage ?? {}), parts: [[composed.formula, type]] };
+    // Only claim an action type the effect actually has; leave anything else
+    // as the author set it.
+    if (composed.kind === "heal") out.system.actionType = "heal";
+    else if (composed.kind === "damage") out.system.actionType ||= "save";
+  }
+
+  // Only once composeEffect has resolved it against the brewer; an
+  // unresolved DC would silently write the base and understate the poison.
+  if (composed.save && Number.isFinite(composed.saveDC)) {
+    out.system.save = {
+      ability: composed.save.ability,
+      dc: composed.saveDC,
+      scaling: "flat"
+    };
+  }
+
+  if (composed.uses) {
+    out.system.uses = { ...(out.system.uses ?? {}), value: composed.uses, max: String(composed.uses) };
+  }
+
+  return out;
+}
+
 /** What a brew is called, by what it is. */
 const CONCOCTION_KIND = { potion: "Potion", poison: "Poison", enchantment: "Elixir" };
 

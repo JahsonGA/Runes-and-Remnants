@@ -593,3 +593,20 @@ export function poisonSaveDC(alchemyModifier = 0) {
 export function alchemyModifier({ int = 0, wis = 0, proficient = false, proficiency = 2 } = {}) {
   return Math.max(Number(int) || 0, Number(wis) || 0) + (proficient ? proficiency : 0);
 }
+
+/**
+ * Whether any tool a brew could use is one the crafter has.
+ *
+ * Potions take Alchemist's supplies or a Herbalism kit; poisons take a
+ * Poisoner's kit. Which applies depends on what is on the bench, so it is
+ * read off the concoction rather than assumed.
+ *
+ * One function because this was written twice and the copies drifted: the
+ * confirmation dialog hardcoded Alchemist's supplies while execution checked
+ * the brew's own tools, so a poisoner with a Poisoner's kit was promised a
+ * smaller bonus than they then rolled.
+ */
+export function hasAnyTool(heldTools = [], requiredTools = []) {
+  const held = Array.from(heldTools ?? []).map(String);
+  return (requiredTools ?? []).some(t => held.includes(String(t)));
+}

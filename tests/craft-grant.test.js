@@ -2,12 +2,13 @@ import { describe, it, expect } from "vitest";
 import {
   itemNameCandidates, normaliseName, fallbackItemData,
   searchablePacks, SYSTEM_ITEM_NAME, FALLBACK_TYPE, FALLBACK_ARMOUR,
-  concoctionItemData, concoctionItemNames
+  concoctionItemData, concoctionItemNames, specialiseBrew
 } from "../src/craft/grant.js";
 import { MANUFACTURING_TABLE, MANUFACTURING_CATEGORIES } from "../src/data/manufacturing.js";
 import { getRecipe, analyseConcoction } from "../src/craft/logic.js";
 import { ALCHEMY_SRD_ITEM, ALCHEMY_INGREDIENTS } from "../src/data/alchemy.js";
 import { REMEDY_NAME } from "../src/data/alchemy-effects.js";
+import { composeEffect } from "../src/craft/concoct.js";
 
 // ─── Names ────────────────────────────────────────────────────────────────────
 
@@ -330,5 +331,76 @@ describe("ALCHEMY_SRD_ITEM", () => {
       expect(spec.effect.toLowerCase(), `"${ingredient}" does not describe "${item}"`)
         .toContain(subject);
     }
+  });
+});
+
+// ─── An authored item is a template ───────────────────────────────────────────
+
+describe("specialiseBrew", () => {
+  const authored = () => ({
+    name: "Sageroot Poultice",
+    type: "consumable",
+    system: {
+      damage: { parts: [["2d4", "healing"]] },
+      actionType: "heal",
+      description: { value: "<p>A mash of root.</p>" }
+    }
+  });
+
+  const brewed = (mods, mod) =>
+    specialiseBrew(authored(), composeEffect("Wild Sageroot", mods, mod));
+
+  it("bakes the BREWER's modifier into the dice", () => {
+    // The potion's quality belongs to whoever made it. Roll data like
+    // @abilities.int.mod would resolve against whoever drinks it instead.
+    expect(brewed([], 7).system.damage.parts).toEqual([["2d4 + 7", "healing"]]);
+    expect(brewed([], 2).system.damage.parts).toEqual([["2d4 + 2", "healing"]]);
+  });
+
+  it("writes the modifiers' transforms over the authored dice", () => {
+    // Without this, authoring an item made brews WORSE than building one —
+    // the authored base would silently replace the composed result.
+    expect(brewed(["Milkweed Seeds"], 7).system.damage.parts).toEqual([["4d4", "healing"]]);
+    expect(brewed(["Milkweed Seeds", "Dried Ephedra"], 7).system.damage.parts)
+      .toEqual([["4d6", "healing"]]);
+  });
+
+  it("keeps everything the author wrote that it has no opinion on", () => {
+    const out = brewed([], 7);
+    expect(out.name).toBe("Sageroot Poultice");
+    expect(out.system.description.value).toContain("A mash of root");
+  });
+
+  it("does not mutate the item it was handed", () => {
+    const original = authored();
+    specialiseBrew(original, composeEffect("Wild Sageroot", [], 7));
+    expect(original.system.damage.parts).toEqual([["2d4", "healing"]]);
+  });
+
+  it("scales a poison's save DC with the brewer", () => {
+    const dc = mod => specialiseBrew({ name: "x", type: "consumable", system: {} },
+      composeEffect("Basilisk Breath", [], mod)).system.save.dc;
+    expect(dc(2)).toBe(7);
+    expect(dc(7)).toBe(12);
+  });
+
+  it("leaves a dice-less remedy's formula alone", () => {
+    // Fennel Silk works through a duration. Inventing dice for it would be
+    // making up rules.
+    const out = specialiseBrew(
+      { name: "Fennel Silk Compress", type: "consumable", system: { damage: { parts: [] } } },
+      composeEffect("Fennel Silk", [], 7));
+    expect(out.system.damage.parts).toEqual([]);
+  });
+
+  it("carries a limited-use brew's charges", () => {
+    const out = specialiseBrew({ name: "x", type: "consumable", system: {} },
+      composeEffect("Silver Hibiscus", [], 7));
+    expect(out.system.uses.value).toBe(3);
+  });
+
+  it("survives nothing", () => {
+    expect(specialiseBrew(null, null)).toBeNull();
+    expect(specialiseBrew({ name: "x" }, null)).toEqual({ name: "x" });
   });
 });
