@@ -225,23 +225,36 @@ export function specialiseBrew(data, composed) {
 
   const out = { ...data, system: { ...(data.system ?? {}) } };
 
-  if (composed.formula) {
-    const type = composed.kind === "heal" ? "healing" : (composed.damageType ?? "");
-    out.system.damage = { ...(out.system.damage ?? {}), parts: [[composed.formula, type]] };
-    // Only claim an action type the effect actually has; leave anything else
-    // as the author set it.
-    if (composed.kind === "heal") out.system.actionType = "heal";
-    else if (composed.kind === "damage") out.system.actionType ||= "save";
+  // `dice`, not `formula` — the readable form can say "+ the Alchemy
+  // modifier" when the brewer is unknown, and a damage field that cannot be
+  // evaluated produces an item that will not roll.
+  if (composed.dice) {
+    if (composed.kind === "heal" || composed.kind === "damage") {
+      const type = composed.kind === "heal" ? "healing" : (composed.damageType ?? "");
+      out.system.damage = { ...(out.system.damage ?? {}), parts: [[composed.dice, type]] };
+      out.system.actionType = composed.kind === "heal" ? "heal" : (out.system.actionType || "save");
+    } else {
+      // Hyancinth Tincture rolls 1d6 *rounds of poison removed*. That is
+      // neither healing nor damage, and dnd5e keeps such rolls in its own
+      // "Other Formula" field. Filed as damage it would have shown up as
+      // 1d6 damage — and with no action type, dnd5e hides the damage block
+      // entirely, so the formula would have been set and unreachable.
+      out.system.formula = composed.dice;
+      out.system.actionType ||= "util";
+    }
   }
 
-  // Only once composeEffect has resolved it against the brewer; an
-  // unresolved DC would silently write the base and understate the poison.
-  if (composed.save && Number.isFinite(composed.saveDC)) {
+  // The save falls back to its base the same way the dice do. Writing
+  // nothing when the brewer is unknown left the item with no save ability at
+  // all, so dragging it out of the compendium prompted nothing — worse than
+  // an understated DC, which at least rolls.
+  if (composed.save) {
     out.system.save = {
       ability: composed.save.ability,
-      dc: composed.saveDC,
+      dc: Number.isFinite(composed.saveDC) ? composed.saveDC : composed.save.base,
       scaling: "flat"
     };
+    out.system.actionType ||= "save";
   }
 
   if (composed.uses) {

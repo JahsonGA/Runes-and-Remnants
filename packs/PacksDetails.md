@@ -7,7 +7,7 @@ Foundry compendium packs shipped with the module.
 | Pack | Entries | Type | Declared as |
 |---|---|---|---|
 | `harvest-items/` | 70 | `Item` (dnd5e) | `runes-and-remnants.harvest-items` |
-| `alchemy-items/` | — | `Item` (dnd5e) | `runes-and-remnants.alchemy-items` |
+| `alchemy-items/` | 10 | `Item` (dnd5e) | `runes-and-remnants.alchemy-items` |
 | `recipes/` | 1 entry, 9 pages | `JournalEntry` | `runes-and-remnants.recipes` |
 
 Registered in [`module.json`](../module.json) under `packs`, and bundled into

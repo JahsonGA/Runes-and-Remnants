@@ -224,3 +224,41 @@ describe("describeEffect", () => {
     expect(describeEffect(null)).toBe("");
   });
 });
+
+// ─── Readable vs rollable ─────────────────────────────────────────────────────
+
+describe("formula has a readable form and a rollable one", () => {
+  it("names the modifier when reading, omits it when rolling", () => {
+    // "2d4 + the Alchemy modifier" is right in a description and useless in a
+    // damage field — Foundry cannot evaluate it, so the item will not roll.
+    const unknownBrewer = composeEffect("Wild Sageroot", [], null);
+    expect(unknownBrewer.formula).toBe("2d4 + the Alchemy modifier");
+    expect(unknownBrewer.dice).toBe("2d4");
+  });
+
+  it("both carry the number once the brewer is known", () => {
+    const known = composeEffect("Wild Sageroot", [], 7);
+    expect(known.formula).toBe("2d4 + 7");
+    expect(known.dice).toBe("2d4 + 7");
+  });
+
+  it("the rollable form never contains prose, for any brew", () => {
+    // A damage field must evaluate. Anything with a letter in it that is not
+    // a die expression would break the item.
+    for (const name of Object.keys(EFFECT_FORMULA)) {
+      for (const mod of [null, 0, 7]) {
+        const dice = composeEffect(name, [], mod)?.dice;
+        if (!dice) continue;
+        expect(dice, `"${name}" at mod ${mod}`).toMatch(/^[0-9df\s()+\-/*.]+$/);
+      }
+    }
+  });
+
+  it("keeps the modifier through a transform that drops it", () => {
+    // Milkweed Seeds drops the modifier, so both forms agree even with an
+    // unknown brewer — there is nothing left to name.
+    const r = composeEffect("Wild Sageroot", ["Milkweed Seeds"], null);
+    expect(r.formula).toBe("4d4");
+    expect(r.dice).toBe("4d4");
+  });
+});

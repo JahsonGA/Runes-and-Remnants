@@ -100,7 +100,13 @@ export function composeEffect(effectName, modifierNames = [], alchemyMod = null)
     if (t.rider) out.riders.push(times > 1 ? `${t.rider} (×${times})` : t.rider);
   }
 
+  // Two forms, because they go to different places. `formula` is for reading
+  // and may say "+ the Alchemy modifier" when the brewer is unknown; `dice`
+  // has to be something Foundry can actually evaluate, so it drops the
+  // modifier rather than naming it. Writing the prose into a damage field
+  // produces an item that cannot roll.
   out.formula = renderFormula(out, alchemyMod);
+  out.dice = renderFormula(out, Number.isFinite(alchemyMod) ? alchemyMod : undefined, true);
 
   // A poison's save DC scales with whoever brewed it, so it can only be a
   // real number once the brewer is known. Resolved here rather than at the
@@ -119,13 +125,15 @@ export function composeEffect(effectName, modifierNames = [], alchemyMod = null)
  * condition or a duration, and inventing a formula for those would be making
  * up rules rather than encoding them.
  */
-export function renderFormula(effect, alchemyMod = null) {
+export function renderFormula(effect, alchemyMod = null, rollable = false) {
   if (!effect?.count || !effect?.die) return null;
 
   let expr = `${effect.count}d${effect.die}`;
   if (effect.mod && Number.isFinite(alchemyMod)) {
     expr += alchemyMod >= 0 ? ` + ${alchemyMod}` : ` - ${Math.abs(alchemyMod)}`;
-  } else if (effect.mod) {
+  } else if (effect.mod && !rollable) {
+    // Readable form only. A damage field has to evaluate, so the rollable
+    // form says nothing rather than something Foundry would choke on.
     expr += " + the Alchemy modifier";
   }
 
