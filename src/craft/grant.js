@@ -19,7 +19,7 @@
 // =========================================================
 
 import { ALCHEMY_SRD_ITEM } from "../data/alchemy.js";
-import { composeEffect, describeEffect } from "./concoct.js";
+import { composeEffect, describeEffect, brewSignature } from "./concoct.js";
 import { REMEDY_NAME } from "../data/alchemy-effects.js";
 
 export const MODULE_ID = "runes-and-remnants";
@@ -220,10 +220,24 @@ export function fallbackItemData(recipe, crafterName = "someone") {
  *
  * Shaped for dnd5e 3.x — `system.damage.parts` is `[[formula, type]]`.
  */
-export function specialiseBrew(data, composed) {
+export function specialiseBrew(data, composed, { brewer = null } = {}) {
   if (!data || !composed) return data;
 
   const out = { ...data, system: { ...(data.system ?? {}) } };
+
+  // Two alchemists brewing the same remedy — or one alchemist on two days
+  // with a different bench — produce items with the same name and DIFFERENT
+  // dice. Foundry stacks by name, so without this a 4d6 brew merges into a
+  // 2d4 one and the better of the two is lost.
+  //
+  // The brewer's name is attribution; the signature is what actually makes
+  // it correct, since it differs exactly when the brew does. Identical
+  // brews still share a name and still stack, which a random id would have
+  // broken.
+  if (brewer) {
+    const sig = brewSignature(composed);
+    out.name = sig ? `${data.name} - ${brewer} (${sig})` : `${data.name} - ${brewer}`;
+  }
 
   // `dice`, not `formula` — the readable form can say "+ the Alchemy
   // modifier" when the brewer is unknown, and a damage field that cannot be

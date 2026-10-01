@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { EFFECT_FORMULA, MODIFIER_TRANSFORM, DIE_LADDER } from "../src/data/alchemy-effects.js";
 import { ALCHEMY_INGREDIENTS, ALCHEMY_SRD_ITEM } from "../src/data/alchemy.js";
 import {
-  composeEffect, renderFormula, describeEffect, stepDie, dieCapped, applyCounts
+  composeEffect, renderFormula, describeEffect, stepDie, dieCapped, applyCounts, brewSignature
 } from "../src/craft/concoct.js";
 
 const heal = (mods = [], mod = 3) => composeEffect("Wild Sageroot", mods, mod);
@@ -260,5 +260,48 @@ describe("formula has a readable form and a rollable one", () => {
     const r = composeEffect("Wild Sageroot", ["Milkweed Seeds"], null);
     expect(r.formula).toBe("4d4");
     expect(r.dice).toBe("4d4");
+  });
+});
+
+// ─── Telling two brews apart ──────────────────────────────────────────────────
+
+describe("brewSignature", () => {
+  const sig = (mods, mod) => brewSignature(composeEffect("Wild Sageroot", mods, mod));
+
+  it("is identical for mechanically identical brews", () => {
+    // The whole reason this is not a GUID: three identical poultices should
+    // stack, not fill the inventory with singletons.
+    expect(sig([], 7)).toBe(sig([], 7));
+  });
+
+  it("differs when the brewer differs", () => {
+    expect(sig([], 7)).not.toBe(sig([], 1));
+  });
+
+  it("differs when the bench differs", () => {
+    expect(sig([], 7)).not.toBe(sig(["Dried Ephedra"], 7));
+    expect(sig(["Dried Ephedra"], 7)).not.toBe(sig(["Milkweed Seeds"], 7));
+  });
+
+  it("differs on a rider even when the dice are identical", () => {
+    // Harrada Leaf changes no numbers at all. Keying on the dice alone would
+    // have merged these two, losing the condition.
+    const plain = composeEffect("Wyrmtongue Petals", [], 7);
+    const withRider = composeEffect("Wyrmtongue Petals", ["Harrada Leaf"], 7);
+    expect(withRider.dice).toBe(plain.dice);
+    expect(brewSignature(withRider)).not.toBe(brewSignature(plain));
+  });
+
+  it("ignores bench order, which does not change the brew", () => {
+    expect(sig(["Milkweed Seeds", "Dried Ephedra"], 7))
+      .toBe(sig(["Dried Ephedra", "Milkweed Seeds"], 7));
+  });
+
+  it("is short enough not to crowd a name", () => {
+    expect(sig([], 7)).toMatch(/^[a-z0-9]{4}$/);
+  });
+
+  it("survives nothing", () => {
+    expect(brewSignature(null)).toBe("");
   });
 });

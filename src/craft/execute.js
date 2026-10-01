@@ -151,7 +151,7 @@ async function craftConcoction({ actorId, bench = [] }) {
     const composed = base
       ? composeEffect(base, (concoction.modifiers ?? []).map(m => m.name), bonus)
       : null;
-    if (data && composed) data = specialiseBrew(data, composed);
+    if (data && composed) data = specialiseBrew(data, composed, { brewer: actor.name });
 
     if (data) {
       data.system = { ...(data.system ?? {}), quantity: 1 };

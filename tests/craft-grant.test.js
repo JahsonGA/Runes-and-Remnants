@@ -404,3 +404,48 @@ describe("specialiseBrew", () => {
     expect(specialiseBrew({ name: "x" }, null)).toEqual({ name: "x" });
   });
 });
+
+// ─── Naming a granted brew ────────────────────────────────────────────────────
+
+describe("specialiseBrew — naming", () => {
+  const packItem = () => ({
+    name: "Sageroot Poultice", type: "consumable",
+    system: { damage: { parts: [["2d4", "healing"]] }, actionType: "heal" }
+  });
+  const grant = (mods, mod, brewer) =>
+    specialiseBrew(packItem(), composeEffect("Wild Sageroot", mods, mod), { brewer });
+
+  it("names the brewer, so two alchemists' work is tellable apart", () => {
+    expect(grant([], 7, "Ash").name).toMatch(/^Sageroot Poultice - Ash \(/);
+    expect(grant([], 1, "Bram").name).toMatch(/^Sageroot Poultice - Bram \(/);
+  });
+
+  it("gives the same brew the same name, so copies still stack", () => {
+    // A random id would have split three identical poultices into three
+    // stacks. Only a real difference should separate them.
+    expect(grant([], 7, "Ash").name).toBe(grant([], 7, "Ash").name);
+  });
+
+  it("gives a stronger brew a different name, so it cannot be merged away", () => {
+    // The reported bug: Foundry stacks by name, so a 4d6 brew merged into a
+    // 2d4 one and the better of the two was lost.
+    const weak = grant([], 7, "Ash");
+    const strong = grant(["Milkweed Seeds", "Dried Ephedra"], 7, "Ash");
+    expect(strong.name).not.toBe(weak.name);
+    expect(strong.system.damage.parts).toEqual([["4d6", "healing"]]);
+    expect(weak.system.damage.parts).toEqual([["2d4 + 7", "healing"]]);
+  });
+
+  it("leaves the pack item's own name alone", () => {
+    // The lookup finds the template by its base name; suffixing the pack
+    // entry would break every future brew.
+    const pack = packItem();
+    specialiseBrew(pack, composeEffect("Wild Sageroot", [], 7), { brewer: "Ash" });
+    expect(pack.name).toBe("Sageroot Poultice");
+  });
+
+  it("stays unsuffixed when no brewer is named", () => {
+    expect(specialiseBrew(packItem(), composeEffect("Wild Sageroot", [], 7)).name)
+      .toBe("Sageroot Poultice");
+  });
+});

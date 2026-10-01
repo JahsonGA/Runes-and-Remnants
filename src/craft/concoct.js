@@ -144,6 +144,47 @@ export function renderFormula(effect, alchemyMod = null, rollable = false) {
 }
 
 /**
+ * A short tag that differs whenever two brews differ mechanically.
+ *
+ * Two alchemists, or one alchemist on two days, produce potions with the
+ * same name and different dice. Foundry stacks by name, so without this a
+ * 4d6 brew merges into a 2d4 one and the better of the two is lost.
+ *
+ * Deliberately NOT a GUID. A random tag would make every brew unique,
+ * including three identical poultices that ought to stack — the inventory
+ * would fill with singletons. This is derived from the composition, so
+ * identical brews share a tag and genuinely different ones do not.
+ *
+ * Covers everything that makes one vial different from another: the dice,
+ * the damage type, whether it ticks per round, the save, the charges, the
+ * duration, and the riders. Riders are sorted, since bench order changes
+ * their order without changing the brew.
+ */
+export function brewSignature(composed) {
+  if (!composed) return "";
+
+  const key = JSON.stringify([
+    composed.dice ?? null,
+    composed.damageType ?? null,
+    Boolean(composed.perRound),
+    composed.saveDC ?? composed.save?.base ?? null,
+    composed.uses ?? null,
+    composed.duration ?? null,
+    Boolean(composed.inverted),
+    [...(composed.riders ?? [])].sort()
+  ]);
+
+  // FNV-1a, rendered base36 and padded. Four characters is 1.7 million
+  // values — ample for the handful of brews one table will ever hold, and
+  // short enough not to crowd the name.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < key.length; i++) {
+    h = Math.imul(h ^ key.charCodeAt(i), 0x01000193) >>> 0;
+  }
+  return (h >>> 0).toString(36).slice(-4).padStart(4, "0");
+}
+
+/**
  * One line a player can act on, for the item's description and the chat card.
  */
 export function describeEffect(effect) {
