@@ -1,6 +1,7 @@
 Runes-and-Remnants.zip
 .github\workflows
 .agents/
+.claude/
 skills-lock.json
 node_modules/
 # Playwright
