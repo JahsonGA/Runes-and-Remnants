@@ -11,6 +11,7 @@
 import { enchantPlan, resolveEnchant, itemKind, normaliseRarity } from "./logic.js";
 import { partFromItem } from "../craft/logic.js";
 import { pickExecutorId } from "../harvest/logic.js";
+import { showRewardToOwner } from "../ui/reward-panel.js";
 
 export const MODULE_ID = "runes-and-remnants";
 const REQUEST = "requestEnchant";
@@ -79,8 +80,30 @@ async function bind({ actorId, itemId, enchantment, remnantId, componentId,
   // Materials go regardless — the power left them when the binding began.
   await consume(actor, [remnantDoc, componentDoc]);
 
-  if (result.destroyed) await item.delete();
-  else await applyEnchantment(item, plan, result);
+  if (result.destroyed) {
+    await item.delete();
+  } else {
+    // Clean or flawed, both show the panel — a flawed binding is still a
+    // binding. Only "destroyed" leaves nothing to display, the same rule
+    // craft and alchemy already use: the panel shows what was granted, and
+    // a destroyed item was not.
+    const bound = await applyEnchantment(item, plan, result);
+    showRewardToOwner(actor, {
+      title: result.label,
+      subtitle: plan.enchantment,
+      crest: "✦",   // placeholder — crests get a proper pass later
+      flavour: plan.effect,
+      items: [{
+        name: bound.name,
+        img: bound.img,
+        rarity: plan.rarity,
+        flawed: result.flaws.length > 0
+      }],
+      // The flaws themselves, not just a count — a player deciding whether
+      // to live with a flawed blade needs to know which flaw it has.
+      notes: result.flaws
+    });
+  }
 
   await report({ actor, item, plan, roll, result });
   return result;
@@ -181,6 +204,11 @@ async function applyEnchantment(item, plan, result) {
       boundAt: Date.now()
     }
   });
+
+  // Foundry mutates the document in place, but returning it explicitly means
+  // the caller has a real reference rather than leaning on that implicit
+  // behaviour — which a test double cannot be trusted to replicate.
+  return item;
 }
 
 async function report({ actor, item, plan, roll, result }) {

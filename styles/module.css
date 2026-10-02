@@ -718,6 +718,19 @@ tr.rnr-missing td {
 .rnr-rarity-legendary { --tile: var(--rarity-legendary); }
 .rnr-rarity-artifact  { --tile: var(--rarity-artifact); }
 
+/* A flawed binding is still a binding — enchanting shows it in the panel
+   rather than reserving the panel for a clean roll. This comes after the
+   rarity rules on purpose: same specificity, later wins, so a flawed VERY
+   RARE item reads as flawed first — rarity is not the thing that needs
+   saying at a glance here. Overriding the one --tile variable recolours
+   both the border and the name together, since the name already reads it. */
+.rnr-reward-flawed {
+  --tile: var(--rnr-red-lit);
+}
+.rnr-reward-flawed .rnr-reward-tile {
+  box-shadow: 0 0 14px -1px var(--tile), inset 0 0 12px rgba(0, 0, 0, 0.6);
+}
+
 .rnr-reward-empty,
 .rnr-reward-notes {
   margin: 0 0 10px;

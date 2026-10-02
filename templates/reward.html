@@ -25,7 +25,7 @@
 
     <ul class="rnr-reward-grid">
       {{#each items}}
-        <li class="rnr-reward-slot rnr-rarity-{{this.rarityKey}}"
+        <li class="rnr-reward-slot rnr-rarity-{{this.rarityKey}}{{#if this.flawed}} rnr-reward-flawed{{/if}}"
             title="{{this.tooltip}}">
           <div class="rnr-reward-tile">
             <img src="{{this.img}}" alt="">

@@ -54,9 +54,18 @@ export function rewardItem(entry) {
     quantity: qty > 1 ? qty : null,
     rarityKey: RARITY_KEY[rarityRaw] ?? "common",
     detail: entry.detail ?? null,
+    // A binding that came out flawed is still a binding — enchanting shows
+    // it in the panel rather than reserving the panel for a clean roll, and
+    // this is what lets the tile say so at a glance: it overrides the
+    // rarity border and the tinted name to the same danger red the rest of
+    // the module already uses, rather than leaving rarity colour, which
+    // speaks to something else entirely, to carry a warning it was never
+    // meant to carry.
+    flawed: Boolean(entry.flawed),
     // Everything worth knowing, for the hover — the visible name stays short
     // so the grid keeps its shape.
-    tooltip: [name, entry.detail, rarityRaw || null].filter(Boolean).join(" · ")
+    tooltip: [name, entry.detail, entry.flawed ? "flawed" : null, rarityRaw || null]
+      .filter(Boolean).join(" · ")
   };
 }
 
