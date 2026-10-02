@@ -728,4 +728,18 @@ test.describe("button labels fit their buttons", () => {
     expect(alchemy.w, "the longer label should get the wider button")
       .toBeGreaterThan(gear.w);
   });
+
+  test("a mode switch's label sits centered in its own button", async ({ page }) => {
+    // Relying on the browser's UA default to center button text is how
+    // "Alchemy" ended up reading as unevenly padded — Foundry's own button
+    // style left-aligns by default and won the specificity tie, which this
+    // harness cannot reproduce since it never loads Foundry's own CSS. So
+    // this asserts the module states centering explicitly, rather than
+    // asserting the visual symmetry an inherited default happened to give it.
+    await page.setContent(hubPage({ tab: "crafting" }));
+    for (const el of await page.locator("[data-action='craft-mode']").all()) {
+      const align = await el.evaluate(b => getComputedStyle(b).textAlign);
+      expect(align, `${await el.textContent()} should center its own label`).toBe("center");
+    }
+  });
 });

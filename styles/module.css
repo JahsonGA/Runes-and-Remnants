@@ -435,6 +435,14 @@
   flex: 0 0 auto;
   min-width: max-content;
   white-space: nowrap;
+  /* Foundry's own core button style left-aligns by default, which this rule
+     relied on the browser's UA default to override — fine until Foundry's
+     own rule won the specificity tie. "Gear" is nearly square, so the lean
+     was invisible on it; "Alchemy" is wide enough that a left-aligned word
+     reads as unevenly padded. Stated explicitly so it can't lose that tie
+     again, and box-sizing is explicit for the same reason. */
+  box-sizing: border-box;
+  text-align: center;
 }
 .rnr-loot-controls button:hover {
   border-color: var(--rnr-red);
