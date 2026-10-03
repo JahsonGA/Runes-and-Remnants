@@ -44,6 +44,11 @@ jobs:
         run: |
           git add module.json
           git commit -m "chore: update beta download URL for v${{ steps.read.outputs.version }}" || echo "No changes to commit"
+          # Without this the commit only ever exists in this runner's checkout
+          # and evaporates when the job ends — module.json on beta silently
+          # keeps the stale download URL forever, no error, nothing to catch
+          # it until someone's Foundry install 404s trying to install it.
+          git push origin HEAD:beta
 
       - name: Determine tag
         id: tagcheck
