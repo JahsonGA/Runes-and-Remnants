@@ -81,7 +81,24 @@ async function bind({ actorId, itemId, enchantment, remnantId, componentId,
   await consume(actor, [remnantDoc, componentDoc]);
 
   if (result.destroyed) {
+    // Captured before delete() — there is nothing left to read off the
+    // document once it is gone, and the panel is the one place a player
+    // learns exactly what the attempt cost them.
+    const lost = [{ name: item.name, img: item.img, lost: true }];
+    if (remnantDoc) lost.push({ name: remnantDoc.name, img: remnantDoc.img, lost: true });
+    if (componentDoc) lost.push({ name: componentDoc.name, img: componentDoc.img, lost: true });
+
     await item.delete();
+
+    showRewardToOwner(actor, {
+      title: result.label,
+      subtitle: plan.enchantment,
+      crest: "✕",
+      flavour: "The binding failed, and took the item with it.",
+      itemsHeading: "Lost",
+      items: lost,
+      notes: []
+    });
   } else {
     // Clean or flawed, both show the panel — a flawed binding is still a
     // binding. Only "destroyed" leaves nothing to display, the same rule

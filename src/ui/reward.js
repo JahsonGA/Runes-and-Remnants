@@ -62,9 +62,17 @@ export function rewardItem(entry) {
     // speaks to something else entirely, to carry a warning it was never
     // meant to carry.
     flawed: Boolean(entry.flawed),
+    // A ruined batch or a destroyed item is shown too, not just a success —
+    // the panel says what the attempt actually cost, same as it says what it
+    // actually yielded. Rarity means nothing on something that is gone, so
+    // this overrides it the same way `flawed` does, to its own muted tone
+    // rather than borrowing the flaw colour, which means "kept, but marked."
+    lost: Boolean(entry.lost),
     // Everything worth knowing, for the hover — the visible name stays short
     // so the grid keeps its shape.
-    tooltip: [name, entry.detail, entry.flawed ? "flawed" : null, rarityRaw || null]
+    tooltip: [name, entry.detail,
+              entry.flawed ? "flawed" : null, entry.lost ? "lost" : null,
+              rarityRaw || null]
       .filter(Boolean).join(" · ")
   };
 }
@@ -76,12 +84,16 @@ export function rewardItem(entry) {
  * @param {string} args.title     "Reward", "Harvested", "Bound"
  * @param {string} [args.subtitle] where it came from
  * @param {string} [args.flavour] a line of prose
- * @param {object[]} [args.items] what was granted
+ * @param {object[]} [args.items] what was granted, or what was lost
  * @param {string[]} [args.notes] anything the player should know
+ * @param {string} [args.itemsHeading] "You Receive" for a reward, "Lost" for
+ *   a ruined attempt — the one heading covers both, since the grid below it
+ *   is the same component either way.
  */
 export function rewardData({
   title = "Reward", subtitle = "", flavour = "",
-  items = [], notes = [], crest = "◈", acceptLabel = "Accept"
+  items = [], notes = [], crest = "◈", acceptLabel = "Accept",
+  itemsHeading = "You Receive"
 } = {}) {
   const shaped = (items ?? []).map(rewardItem).filter(Boolean);
 
@@ -91,6 +103,7 @@ export function rewardData({
     flavour,
     crest,
     acceptLabel,
+    itemsHeading,
     items: shaped,
     notes: (notes ?? []).filter(Boolean),
     // Said plainly rather than showing an empty frame, because a failed

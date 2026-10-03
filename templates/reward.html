@@ -21,24 +21,25 @@
   {{/if}}
 
   {{#if items.length}}
-    <h2 class="rnr-reward-heading"><span>You Receive</span></h2>
+    <h2 class="rnr-reward-heading"><span>{{itemsHeading}}</span></h2>
 
     <ul class="rnr-reward-grid">
       {{#each items}}
-        <li class="rnr-reward-slot rnr-rarity-{{this.rarityKey}}{{#if this.flawed}} rnr-reward-flawed{{/if}}"
+        <li class="rnr-reward-slot rnr-rarity-{{this.rarityKey}}{{#if this.flawed}} rnr-reward-flawed{{/if}}{{#if this.lost}} rnr-reward-lost{{/if}}"
             title="{{this.tooltip}}">
           <div class="rnr-reward-tile">
             <img src="{{this.img}}" alt="">
             {{#if this.quantity}}<span class="rnr-reward-qty">{{this.quantity}}</span>{{/if}}
             {{!-- A badge, not just the border color — so which tile is
-                  flawed survives grayscale and colorblind palettes, not
-                  only a hover a touch user can't reach. --}}
+                  flawed or lost survives grayscale and colorblind palettes,
+                  not only a hover a touch user can't reach. --}}
             {{#if this.flawed}}<span class="rnr-reward-flaw-badge" aria-hidden="true">!</span>{{/if}}
+            {{#if this.lost}}<span class="rnr-reward-lost-badge" aria-hidden="true">✕</span>{{/if}}
           </div>
           {{!-- The name is shown, not left to a tooltip. Six unlabelled
                 icons is a guessing game, and a tooltip is unreachable by
                 keyboard. --}}
-          <span class="rnr-reward-name">{{this.name}}{{#if this.flawed}}<span class="rnr-sr-only"> (flawed)</span>{{/if}}</span>
+          <span class="rnr-reward-name">{{this.name}}{{#if this.flawed}}<span class="rnr-sr-only"> (flawed)</span>{{/if}}{{#if this.lost}}<span class="rnr-sr-only"> (lost)</span>{{/if}}</span>
           {{#if this.detail}}<span class="rnr-reward-detail">{{this.detail}}</span>{{/if}}
         </li>
       {{/each}}

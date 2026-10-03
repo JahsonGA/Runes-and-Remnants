@@ -122,6 +122,20 @@ async function craftItem({ actorId, recipe: recipeName, exclude = [] }) {
         ? ["The world had no copy of this to grant — built from the recipe instead."]
         : []
     });
+  } else if (result.consumesReagents && selection.parts.length) {
+    // A near-miss costs only time — the materials survive, so there is
+    // nothing to show here. A failure or a disaster spends them for nothing,
+    // and the panel that shows what a success earned is the same one that
+    // should show what a ruined attempt actually cost.
+    showRewardToOwner(actor, {
+      title: result.label,
+      subtitle: recipe.name,
+      crest: "✕",
+      flavour: result.note,
+      itemsHeading: "Lost",
+      items: groupLost(selection.parts.map(p => p.name)),
+      notes: []
+    });
   }
 
   await report({ actor, title: recipe.name, plan, roll, result, spent: selection.parts });
@@ -207,6 +221,19 @@ async function craftConcoction({ actorId, bench = [] }) {
       }],
       notes: []
     });
+  } else if (result.consumesReagents) {
+    // Same rule as manufacturing: a near-miss wastes only time and shows
+    // nothing, a failed or ruined brew spends the ingredients for nothing
+    // and shows what that cost.
+    showRewardToOwner(actor, {
+      title: result.label,
+      subtitle: concoction.kindLabel,
+      crest: "✕",
+      flavour: result.note,
+      itemsHeading: "Lost",
+      items: groupLost(bench),
+      notes: []
+    });
   }
 
   // Alchemy spends plant ingredients rather than harvested parts; those are
@@ -220,6 +247,16 @@ async function craftConcoction({ actorId, bench = [] }) {
     footer: `Ingredients used: ${bench.join(", ")}. Deduct them by hand — alchemy stock is not tracked yet.`
   });
   return result;
+}
+
+/**
+ * Collapse a list of spent names into reward-panel tiles with a count, so
+ * four bones read as one tile marked ×4 rather than four identical ones.
+ */
+function groupLost(names = []) {
+  const counts = new Map();
+  for (const name of names) counts.set(name, (counts.get(name) ?? 0) + 1);
+  return [...counts].map(([name, quantity]) => ({ name, quantity, lost: true }));
 }
 
 /* ---------------------------------------------

@@ -24,6 +24,11 @@
      drop nearly indistinguishable, exactly the one pairing that most needs
      telling apart. */
   --rnr-flaw-lit:  #D6336C;
+
+  /* Something lost is not rated — rarity colour implies "this is how good it
+     was," which is a strange thing to say about a vial that broke. A dull
+     grey reads as "spent, gone" without claiming any quality for it. */
+  --rnr-lost-lit:  #8a7a66;
 }
 
 /* Visually hidden but still read by a screen reader — for the cases where a
@@ -777,6 +782,33 @@ tr.rnr-missing td {
   font-weight: bold;
   line-height: 1;
   color: var(--rnr-flaw-lit);
+}
+
+/* A ruined attempt or a destroyed item, shown rather than left to chat alone
+   — same grid, same tile, so "what did this cost" reads with the same
+   weight as "what did this earn." Desaturated rather than danger-red: this
+   isn't a warning to act on, it's already over. */
+.rnr-reward-lost {
+  --tile: var(--rnr-lost-lit);
+}
+.rnr-reward-lost .rnr-reward-tile { opacity: 0.6; }
+.rnr-reward-lost .rnr-reward-tile img { filter: grayscale(0.8); }
+.rnr-reward-lost .rnr-reward-name { text-decoration: line-through; }
+.rnr-reward-lost-badge {
+  position: absolute;
+  left: -5px;
+  top: -5px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  background: var(--rnr-ink);
+  border: 1px solid var(--rnr-lost-lit);
+  border-radius: 50%;
+  font-size: 0.6rem;
+  font-weight: bold;
+  line-height: 1;
+  color: var(--rnr-lost-lit);
 }
 
 .rnr-reward-empty,
