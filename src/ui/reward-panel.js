@@ -39,6 +39,7 @@ export class RewardPanel extends Application {
   }
 
   async close(options) {
+    if (this._reassert) Hooks.off("renderRunesHub", this._reassert);
     this._settle();
     return super.close(options);
   }
@@ -68,10 +69,27 @@ export class RewardPanel extends Application {
       // Application to the front on every render, not just its first. Left
       // alone, that re-render steals the front-most spot back from a panel
       // that had just opened, so the reward lands behind the hub that
-      // granted it. Reasserting on the next tick runs after that re-render's
-      // own async work has settled, without this file needing to know the
-      // hub exists at all.
-      setTimeout(() => { if (panel.rendered) panel.bringToTop(); }, 0);
+      // granted it.
+      //
+      // A fixed delay (this used to be setTimeout(..., 0)) assumed the hub's
+      // own re-render would finish within one tick, which it does not
+      // reliably — Foundry's render pipeline is genuinely async (template
+      // fetch and compile included), so the timer could fire before the hub
+      // had actually bumped its own z-index, and the fix did nothing.
+      // Listening for the hub's own render hook instead reacts to when it
+      // actually finishes, however long that takes. "RunesHub" is named
+      // directly rather than imported — this file stays loadable without the
+      // rest of the hub, same reasoning as not importing Application-derived
+      // code elsewhere in this split. Left listening (not `once`) for as
+      // long as the panel is open, since the hub can legitimately re-render
+      // more than once while a player decides whether to accept; removed in
+      // close() so it cannot reach a panel that no longer exists. A later,
+      // genuine click on the hub still brings it forward normally — that
+      // goes through Foundry's own focus handling, not this hook, and runs
+      // after whatever this last reasserted.
+      const reassert = () => { if (panel.rendered) panel.bringToTop(); };
+      panel._reassert = reassert;
+      Hooks.on("renderRunesHub", reassert);
     });
   }
 }
