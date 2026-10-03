@@ -33,6 +33,25 @@ jobs:
           git config user.email "github-actions@github.com"
           git fetch --tags
 
+      # Without this, module.json on main keeps whatever download URL beta
+      # last set — a beta zip, with a beta tag, often with a trailing build
+      # number release-merge.yml never strips. Foundry's updater reads this
+      # field straight from the manifest, so a stale value here means a 404
+      # the moment anyone updates, not a cosmetic mismatch.
+      - name: Update download URL
+        id: update
+        run: |
+          VERSION="${{ steps.read.outputs.version }}"
+          NEW_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Runes-and-Remnants-v${VERSION}.zip"
+          jq --arg url "$NEW_URL" '.download = $url' module.json > tmp.json && mv tmp.json module.json
+          echo "Updated download URL: $NEW_URL"
+
+      - name: Commit updated module.json
+        run: |
+          git add module.json
+          git commit -m "chore: update stable download URL for v${{ steps.read.outputs.version }}" || echo "No changes to commit"
+          git push origin HEAD:main
+
       - name: Tag & Push
         id: tag
         run: |
