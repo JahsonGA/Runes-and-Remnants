@@ -22,7 +22,6 @@ import {
 } from "./logic.js";
 import { resolveCraft, consumptionPlan, OUTCOME } from "./outcome.js";
 import { grantCrafted, concoctionItemData, concoctionItemNames, findCraftedItem, specialiseBrew } from "./grant.js";
-import { showRewardToOwner } from "../ui/reward-panel.js";
 import { composeEffect } from "./concoct.js";
 import { pickExecutorId } from "../harvest/logic.js";
 
@@ -105,8 +104,9 @@ async function craftItem({ actorId, recipe: recipeName, exclude = [] }) {
   // status in chat, same as always — the reward panel is the payoff, not
   // the record of what happened.
   const granted = result.success ? await grantCrafted(actor, recipe) : null;
+  let reward = null;
   if (granted) {
-    showRewardToOwner(actor, {
+    reward = {
       title: result.label,
       subtitle: recipe.name,
       crest: "⚒",   // hammer and pick
@@ -121,13 +121,13 @@ async function craftItem({ actorId, recipe: recipeName, exclude = [] }) {
       notes: granted.flags?.[MODULE_ID]?.improvised
         ? ["The world had no copy of this to grant — built from the recipe instead."]
         : []
-    });
+    };
   } else if (result.consumesReagents && selection.parts.length) {
     // A near-miss costs only time — the materials survive, so there is
     // nothing to show here. A failure or a disaster spends them for nothing,
     // and the panel that shows what a success earned is the same one that
     // should show what a ruined attempt actually cost.
-    showRewardToOwner(actor, {
+    reward = {
       title: result.label,
       subtitle: recipe.name,
       crest: "✕",
@@ -135,11 +135,15 @@ async function craftItem({ actorId, recipe: recipeName, exclude = [] }) {
       itemsHeading: "Lost",
       items: groupLost(selection.parts.map(p => p.name)),
       notes: []
-    });
+    };
   }
 
   await report({ actor, title: recipe.name, plan, roll, result, spent: selection.parts });
-  return result;
+  // The reward panel is not shown here — the caller shows it, after it has
+  // refreshed whatever window asked for this, so the panel is not opened
+  // only to be covered a moment later by that window's own re-render. See
+  // showRewardToOwner's call sites in hub.js and index.js.
+  return { ...result, actorId, reward };
 }
 
 /* ---------------------------------------------
@@ -204,8 +208,9 @@ async function craftConcoction({ actorId, bench = [] }) {
     }
   }
 
+  let reward = null;
   if (brewed) {
-    showRewardToOwner(actor, {
+    reward = {
       title: result.label,
       subtitle: concoction.kindLabel,
       crest: "⚗",   // alembic
@@ -220,12 +225,12 @@ async function craftConcoction({ actorId, bench = [] }) {
         detail: brewed.flags?.[MODULE_ID]?.effect?.formula ?? null
       }],
       notes: []
-    });
+    };
   } else if (result.consumesReagents) {
     // Same rule as manufacturing: a near-miss wastes only time and shows
     // nothing, a failed or ruined brew spends the ingredients for nothing
     // and shows what that cost.
-    showRewardToOwner(actor, {
+    reward = {
       title: result.label,
       subtitle: concoction.kindLabel,
       crest: "✕",
@@ -233,7 +238,7 @@ async function craftConcoction({ actorId, bench = [] }) {
       itemsHeading: "Lost",
       items: groupLost(bench),
       notes: []
-    });
+    };
   }
 
   // Alchemy spends plant ingredients rather than harvested parts; those are
@@ -246,7 +251,9 @@ async function craftConcoction({ actorId, bench = [] }) {
     roll, result, spent: [],
     footer: `Ingredients used: ${bench.join(", ")}. Deduct them by hand — alchemy stock is not tracked yet.`
   });
-  return result;
+  // See the note in craftItem — the reward panel is shown by the caller,
+  // after it refreshes, not here.
+  return { ...result, actorId, reward };
 }
 
 /**

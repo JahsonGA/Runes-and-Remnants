@@ -8,7 +8,7 @@ import { registerExtraSettings, loadExtraRecipes } from "./src/craft/extras.js";
 import { executeCraft, isCraftExecutor } from "./src/craft/execute.js";
 import { executeEnchant, isEnchantExecutor } from "./src/enchant/execute.js";
 import { registerConfirmSetting } from "./src/ui/confirm.js";
-import { RewardPanel } from "./src/ui/reward-panel.js";
+import { RewardPanel, showRewardToOwner } from "./src/ui/reward-panel.js";
 import { isRecipient } from "./src/ui/reward-broadcast.js";
 
 const MODULE_ID = "runes-and-remnants";
@@ -109,14 +109,26 @@ Hooks.once("ready", () => {
 
     if (payload.action === "requestEnchant") {
       if (!isEnchantExecutor()) return;
-      await executeEnchant(payload);
+      const outcome = await executeEnchant(payload);
+      // There is no hub window here to refresh first — this relay runs on
+      // whichever GM client executes it, not on the asking player's hub —
+      // so nothing is racing the panel for the front here the way hub.js's
+      // own handlers can. Shown as soon as it is known.
+      if (outcome?.reward) {
+        const actor = game.actors?.get(outcome.actorId);
+        if (actor) showRewardToOwner(actor, outcome.reward);
+      }
       return;
     }
 
     if (payload.action === "requestCraft") {
       // Exactly one GM acts, or every connected GM crafts the same item.
       if (!isCraftExecutor()) return;
-      await executeCraft(payload);
+      const outcome = await executeCraft(payload);
+      if (outcome?.reward) {
+        const actor = game.actors?.get(outcome.actorId);
+        if (actor) showRewardToOwner(actor, outcome.reward);
+      }
       return;
     }
 

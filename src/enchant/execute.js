@@ -11,7 +11,6 @@
 import { enchantPlan, resolveEnchant, itemKind, normaliseRarity } from "./logic.js";
 import { partFromItem } from "../craft/logic.js";
 import { pickExecutorId } from "../harvest/logic.js";
-import { showRewardToOwner } from "../ui/reward-panel.js";
 
 export const MODULE_ID = "runes-and-remnants";
 const REQUEST = "requestEnchant";
@@ -80,6 +79,7 @@ async function bind({ actorId, itemId, enchantment, remnantId, componentId,
   // Materials go regardless — the power left them when the binding began.
   await consume(actor, [remnantDoc, componentDoc]);
 
+  let reward;
   if (result.destroyed) {
     // Captured before delete() — there is nothing left to read off the
     // document once it is gone, and the panel is the one place a player
@@ -90,7 +90,7 @@ async function bind({ actorId, itemId, enchantment, remnantId, componentId,
 
     await item.delete();
 
-    showRewardToOwner(actor, {
+    reward = {
       title: result.label,
       subtitle: plan.enchantment,
       crest: "✕",
@@ -98,14 +98,14 @@ async function bind({ actorId, itemId, enchantment, remnantId, componentId,
       itemsHeading: "Lost",
       items: lost,
       notes: []
-    });
+    };
   } else {
     // Clean or flawed, both show the panel — a flawed binding is still a
     // binding. Only "destroyed" leaves nothing to display, the same rule
     // craft and alchemy already use: the panel shows what was granted, and
     // a destroyed item was not.
     const bound = await applyEnchantment(item, plan, result);
-    showRewardToOwner(actor, {
+    reward = {
       title: result.label,
       subtitle: plan.enchantment,
       crest: "✦",   // placeholder — crests get a proper pass later
@@ -119,11 +119,14 @@ async function bind({ actorId, itemId, enchantment, remnantId, componentId,
       // The flaws themselves, not just a count — a player deciding whether
       // to live with a flawed blade needs to know which flaw it has.
       notes: result.flaws
-    });
+    };
   }
 
   await report({ actor, item, plan, roll, result });
-  return result;
+  // Shown by the caller, after it refreshes — same reasoning as craft's
+  // execute.js: a panel opened here would be covered a moment later by
+  // whatever window's own re-render follows this call.
+  return { ...result, actorId, reward };
 }
 
 /* ---------------------------------------------

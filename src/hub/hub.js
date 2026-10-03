@@ -21,6 +21,7 @@ import { confirmSpend } from "../ui/confirm.js";
 import { requestCraft } from "../craft/execute.js";
 import { EnchantPanel } from "../enchant/panel.js";
 import { requestEnchant, casterFrom } from "../enchant/execute.js";
+import { showRewardToOwner } from "../ui/reward-panel.js";
 import { enchantPlan } from "../enchant/logic.js";
 import {
   unlockPatch, canUnlock, earnPatch, spendRemnantPatch, remnantValue,
@@ -309,11 +310,22 @@ export class RunesHub extends HarvestMenu {
       // Nothing is spent until the player has seen what it costs.
       if (!await this._confirmCraft()) return;
 
-      await requestCraft(this.craft.mode === "alchemy"
+      const outcome = await requestCraft(this.craft.mode === "alchemy"
         ? { actorId, bench: [...this.craft.bench] }
         : { actorId, recipe: this.craft.recipe, exclude: this.craft.excludedIds() });
 
       this.render(true);   // inventory changed; the bench must catch up
+
+      // The panel is shown only now, after the hub above has already
+      // refreshed — not before. Showing it first and refreshing after used
+      // to work most of the time and then not: Foundry brings a window to
+      // the front on every render, not just its first, so this render was
+      // intermittently landing after the panel opened and burying it. There
+      // is nothing left to race once the order is fixed instead of patched.
+      if (outcome?.reward) {
+        const actor = game.actors?.get(actorId);
+        if (actor) showRewardToOwner(actor, outcome.reward);
+      }
     });
 
     html.on("click", "[data-action='do-enchant']", async () => {
@@ -324,7 +336,7 @@ export class RunesHub extends HarvestMenu {
       // component go whatever the roll, and a bad enough miss takes the item.
       if (!await this._confirmEnchant()) return;
 
-      await requestEnchant({
+      const outcome = await requestEnchant({
         actorId,
         itemId: this.enchant.itemId,
         enchantment: this.enchant.enchantment,
@@ -339,6 +351,13 @@ export class RunesHub extends HarvestMenu {
       this.enchant.remnantId = null;
       this.enchant.componentId = null;
       this.render(true);
+
+      // Shown only after the refresh above — see the matching comment in
+      // do-craft for why the order, not a timing patch, is the actual fix.
+      if (outcome?.reward) {
+        const actor = game.actors?.get(actorId);
+        if (actor) showRewardToOwner(actor, outcome.reward);
+      }
     });
 
     html.on("click", "[data-action='set-crafter']", ev => {
