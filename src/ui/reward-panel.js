@@ -59,7 +59,20 @@ export class RewardPanel extends Application {
 
   /** Show one, awaiting dismissal. */
   static show(data = {}) {
-    return new Promise(resolve => new RewardPanel(data, resolve).render(true));
+    return new Promise(resolve => {
+      const panel = new RewardPanel(data, resolve);
+      panel.render(true);
+
+      // The hub that triggered this re-renders right after — "inventory
+      // changed; the bench must catch up" — and Foundry brings an
+      // Application to the front on every render, not just its first. Left
+      // alone, that re-render steals the front-most spot back from a panel
+      // that had just opened, so the reward lands behind the hub that
+      // granted it. Reasserting on the next tick runs after that re-render's
+      // own async work has settled, without this file needing to know the
+      // hub exists at all.
+      setTimeout(() => { if (panel.rendered) panel.bringToTop(); }, 0);
+    });
   }
 }
 
