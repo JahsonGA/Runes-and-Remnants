@@ -1,2 +1,17 @@
 Runes-and-Remnants.zip
 .github\workflows
+.agents/
+.claude/
+skills-lock.json
+node_modules/
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
+# LevelDB runtime artifacts. Foundry recreates both whenever it opens a pack,
+# and a stale LOCK copied from another machine can stop one opening at all.
+# Numbered .log files are the write-ahead log and DO carry data — keep those.
+packs/*/LOCK
+packs/*/LOG
+packs/*/LOG.old

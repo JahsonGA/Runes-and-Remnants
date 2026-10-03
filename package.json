@@ -4,10 +4,17 @@
   "type": "module",
   "scripts": {
     "check:assets": "node tests/check-assets.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:ui": "playwright test",
+    "test:all": "vitest run && playwright test && node tests/check-assets.mjs",
+    "build:journal": "node scripts/build-recipe-journal.mjs",
+    "build:alchemy": "node scripts/build-alchemy-items.mjs"
   },
   "devDependencies": {
-    "vitest": "^2.0.0",
-    "glob": "^11.0.0"
+    "@playwright/test": "^1.62.1",
+    "classic-level": "^3.0.0",
+    "glob": "^11.0.0",
+    "handlebars": "^4.7.9",
+    "vitest": "^2.0.0"
   }
 }

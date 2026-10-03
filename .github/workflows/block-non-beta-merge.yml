@@ -12,5 +12,5 @@ jobs:
       - name: Reject PRs not from beta
         if: github.head_ref != 'beta'
         run: |
-          echo "❌ Only PRs from 'beta' may be merged into 'main'."
+          echo "Only PRs from 'beta' may be merged into 'main'."
           exit 1

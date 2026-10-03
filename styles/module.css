@@ -9,6 +9,39 @@
   --rnr-wood:  #60402B;
   --rnr-ink:   #0c0c0f;
   --rnr-text:  #e6e0d6;
+
+  /* Two tones per accent. The dark ones are for borders and glows, where
+     contrast against a background does not matter. The 'lit' ones are for
+     TEXT: #734A12 on the panel ground is 2.5:1, which is atmospheric and
+     unreadable. These clear WCAG AA (4.5:1) while staying the same hue. */
+  --rnr-brown-lit: #B57C22;
+  --rnr-red-lit:   #E05252;
+  --rnr-good:      #96c47e;
+
+  /* A flaw is not danger and not rarity, so it gets its own hue rather than
+     borrowing --rnr-red-lit — which sits a few degrees from the Artifact
+     rarity color below and would make a flawed tile and your best possible
+     drop nearly indistinguishable, exactly the one pairing that most needs
+     telling apart. */
+  --rnr-flaw-lit:  #D6336C;
+
+  /* Something lost is not rated — rarity colour implies "this is how good it
+     was," which is a strange thing to say about a vial that broke. A dull
+     grey reads as "spent, gone" without claiming any quality for it. */
+  --rnr-lost-lit:  #8a7a66;
+}
+
+/* Visually hidden but still read by a screen reader — for the cases where a
+   sighted user gets a glyph or a color and a screen reader needs the word
+   instead. */
+.rnr-sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* HUD button */
@@ -22,26 +55,988 @@
   box-shadow: 0 0 8px var(--rnr-red);
 }
 
-/* Window chrome */
+/* Window chrome
+   v13 introduced CSS Layers and reworked application chrome. Unlayered module
+   CSS still wins over Foundry's layered styles, but the .window-content
+   element is no longer guaranteed to be the themed surface — so paint the
+   application root too rather than relying on that one selector.
+   NOTE: needs visual confirmation on a real v13/v14 instance. */
+.rnr-harvest.grimdark,
 .rnr-harvest.grimdark .window-content {
   background: var(--rnr-ink);
   color: var(--rnr-text);
+}
+.rnr-harvest.grimdark .window-content {
   border: 2px solid var(--rnr-brown);
 }
+
+/* =========================================================
+   HUB — tab rail + panels
+   ========================================================= */
+.rnr-hub {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* Flex children default to min-width:auto, which lets one long string
+     stretch the whole hub. Everything in here must be allowed to shrink. */
+  min-width: 0;
+  /* Declared here, not only on .grimdark .window-content. Most text in the
+     hub sets no colour of its own, so without this the panel inherits
+     whatever the surrounding Foundry theme provides — and dark text on these
+     near-black grounds is unreadable. v13 reworked application chrome, so
+     depending on an ancestor for something this load-bearing is a risk the
+     component should not take. */
+  color: var(--rnr-text);
+}
+.rnr-hub *, .rnr-panel * { min-width: 0; }
+
+/* The hub fills its window so the catalogue can scroll inside it. Without
+   this chain the inner overflow:auto has no height to work against and the
+   list grows the window instead of scrolling. */
+.rnr-hub-app .window-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+/* min-height must be 0 as well as min-width: a flex item defaults to
+   min-height:auto, which refuses to shrink below its content and hands the
+   overflow up to the window instead of down to the scroll container. */
+.rnr-hub { flex: 1 1 auto; min-height: 0; }
+.rnr-panel {
+  max-width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rnr-panel > .rnr-columns { flex: 1 1 auto; min-height: 0; }
+
+.rnr-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--rnr-wood);
+  padding-bottom: 0;
+}
+
+.rnr-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1 1 0;
+  width: auto;
+  padding: 7px 10px;
+  background: #14100f;
+  color: var(--rnr-text);
+  border: 1px solid var(--rnr-wood);
+  border-bottom: none;
+  border-radius: 7px 7px 0 0;
+  cursor: pointer;
+  font-size: 0.86rem;
+  line-height: 1.3;
+  /* Sit on the rail's border so the active tab can erase it. */
+  margin-bottom: -2px;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.rnr-tab:hover {
+  background: #241616;
+  border-color: var(--rnr-red);
+  box-shadow: none;
+}
+/* Active tab joins the panel: same ground, and the rail cut away beneath. */
+.rnr-tab.active {
+  background: #171315;
+  border-color: var(--rnr-brown);
+  border-bottom: 2px solid #171315;
+  color: #fff;
+}
+.rnr-tab.active .rnr-tab-label { color: var(--rnr-brown-lit); font-weight: bold; }
+
+.rnr-tab-icon {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--rnr-wood);
+  border-radius: 4px;
+  object-fit: cover;
+  flex: none;
+  /* Unbuilt systems read as dormant rather than disabled — still clickable. */
+  filter: grayscale(0.7) brightness(0.75);
+}
+.rnr-tab.active .rnr-tab-icon {
+  filter: none;
+  border-color: var(--rnr-brown);
+  box-shadow: 0 0 6px rgba(115, 74, 18, 0.6);
+}
+
+.rnr-tab-label { flex: 1; text-align: left; }
+
+.rnr-tab-badge {
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--rnr-brown-lit);
+  border: 1px solid var(--rnr-wood);
+  border-radius: 3px;
+  padding: 0 4px;
+  flex: none;
+}
+
+/* Reference tables in the crafting / enchanting panels */
+.rnr-steps {
+  margin: 0 0 0.6rem;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+}
+.rnr-steps li { margin-bottom: 0.45rem; }
+.rnr-steps b { color: var(--rnr-brown-lit); display: block; }
+.rnr-steps span { display: block; opacity: 0.9; }
+
+.rnr-formula {
+  background: #0f0d0e;
+  border: 1px solid var(--rnr-wood);
+  border-left: 3px solid var(--rnr-red);
+  border-radius: 4px;
+  padding: 6px 9px;
+  font-size: 0.78rem;
+  margin-bottom: 0.5rem;
+}
+
+.rnr-ref {
+  width: 100%;
+  /* Without this a long cell (a tool list, a joined ability set) sizes the
+     table to its content and pushes every other value off-screen, which is
+     exactly what "Wondrous item" used to do. */
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+.rnr-ref td {
+  padding: 2px 8px;
+  border-bottom: 1px solid #1b1515;
+  /* break-word, not anywhere. `anywhere` also shrinks the cell's intrinsic
+     width, which under table-layout: fixed squeezed the rarity column until
+     it read "uncomm / on". This only breaks a word that genuinely cannot
+     fit. */
+  overflow-wrap: break-word;
+}
+/* Label column stays narrow; the value column takes the rest. */
+.rnr-ref td:first-child { width: 6.5rem; color: var(--rnr-brown-lit); }
+/* Reference tables carry four columns, so the numbers get a fixed sliver and
+   the wordy column keeps the remainder. */
+.rnr-ref-wide td:first-child { width: 4.5rem; }
+.rnr-ref-wide .rnr-num { width: 3.4rem; }
+.rnr-ref tr:last-child td { border-bottom: none; }
+.rnr-ref .rnr-num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Only genuinely numeric cells resist wrapping. */
+.rnr-ref .rnr-dc { white-space: nowrap; }
+.rnr-ref-head td { color: var(--rnr-brown-lit); font-weight: bold; }
+.rnr-danger { color: var(--rnr-red-lit); font-weight: bold; }
+
+.rnr-note {
+  font-size: 0.75rem;
+  padding: 5px 9px;
+  margin: 0;
+  opacity: 0.92;
+}
+.rnr-note + .rnr-note { border-top: 1px solid #1b1515; }
+
+.rnr-status {
+  font-size: 0.75rem;
+  background: #14100f;
+  border: 1px dashed var(--rnr-wood);
+  border-radius: 5px;
+  padding: 6px 9px;
+  margin: 0.5rem 0;
+}
+.rnr-status b { color: var(--rnr-brown-lit); }
+
+/* Crafting bench */
+.rnr-add.rnr-picked {
+  border-color: var(--rnr-red);
+  background: #241616;
+  color: #fff;
+}
+.rnr-dcmod {
+  color: var(--rnr-brown-lit);
+  font-variant-numeric: tabular-nums;
+}
+.rnr-loot-controls button.active {
+  border-color: var(--rnr-red);
+  background: #241616;
+  color: #fff;
+}
+.rnr-errors {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  font-size: 0.75rem;
+}
+.rnr-errors li { padding: 1px 0; }
 
 /* Layout */
 .rnr-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* Two columns while there is room for both, one when there is not.
+     A fixed two-column grid squeezed each card to 169px in a narrow window —
+     the pickers were all still there, just too cramped to use, which reads as
+     "the option is missing". auto-fit stacks them instead. */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  /* auto-rows, not template-rows: stacked there are two rows, and defining
+     only the first would leave the second sized to its content and hanging
+     off the bottom of the window. Every row is constrained, so each card
+     scrolls inside its own share of the height either way. */
+  grid-auto-rows: minmax(0, 1fr);
   gap: 14px;
+  align-items: stretch;
+  min-height: 0;
 }
 .rnr-card {
   background: #171315;
   border: 1px solid var(--rnr-wood);
   border-radius: 10px;
   padding: 10px;
+  /* Cards are their own scroll context; nothing inside grows the window.
+     Scrolling by DEFAULT, not hidden — a card with no inner scroller of its
+     own (harvest's, for one) would otherwise clip its contents dead, with no
+     way to reach them. */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
 }
-.rnr-card h3 { margin-top: 0; color: var(--rnr-brown); }
+/* Cards that pin a header and scroll a region beneath it instead. Marked in
+   the template rather than sniffed with :has(), which needs a newer engine
+   than the oldest Foundry this module supports. */
+.rnr-card.rnr-card-pinned { overflow: hidden; }
+
+/* The scrolling half of the catalogue card. The header and filter above it
+   stay put while the list moves, so the search box is always reachable. */
+.rnr-catalogue {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+/* The workbench scrolls independently of the catalogue beside it. */
+.rnr-card > .rnr-bench-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* =========================================================
+   SCROLLBARS
+
+   A scrollable region the player cannot see is indistinguishable from a
+   clipped one. Two things conspire here:
+
+   1. Modern Chromium (and so Foundry) defaults to OVERLAY scrollbars — they
+      reserve no width and fade out when idle, so a full catalogue just looks
+      cut off. `scrollbar-gutter: stable` reserves the track permanently.
+   2. The default thumb is a dark grey that vanishes against these near-black
+      panels even while it is showing.
+
+   Applied to the scroll containers directly rather than through a descendant
+   selector, because `::-webkit-scrollbar` is matched against the scrolling
+   element itself and inheritance does not carry it.
+   ========================================================= */
+.rnr-catalogue,
+.rnr-bench-body,
+.rnr-card,
+.rnr-dropdown,
+.rnr-hub-app .window-content {
+  scrollbar-gutter: stable;
+  /* Firefox has no pseudo-elements for this. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--rnr-brown-lit) #0b0a0a;
+}
+
+.rnr-catalogue::-webkit-scrollbar,
+.rnr-bench-body::-webkit-scrollbar,
+.rnr-card::-webkit-scrollbar,
+.rnr-dropdown::-webkit-scrollbar,
+.rnr-hub-app .window-content::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.rnr-catalogue::-webkit-scrollbar-track,
+.rnr-bench-body::-webkit-scrollbar-track,
+.rnr-card::-webkit-scrollbar-track,
+.rnr-dropdown::-webkit-scrollbar-track,
+.rnr-hub-app .window-content::-webkit-scrollbar-track {
+  background: #0b0a0a;
+  border-radius: 5px;
+}
+.rnr-catalogue::-webkit-scrollbar-thumb,
+.rnr-bench-body::-webkit-scrollbar-thumb,
+.rnr-card::-webkit-scrollbar-thumb,
+.rnr-dropdown::-webkit-scrollbar-thumb,
+.rnr-hub-app .window-content::-webkit-scrollbar-thumb {
+  background: var(--rnr-wood);
+  border: 1px solid #0b0a0a;
+  border-radius: 5px;
+  /* Always visible, never a hover-only hint. */
+  min-height: 28px;
+}
+.rnr-catalogue::-webkit-scrollbar-thumb:hover,
+.rnr-bench-body::-webkit-scrollbar-thumb:hover,
+.rnr-card::-webkit-scrollbar-thumb:hover,
+.rnr-dropdown::-webkit-scrollbar-thumb:hover,
+.rnr-hub-app .window-content::-webkit-scrollbar-thumb:hover {
+  background: var(--rnr-brown-lit);
+}
+
+.rnr-filter {
+  width: 100%;
+  box-sizing: border-box;
+  background: #0f0d0e;
+  color: var(--rnr-text);
+  border: 1px solid var(--rnr-wood);
+  border-radius: 5px;
+  padding: 3px 8px;
+  margin-bottom: 6px;
+  font-size: 0.78rem;
+  flex: none;
+}
+.rnr-filter:focus {
+  outline: none;
+  border-color: var(--rnr-brown-lit);
+  box-shadow: 0 0 5px rgba(181, 124, 34, 0.4);
+}
+.rnr-filter::placeholder { color: #8a7a66; }
+.rnr-card h3 { margin-top: 0; color: var(--rnr-brown-lit); }
+
+/* Loot header row (title + Select All / Clear) */
+.rnr-loot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* The mode switches sat hard against the card edge and clipped. */
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 0.25rem;
+  flex: none;
+}
+.rnr-loot-header h3 { margin: 0; }
+
+.rnr-loot-controls {
+  display: flex;
+  gap: 4px;
+}
+.rnr-loot-controls button {
+  background: #1a1010;
+  color: var(--rnr-text);
+  border: 1px solid var(--rnr-wood);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  line-height: 1.4;
+  /* Foundry stretches buttons inside an application to their container's
+     full width. .rnr-add overrides that; this rule never did, so "Alchemy"
+     was squeezed to the same width as "Gear" and spilled out of its box.
+     max-content beats the .rnr-hub * { min-width: 0 } rule above. */
+  width: auto;
+  flex: 0 0 auto;
+  min-width: max-content;
+  white-space: nowrap;
+  /* Foundry's own core button style left-aligns by default, which this rule
+     relied on the browser's UA default to override — fine until Foundry's
+     own rule won the specificity tie. "Gear" is nearly square, so the lean
+     was invisible on it; "Alchemy" is wide enough that a left-aligned word
+     reads as unevenly padded. Stated explicitly so it can't lose that tie
+     again, and box-sizing is explicit for the same reason. */
+  box-sizing: border-box;
+  text-align: center;
+}
+.rnr-loot-controls button:hover {
+  border-color: var(--rnr-red);
+  color: #fff;
+}
+
+/* Material tiers */
+.rnr-hint {
+  font-size: 0.7rem;
+  font-style: italic;
+  margin: 0 0 0.4rem;
+}
+.rnr-tier {
+  border: 1px solid var(--rnr-wood);
+  border-radius: 6px;
+  margin-bottom: 6px;
+  background: #0f0d0e;
+}
+.rnr-tier-header {
+  /* The reagent header carries a running total on the right, which needs to
+     stay clear of a label as long as "Structural or Fibrous or Viscous". */
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  /* "Structural or Fibrous or Viscous" plus a running total does not fit on
+     one line at this width; let the total drop rather than crowd the label. */
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: bold;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rnr-brown-lit);
+  border-bottom: 1px solid var(--rnr-wood);
+  background: #1a1010;
+  overflow-wrap: anywhere;
+}
+.rnr-tier-header .rnr-num { flex: none; }
+.rnr-tier-essence .rnr-tier-header {
+  color: var(--rnr-red-lit);
+}
+.rnr-tier .rnr-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 8px;
+}
+.rnr-tier .rnr-list li {
+  padding: 1px 0;
+}
+.rnr-tier .rnr-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+/* Named in HARVEST_TABLE but absent from the compendium */
+.rnr-tier .rnr-list label.rnr-missing,
+.rnr-add.rnr-missing,
+tr.rnr-missing td {
+  color: #a08a6a;
+  text-decoration: line-through;
+}
+
+/* Component pool — click to append to the harvest list */
+.rnr-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+.rnr-pool li { padding: 0; min-width: 0; max-width: 100%; }
+.rnr-add {
+  background: #1a1010;
+  color: var(--rnr-text);
+  border: 1px solid var(--rnr-wood);
+  border-radius: 4px;
+  padding: 1px 7px;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  width: auto;
+  max-width: 100%;
+  cursor: pointer;
+  /* Harvest components are short ("Eye", "Bone") but recipe names are not
+     — "Potion of Storm Giant Strength" is 30 characters. Wrapping inside
+     the pill beats overflowing the panel. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+/* ---- Reagents: the harvest ➜ craft join ---- */
+.rnr-reagents { margin-top: 8px; }
+.rnr-tier.rnr-tier-short { border-left: 2px solid var(--rnr-red, #b22222); }
+.rnr-ok { color: #7fa86b; }
+.rnr-formula.rnr-blocked {
+  color: var(--rnr-red-lit);
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+/* =========================================================
+   CONFIRMATION DIALOG
+
+   Rendered by Foundry outside .rnr-hub, so none of the panel scoping
+   reaches it. Everything it needs is declared here rather than inherited.
+   ========================================================= */
+.rnr-confirm {
+  background: var(--rnr-ink);
+  color: var(--rnr-text);
+  border: 1px solid var(--rnr-wood);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.82rem;
+  max-width: 460px;
+}
+.rnr-confirm .rnr-ref { margin-bottom: 8px; }
+.rnr-confirm .rnr-tier { margin-bottom: 6px; }
+.rnr-confirm .warning {
+  color: #ffcc00;
+  font-style: italic;
+  margin: 6px 0 0;
+}
+.rnr-confirm .muted { color: #a3968a; }
+.rnr-confirm p:last-child { margin-bottom: 0; }
+/* Nothing in the dialog is clickable — it is a statement of cost, and a pill
+   that looks pressable invites a click that does nothing. */
+.rnr-confirm .rnr-add { cursor: default; }
+
+/* =========================================================
+   REWARD PANEL
+
+   What a kill, a craft or a binding yielded. Harvest hands back five things
+   at once and used to say so only in chat, where it scrolls away.
+
+   Rarity drives the frame colour, which is the one glance that matters when
+   six icons land together.
+   ========================================================= */
+
+/* The 5e ladder, warmed slightly to sit on a near-black ground rather than
+   the usual white. Each clears 4.5:1 against the tile, since the name below
+   is tinted to match. */
+.rnr-reward {
+  --rarity-common:    #9b9188;
+  --rarity-uncommon:  #6fbf73;
+  --rarity-rare:      #5aa9e6;
+  --rarity-veryrare:  #b98bd9;
+  --rarity-legendary: #e0962f;
+  --rarity-artifact:  #e0624a;
+
+  position: relative;
+  padding: 18px 20px 14px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(115, 74, 18, 0.18), transparent 60%),
+    var(--rnr-ink);
+  border: 1px solid var(--rnr-wood);
+  border-radius: 10px;
+  color: var(--rnr-text);
+}
+
+/* Corner flourishes, drawn rather than imaged — nothing to 404 and they
+   recolour with the theme. */
+.rnr-reward::before,
+.rnr-reward::after {
+  content: "";
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--rnr-brown);
+  pointer-events: none;
+}
+.rnr-reward::before {
+  top: 6px; left: 6px;
+  border-right: none; border-bottom: none; border-radius: 6px 0 0 0;
+}
+.rnr-reward::after {
+  bottom: 6px; right: 6px;
+  border-left: none; border-top: none; border-radius: 0 0 6px 0;
+}
+
+.rnr-reward-head { text-align: center; margin-bottom: 10px; }
+.rnr-reward-crest {
+  font-size: 1.5rem;
+  line-height: 1;
+  margin-bottom: 2px;
+  filter: saturate(0.7);
+}
+.rnr-reward-head h1 {
+  margin: 0;
+  border: none;
+  font-size: 1.35rem;
+  letter-spacing: 0.04em;
+  color: var(--rnr-brown-lit);
+}
+.rnr-reward-sub {
+  margin: 1px 0 0;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: #a3968a;
+}
+
+.rnr-reward-flavour {
+  margin: 0 0 12px;
+  text-align: center;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: #cfc5b8;
+}
+
+/* A heading with rules either side, which is the one ornament this needs. */
+.rnr-reward-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+  border: none;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--rnr-brown-lit);
+}
+.rnr-reward-heading::before,
+.rnr-reward-heading::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--rnr-wood), transparent);
+}
+
+/* auto-fit so one reward centres and eight wrap, with no media query. */
+.rnr-reward-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  gap: 10px;
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  justify-items: center;
+}
+
+.rnr-reward-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+}
+
+.rnr-reward-tile {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  background: #14100f;
+  border: 2px solid var(--tile, var(--rarity-common));
+  border-radius: 6px;
+  box-shadow: 0 0 10px -2px var(--tile, transparent), inset 0 0 12px rgba(0, 0, 0, 0.6);
+}
+.rnr-reward-tile img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border: none;
+}
+
+/* A count sits on the tile rather than in the name, so "Bone" and "Bone x4"
+   are the same width in the grid. */
+.rnr-reward-qty {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  min-width: 17px;
+  padding: 0 3px;
+  background: var(--rnr-ink);
+  border: 1px solid var(--tile, var(--rarity-common));
+  border-radius: 9px;
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--rnr-text);
+}
+
+.rnr-reward-name {
+  font-size: 0.7rem;
+  line-height: 1.25;
+  color: var(--tile, var(--rnr-text));
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+.rnr-reward-detail {
+  font-size: 0.62rem;
+  color: #8a7a66;
+  font-variant-numeric: tabular-nums;
+}
+
+.rnr-rarity-common    { --tile: var(--rarity-common); }
+.rnr-rarity-uncommon  { --tile: var(--rarity-uncommon); }
+.rnr-rarity-rare      { --tile: var(--rarity-rare); }
+.rnr-rarity-veryrare  { --tile: var(--rarity-veryrare); }
+.rnr-rarity-legendary { --tile: var(--rarity-legendary); }
+.rnr-rarity-artifact  { --tile: var(--rarity-artifact); }
+
+/* A flawed binding is still a binding — enchanting shows it in the panel
+   rather than reserving the panel for a clean roll. This comes after the
+   rarity rules on purpose: same specificity, later wins, so a flawed VERY
+   RARE item reads as flawed first — rarity is not the thing that needs
+   saying at a glance here. Overriding the one --tile variable recolours
+   both the border and the name together, since the name already reads it. */
+.rnr-reward-flawed {
+  --tile: var(--rnr-flaw-lit);
+}
+.rnr-reward-flawed .rnr-reward-tile {
+  box-shadow: 0 0 14px -1px var(--tile), inset 0 0 12px rgba(0, 0, 0, 0.6);
+}
+
+/* Color is never the whole story — a badge in the opposite corner from the
+   quantity count, so "which tile is flawed" survives grayscale, colorblind
+   palettes, and a glance that never reaches the tooltip. */
+.rnr-reward-flaw-badge {
+  position: absolute;
+  left: -5px;
+  top: -5px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  background: var(--rnr-ink);
+  border: 1px solid var(--rnr-flaw-lit);
+  border-radius: 50%;
+  font-size: 0.6rem;
+  font-weight: bold;
+  line-height: 1;
+  color: var(--rnr-flaw-lit);
+}
+
+/* A ruined attempt or a destroyed item, shown rather than left to chat alone
+   — same grid, same tile, so "what did this cost" reads with the same
+   weight as "what did this earn." Desaturated rather than danger-red: this
+   isn't a warning to act on, it's already over. */
+.rnr-reward-lost {
+  --tile: var(--rnr-lost-lit);
+}
+.rnr-reward-lost .rnr-reward-tile { opacity: 0.6; }
+.rnr-reward-lost .rnr-reward-tile img { filter: grayscale(0.8); }
+.rnr-reward-lost .rnr-reward-name { text-decoration: line-through; }
+.rnr-reward-lost-badge {
+  position: absolute;
+  left: -5px;
+  top: -5px;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  background: var(--rnr-ink);
+  border: 1px solid var(--rnr-lost-lit);
+  border-radius: 50%;
+  font-size: 0.6rem;
+  font-weight: bold;
+  line-height: 1;
+  color: var(--rnr-lost-lit);
+}
+
+.rnr-reward-empty,
+.rnr-reward-notes {
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+  text-align: center;
+  font-size: 0.76rem;
+  color: #a3968a;
+}
+.rnr-reward-notes li { margin: 2px 0; }
+
+.rnr-reward-actions { display: flex; justify-content: center; }
+.rnr-reward-accept {
+  min-width: 170px;
+  padding: 6px 18px;
+  background: linear-gradient(180deg, #241616, #1a1010);
+  color: var(--rnr-text);
+  border: 1px solid var(--rnr-brown);
+  border-radius: 5px;
+  font-size: 0.88rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+.rnr-reward-accept:hover,
+.rnr-reward-accept:focus-visible {
+  border-color: var(--rnr-red-lit);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(224, 82, 82, 0.35);
+}
+.rnr-reward-accept:focus-visible { outline: none; }
+
+/* ---- Who is at the bench ---- */
+.rnr-crafter { margin-bottom: 8px; flex: none; }
+.rnr-crafter .rnr-dropdown { max-height: 120px; }
+/* Marks a crafter carried over from the Harvest tab rather than chosen here,
+   so an inherited choice is never mistaken for a deliberate one. */
+.rnr-inherited {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--rnr-brown-lit);
+  border: 1px solid var(--rnr-wood);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: auto;
+  flex: none;
+}
+
+/* A reagent the player has set aside. Still listed, so it can be put back —
+   struck through rather than removed, because a part that vanishes when you
+   click it reads as destroyed. */
+.rnr-add-off {
+  opacity: 0.5;
+  text-decoration: line-through;
+  border-style: dashed;
+}
+.rnr-add-off:hover { opacity: 0.8; }
+
+/* ---- Ancestral weapons: spirit points ---- */
+/* A bar rather than two numbers, because the thing a player actually wants to
+   know is how far off awakening still is. */
+.rnr-spirit-bar {
+  position: relative;
+  height: 10px;
+  margin: 6px 0;
+  background: #0b0a0a;
+  border: 1px solid var(--rnr-wood);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.rnr-spirit-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--rnr-wood), var(--rnr-brown-lit));
+  transition: width 0.2s ease;
+}
+/* Where the weapon wakes. Sits on top of the fill so it stays visible. */
+.rnr-spirit-mark {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  background: var(--rnr-red-lit);
+}
+
+/* An ability the weapon cannot take yet. Dimmed, still readable, and its
+   tooltip says why — the same treatment locked enchantments get. */
+.rnr-add-locked {
+  opacity: 0.45;
+  cursor: help;
+}
+.rnr-add-locked:hover {
+  border-color: var(--rnr-wood);
+  box-shadow: none;
+  color: var(--rnr-text);
+}
+/* Deeds are prose, not buttons — they must not look pressable. */
+.rnr-deed {
+  cursor: default;
+  white-space: normal;
+  text-align: left;
+  font-style: italic;
+}
+
+/* ---- Enchanting ---- */
+/* An enchantment the chosen item cannot take. Dimmed rather than hidden, so a
+   player can see what a different item would let them make before going and
+   making it. */
+.rnr-tier-dim { opacity: 0.55; }
+.rnr-tier-dim .rnr-add { cursor: default; }
+
+.rnr-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  padding: 2px 0;
+  cursor: pointer;
+}
+.rnr-check input { width: auto; margin: 0; flex: none; }
+
+/* Flaws in the chat card. */
+.rnr-flaws {
+  margin: 0.3rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+}
+.rnr-flaws li { margin-bottom: 0.2rem; }
+
+/* Marks a recipe read from the world's own compendium rather than shipped. */
+.rnr-src-badge {
+  color: var(--rnr-gold, #c8a44d);
+  font-size: 0.6rem;
+  margin-left: 3px;
+  vertical-align: super;
+  opacity: 0.8;
+}
+.rnr-add:hover {
+  border-color: var(--rnr-red);
+  color: #fff;
+  box-shadow: 0 0 5px rgba(178, 34, 34, 0.5);
+}
+.rnr-taken {
+  color: var(--rnr-red-lit);
+  font-weight: bold;
+}
+
+/* Harvest list — ordered, with running Harvest DCs */
+.rnr-harvest-list {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+.rnr-harvest-list th {
+  text-align: left;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rnr-brown-lit);
+  border-bottom: 1px solid var(--rnr-wood);
+  padding: 2px 4px;
+}
+.rnr-harvest-list td {
+  padding: 1px 4px;
+  border-bottom: 1px solid #1b1515;
+  vertical-align: middle;
+}
+.rnr-harvest-list .rnr-order {
+  color: var(--rnr-brown-lit);
+  width: 1.4rem;
+}
+/* The name column takes all the slack; everything else shrinks to its own
+   content. Without this the columns bunched to the left and left a dead gap
+   before the row buttons. */
+.rnr-harvest-list .rnr-name { width: 100%; }
+.rnr-harvest-list .rnr-num,
+.rnr-harvest-list th.rnr-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* The running total is the number that actually decides the outcome. */
+.rnr-harvest-list .rnr-dc {
+  color: #8ef;
+  font-weight: bold;
+}
+.rnr-row-actions {
+  text-align: right;
+  white-space: nowrap;
+  /* Shrink-to-fit. The harvest list carries three buttons and the alchemy
+     bench one, so a fixed width is wrong for one of them either way. */
+  width: 1%;
+}
+.rnr-row-actions button {
+  background: none;
+  border: none;
+  color: var(--rnr-text);
+  cursor: pointer;
+  padding: 0 2px;
+  width: auto;
+  font-size: 0.7rem;
+  line-height: 1;
+  opacity: 0.65;
+}
+.rnr-row-actions button:hover {
+  opacity: 1;
+  color: var(--rnr-red-lit);
+}
+/* The result of the bench, shown as a bar rather than floated right —
+   right-aligned it read as a stray caption rather than the total the whole
+   table adds up to. Matches .rnr-formula, which does the same job on the
+   manufacturing side. */
+.rnr-final-dc {
+  margin: 6px 0 0;
+  padding: 5px 9px;
+  background: #0f0d0e;
+  border: 1px solid var(--rnr-wood);
+  border-left: 3px solid var(--rnr-brown-lit);
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--rnr-text);
+}
+.rnr-final-dc b { color: #8ef; white-space: nowrap; }
 
 /* Dropdowns */
 .rnr-dropdown {
@@ -81,7 +1076,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--rnr-red);
+  color: var(--rnr-red-lit);
   font-weight: bold;
   margin-bottom: 0.25rem;
 }
@@ -207,7 +1202,7 @@
 }
 
 .rnr-harvest-summary h3 {
-  color: var(--rnr-red);
+  color: var(--rnr-red-lit);
   text-transform: uppercase;
   font-size: 1.05rem;
   letter-spacing: 0.05em;

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Runes &amp; Remnants — Decision Brief</title>
+<style>
+  :root {
+    --ink:      #16202B;
+    --paper:    #FBFAF7;
+    --rule:     #C9C4B8;
+    --muted:    #5C6570;
+    --go:       #1F5F45;
+    --nogo:     #8A2B22;
+    --goif:     #8A6314;
+    --accent:   var(--muted);
+  }
+  .go   { --accent: var(--go); }
+  .nogo { --accent: var(--nogo); }
+  .goif { --accent: var(--goif); }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: #EFEDE7;
+    color: var(--ink);
+    font: 400 14px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .sheet {
+    max-width: 46rem;
+    margin: 2rem auto;
+    padding: 2.25rem 2.5rem 2rem;
+    background: var(--paper);
+    box-shadow: 0 1px 3px rgba(0,0,0,.14);
+  }
+
+  header { border-bottom: 3px solid var(--accent); padding-bottom: .9rem; }
+  .eyebrow {
+    font: 600 10px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1 {
+    margin: .5rem 0 .35rem;
+    font: 600 27px/1.18 "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    letter-spacing: -.01em;
+  }
+  .decision { margin: 0; color: var(--muted); font-size: 13.5px; }
+
+  .verdict {
+    display: flex;
+    align-items: baseline;
+    gap: 1.15rem;
+    margin: 1.3rem 0 1.5rem;
+    padding: .95rem 1.15rem;
+    border: 2px solid var(--accent);
+  }
+  .stamp {
+    flex: none;
+    font: 700 21px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .verdict-line { margin: 0; font-size: 14.5px; }
+
+  h2 {
+    margin: 1.4rem 0 .5rem;
+    font: 600 10px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  p { margin: 0 0 .6rem; }
+  ul { margin: 0; padding-left: 1.05rem; }
+  li { margin-bottom: .3rem; }
+
+  .seats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; }
+  .seat h3 {
+    margin: 0 0 .35rem;
+    font: 600 13px/1.3 "Iowan Old Style", Palatino, Georgia, serif;
+    padding-bottom: .25rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .seat ul { font-size: 12.5px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th {
+    text-align: left;
+    padding: .3rem .5rem .3rem 0;
+    border-bottom: 1.5px solid var(--ink);
+    font: 600 10px/1 ui-monospace, Menlo, Consolas, monospace;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  td { padding: .45rem .5rem .45rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  td.num { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: nowrap; }
+
+  .assumptions { font-size: 12.5px; color: var(--muted); }
+  footer {
+    margin-top: 1.5rem;
+    padding-top: .6rem;
+    border-top: 1px solid var(--rule);
+    font: 400 11px/1.4 ui-monospace, Menlo, Consolas, monospace;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  @media (max-width: 40rem) {
+    .sheet { margin: 0; padding: 1.5rem 1.25rem; }
+    .seats { grid-template-columns: 1fr; }
+    .verdict { flex-direction: column; gap: .5rem; }
+  }
+  @media print {
+    body { background: #fff; }
+    .sheet { max-width: none; margin: 0; padding: 0; box-shadow: none; }
+    .seat, tr, .verdict { break-inside: avoid; }
+  }
+</style>
+</head>
+
+<body class="goif">
+<div class="sheet">
+
+  <header>
+    <div class="eyebrow">Investment Committee · Decision Brief</div>
+    <h1>Runes &amp; Remnants</h1>
+    <p class="decision">Keep investing hobby time, or declare the module done and stop — second review, following up a 2026-08-31 GO-IF.</p>
+  </header>
+
+  <div class="verdict">
+    <span class="stamp">GO-IF</span>
+    <p class="verdict-line">Continue — but ship compatibility verification (v13, with smoke-tested sheets/hooks) and submit to the Foundry package directory, both by Nov 15, 2026, before any further feature work.</p>
+  </div>
+
+  <h2>The trade-off</h2>
+  <p>~105 hours are already sunk, and the one lever that tests the stated "real adoption" criterion — directory listing — has never been pulled; everything shipped this month improved depth for an audience of one. The strongest case against gating further work is the Bear's: one productive burst plus one busy night, bracketed by a 17-day gap, doesn't prove the 205-day and 66-day dormancy pattern has broken, so spending more hours now could be wasted on a project about to go quiet again. It doesn't carry the day because the gated task is small (14&ndash;30 hrs) and is itself a hedge against that exact risk: shipped before the next dormancy, the module survives being paused in a working, listed state; shipped after, it is frozen v12-only and undiscoverable indefinitely. The cheap test is worth running regardless of whether the burst cadence holds.</p>
+
+  <h2>What the committee found</h2>
+  <div class="seats">
+    <div class="seat">
+      <h3>Bull</h3>
+      <ul>
+        <li>Dogfooding has started — real bugs (brew-stacking collision) found by playing, not reading code. This is the exact gate the prior GO-IF set, now firing.</li>
+        <li>Moat: a generated recipe journal with drift-proofing tests, plus 600+90 passing tests, means a copycat starts from zero on both content and safety net.</li>
+        <li>Load-bearing condition named by Bull itself: adoption stays theoretical until directory submission and v13/v14 verification actually happen.</li>
+      </ul>
+    </div>
+    <div class="seat">
+      <h3>Bear</h3>
+      <ul>
+        <li>"18 commits since last review" is one 4-day burst and one 8-commit night, not new sustained cadence &mdash; same binge-and-vanish shape as the 205d/66d gaps, repeating faster.</li>
+        <li>Two of those commits are ship-break-catch-after-the-fact incidents (pack corruption, brew-stacking bug), both in the 28% of source the test suite cannot reach.</li>
+        <li><code>compatibility.verified</code> still reads "12" while that same untested boundary layer is exactly what a Foundry major-version bump would break first.</li>
+      </ul>
+    </div>
+    <div class="seat">
+      <h3>Allocator</h3>
+      <ul>
+        <li>~105 hrs invested all-time, ~27 last month &mdash; effectively none of it spent on the ~10&ndash;20 hr task that would let a stranger find the module.</li>
+        <li>Cost to the real milestone (listed + verified + table actively using it): 14&ndash;54 hrs, base ~30 (8&ndash;12 weeks at current cadence).</li>
+        <li>On a blended view of all three success criteria the current path beats the alternatives &mdash; provided the cheap, long-avoided adoption step is actually taken.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Kill criteria — reverse this decision if</h2>
+  <table>
+    <thead>
+      <tr><th>Tripwire</th><th>Threshold</th><th>Check by</th><th>Owner</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Compatibility not verified</td>
+        <td class="num">module.json still reads "verified": "12"; no Playwright smoke test of v13 sheets/hooks</td>
+        <td class="num">2026-11-15</td>
+        <td>Maintainer</td>
+      </tr>
+      <tr>
+        <td>Not listed</td>
+        <td class="num">No submission opened in the Foundry package directory</td>
+        <td class="num">2026-11-15</td>
+        <td>Maintainer</td>
+      </tr>
+      <tr>
+        <td>Dormancy recurs before milestone</td>
+        <td class="num">Any 30-day window with zero commits before both items above ship</td>
+        <td class="num">ongoing to 2026-11-15</td>
+        <td>Maintainer</td>
+      </tr>
+      <tr>
+        <td>Adoption tested and fails</td>
+        <td class="num">Listed + verified, but near-zero installs AND no further dogfooding 60 days post-listing</td>
+        <td class="num">60 days post-listing</td>
+        <td>Maintainer</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>What this verdict rests on</h2>
+  <ul class="assumptions">
+    <li>[ESTIMATE, Medium] ~105 total hours and ~27 hours last month, derived from 35 active git-commit days at an assumed ~3 hrs/session &mdash; if real sessions ran longer, every hour figure in this brief scales up by roughly the same factor.</li>
+    <li>[FACT, High] compatibility.verified is "12" in module.json today; Foundry v13/v14 exist and are unverified against this module.</li>
+    <li>[FACT, High] The module has never been submitted to the Foundry package directory, the primary discovery channel for free Foundry modules.</li>
+    <li>[ASSUMPTION, Medium] "8 active days in the last 30" is treated as the current cadence; if the true recent rate is closer to 5&ndash;6 days, the project is already sliding back into dormancy-gap territory and the Nov 15 date is at risk.</li>
+  </ul>
+
+  <footer>
+    <span>Bull / Bear / Allocator seats run independently in parallel; Chairman synthesis by Claude</span>
+    <span>2026-10-01</span>
+  </footer>
+
+</div>
+</body>
+</html>

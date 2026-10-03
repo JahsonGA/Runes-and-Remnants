@@ -1,0 +1,451 @@
+import { describe, it, expect } from "vitest";
+import {
+  itemNameCandidates, normaliseName, fallbackItemData,
+  searchablePacks, SYSTEM_ITEM_NAME, FALLBACK_TYPE, FALLBACK_ARMOUR,
+  concoctionItemData, concoctionItemNames, specialiseBrew
+} from "../src/craft/grant.js";
+import { MANUFACTURING_TABLE, MANUFACTURING_CATEGORIES } from "../src/data/manufacturing.js";
+import { getRecipe, analyseConcoction } from "../src/craft/logic.js";
+import { ALCHEMY_SRD_ITEM, ALCHEMY_INGREDIENTS } from "../src/data/alchemy.js";
+import { REMEDY_NAME } from "../src/data/alchemy-effects.js";
+import { composeEffect } from "../src/craft/concoct.js";
+
+// ─── Names ────────────────────────────────────────────────────────────────────
+
+describe("itemNameCandidates", () => {
+  it("asks for Leather Armor before Leather", () => {
+    // The bug this file exists for: crafting Leather Armour produced a `loot`
+    // item called "Leather", because nothing ever looked for the real one.
+    const names = itemNameCandidates(getRecipe("Leather"));
+    expect(names[0]).toBe("Leather Armor");
+    expect(names).toContain("Leather");
+  });
+
+  it("offers both spellings of armour", () => {
+    // A localised dnd5e build may use either.
+    const names = itemNameCandidates(getRecipe("Half Plate"));
+    expect(names).toContain("Half Plate Armor");
+    expect(names).toContain("Half Plate Armour");
+  });
+
+  it("un-inverts a sorted equipment-table name", () => {
+    // "Crossbow, Light" is how the table sorts it; the item is called
+    // "Light Crossbow".
+    expect(itemNameCandidates(getRecipe("Crossbow, Light"))[0]).toBe("Light Crossbow");
+    expect(itemNameCandidates(getRecipe("Crossbow, Heavy"))[0]).toBe("Heavy Crossbow");
+  });
+
+  it("strips a trailing count or unit", () => {
+    expect(itemNameCandidates(getRecipe("Arrows (20)"))).toContain("Arrows");
+    expect(itemNameCandidates(getRecipe("Acid (vial)"))).toContain("Acid");
+  });
+
+  it("leaves a name that already matches alone", () => {
+    expect(itemNameCandidates(getRecipe("Longsword"))).toEqual(["Longsword"]);
+  });
+
+  it("never repeats a candidate", () => {
+    for (const recipe of MANUFACTURING_TABLE) {
+      const names = itemNameCandidates(recipe);
+      const lower = names.map(n => n.toLowerCase());
+      expect(new Set(lower).size, `"${recipe.name}" repeats a candidate`).toBe(lower.length);
+    }
+  });
+
+  it("produces at least one candidate for every recipe in the catalogue", () => {
+    // A recipe with nothing to search for can only ever fall back.
+    for (const recipe of MANUFACTURING_TABLE) {
+      expect(itemNameCandidates(recipe).length, `"${recipe.name}"`).toBeGreaterThan(0);
+    }
+  });
+
+  it("takes a bare string as well as a recipe", () => {
+    expect(itemNameCandidates("Leather")[0]).toBe("Leather Armor");
+  });
+
+  it("survives nothing", () => {
+    expect(itemNameCandidates(null)).toEqual([]);
+    expect(itemNameCandidates({})).toEqual([]);
+  });
+});
+
+describe("SYSTEM_ITEM_NAME", () => {
+  it("only maps names the generic rules do not already handle", () => {
+    // Every entry here is a maintenance cost; a table of a hundred would rot
+    // the first time dnd5e renamed anything.
+    for (const [from, to] of Object.entries(SYSTEM_ITEM_NAME)) {
+      expect(from.toLowerCase(), `"${from}" maps to itself`).not.toBe(to.toLowerCase());
+    }
+  });
+
+  it("maps only names that are actually in the catalogue", () => {
+    const known = new Set(MANUFACTURING_TABLE.map(r => r.name));
+    for (const from of Object.keys(SYSTEM_ITEM_NAME)) {
+      const bare = from.replace(/\s*\([^)]*\)\s*$/, "");
+      expect(known.has(from) || known.has(bare) || [...known].some(n => n.startsWith(bare)),
+        `"${from}" is mapped but no recipe makes it`).toBe(true);
+    }
+  });
+});
+
+describe("normaliseName", () => {
+  it("matches across armour spelling and trailing units", () => {
+    expect(normaliseName("Leather Armor")).toBe(normaliseName("Leather Armour"));
+    expect(normaliseName("Arrows (20)")).toBe(normaliseName("Arrows"));
+    expect(normaliseName("Half Plate Armor")).toBe(normaliseName("half-plate"));
+  });
+
+  it("keeps genuinely different things apart", () => {
+    expect(normaliseName("Longsword")).not.toBe(normaliseName("Shortsword"));
+  });
+});
+
+// ─── The fallback ─────────────────────────────────────────────────────────────
+
+describe("fallbackItemData", () => {
+  it("builds armour as equipment, not loot", () => {
+    // A weapon or a suit of armour filed as `loot` cannot be equipped, and
+    // the player has to rebuild it by hand.
+    const data = fallbackItemData(getRecipe("Leather"), "Ash");
+    expect(data.type).toBe("equipment");
+    expect(data.system.armor).toMatchObject({ type: "light", value: 11 });
+  });
+
+  it("builds a weapon as a weapon", () => {
+    expect(fallbackItemData(getRecipe("Longsword"), "Ash").type).toBe("weapon");
+  });
+
+  it("builds a potion as a consumable", () => {
+    expect(fallbackItemData(getRecipe("Potion of Healing"), "Ash").type).toBe("consumable");
+  });
+
+  it("gives every category a type that is not loot", () => {
+    for (const category of MANUFACTURING_CATEGORIES) {
+      expect(FALLBACK_TYPE[category], `"${category}" falls back to loot`).toBeTruthy();
+      expect(FALLBACK_TYPE[category]).not.toBe("loot");
+    }
+  });
+
+  it("carries the price and rarity the recipe knows", () => {
+    const data = fallbackItemData(getRecipe("Potion of Superior Healing"), "Ash");
+    expect(data.system.rarity).toBe("rare");
+  });
+
+  it("says in the description that it was improvised, and flags it", () => {
+    // So a GM can find every improvised item and fix them in one pass.
+    const data = fallbackItemData(getRecipe("Longsword"), "Ash");
+    expect(data.system.description.value).toMatch(/Ash/);
+    expect(data.system.description.value).toMatch(/import the SRD/i);
+    expect(data.flags["runes-and-remnants"].improvised).toBe(true);
+  });
+
+  it("covers every armour in the catalogue with a shape", () => {
+    const armour = MANUFACTURING_TABLE.filter(r => r.category === "Armour");
+    for (const a of armour) {
+      expect(FALLBACK_ARMOUR[a.name], `"${a.name}" has no fallback shape`).toBeTruthy();
+    }
+  });
+
+  it("gives heavier armour a higher base AC", () => {
+    expect(FALLBACK_ARMOUR["Plate"].ac).toBeGreaterThan(FALLBACK_ARMOUR["Leather"].ac);
+  });
+
+  it("returns nothing for nothing", () => {
+    expect(fallbackItemData(null)).toBeNull();
+    expect(fallbackItemData({})).toBeNull();
+  });
+});
+
+// ─── Where it looks ───────────────────────────────────────────────────────────
+
+describe("searchablePacks", () => {
+  const pack = (collection, packageName, type, documentName = "Item") =>
+    ({ collection, documentName, metadata: { packageName, packageType: type } });
+
+  it("searches the system's own compendiums first", () => {
+    // They hold the SRD the recipes are written against.
+    const order = searchablePacks([
+      pack("some-module.gear", "some-module", "module"),
+      pack("world.mine", "world", "world"),
+      pack("dnd5e.items", "dnd5e", "system")
+    ]).map(p => p.collection);
+    expect(order).toEqual(["dnd5e.items", "world.mine", "some-module.gear"]);
+  });
+
+  it("never searches the harvest pack", () => {
+    // It holds monster components. A recipe sharing a name with one would
+    // produce a lump of monster instead of a sword.
+    const packs = searchablePacks([
+      pack("runes-and-remnants.harvest-items", "runes-and-remnants", "module"),
+      pack("dnd5e.items", "dnd5e", "system")
+    ]);
+    expect(packs.map(p => p.collection)).toEqual(["dnd5e.items"]);
+  });
+
+  it("ignores packs that do not hold items", () => {
+    const packs = searchablePacks([
+      pack("dnd5e.monsters", "dnd5e", "system", "Actor"),
+      pack("dnd5e.items", "dnd5e", "system")
+    ]);
+    expect(packs.map(p => p.collection)).toEqual(["dnd5e.items"]);
+  });
+
+  it("survives no packs at all", () => {
+    expect(searchablePacks(null)).toEqual([]);
+    expect(searchablePacks([])).toEqual([]);
+  });
+});
+
+// ─── Alchemy produces something ───────────────────────────────────────────────
+
+describe("concoctionItemData", () => {
+  const brew = bench => concoctionItemData(analyseConcoction(bench), bench, "Ash");
+
+  it("names a brew as the remedy it is", () => {
+    // These are made at a camp fire out of what grew nearby, so they are
+    // named the way folk medicine is — by form. "Potion of Wild Sageroot"
+    // read like something bought off a shelf.
+    expect(brew(["Wild Sageroot"]).name).toBe("Sageroot Poultice");
+    expect(brew(["Wyrmtongue Petals"]).name).toBe("Wyrmtongue Extract");
+    expect(brew(["Mandrake Root"]).name).toBe("Mandrake Decoction");
+  });
+
+  it("falls back to the generic pattern for an ingredient with no remedy name", () => {
+    // A new ingredient has to work with no entry at all; adding one is an
+    // improvement, not a requirement.
+    expect(brew(["Elemental Water", "Scillia Beans"]).name).toBe("Elixir of Scillia Beans");
+  });
+
+  it("every brew needing its own item has a remedy name", () => {
+    // The ones with an SRD equivalent never build an item, so they do not
+    // need one. The ten that do are exactly the ten authored by hand.
+    const needsOwn = ALCHEMY_INGREDIENTS.filter(i =>
+      /^(potion-effect|toxin-effect|enchantment)$/.test(i.role) && !ALCHEMY_SRD_ITEM[i.name]);
+
+    for (const i of needsOwn) {
+      expect(REMEDY_NAME, `"${i.name}" still builds a shelf-bought name`).toHaveProperty(i.name);
+    }
+    expect(Object.keys(REMEDY_NAME).length).toBe(needsOwn.length);
+  });
+
+  it("is a consumable, not loot", () => {
+    expect(brew(["Wild Sageroot"]).type).toBe("consumable");
+    expect(brew(["Wild Sageroot"]).system.quantity).toBe(1);
+  });
+
+  it("composes the base effect and every modifier into the description", () => {
+    // The whole point of the modifier system is that the combination does
+    // something none of the parts do alone, so the item has to say so.
+    const value = brew(["Wild Sageroot", "Milkweed Seeds", "Dried Ephedra"]).system.description.value;
+    expect(value).toContain("Wild Sageroot");
+    expect(value).toContain("Milkweed Seeds");
+    expect(value).toContain("Dried Ephedra");
+    expect(value).toMatch(/Heals 2d4/);
+  });
+
+  it("takes its rarity from the rarest thing that went in", () => {
+    expect(brew(["Wild Sageroot"]).system.rarity).toBe("common");
+    expect(brew(["Wild Sageroot", "Dried Ephedra"]).system.rarity).toBe("uncommon");
+  });
+
+  it("records the exact bench, so two brews sharing a name are tellable apart", () => {
+    const flags = brew(["Wild Sageroot", "Milkweed Seeds"]).flags["runes-and-remnants"];
+    expect(flags.ingredients).toEqual(["Wild Sageroot", "Milkweed Seeds"]);
+    expect(flags.concoction).toBe(true);
+    expect(flags.dc).toBe(analyseConcoction(["Wild Sageroot", "Milkweed Seeds"]).dc);
+  });
+
+  it("escapes ingredient text it does not own", () => {
+    const data = concoctionItemData(
+      { valid: true, kind: "potion", dc: 12,
+        effects: [{ name: "<script>x</script>", effect: "bad" }], modifiers: [] },
+      [], "Ash");
+    expect(data.system.description.value).not.toContain("<script>");
+  });
+
+  it("refuses to build anything from an invalid mixture", () => {
+    expect(concoctionItemData(analyseConcoction(["Milkweed Seeds"]), ["Milkweed Seeds"])).toBeNull();
+    expect(concoctionItemData(null)).toBeNull();
+  });
+});
+
+describe("concoctionItemNames — prefer a real item", () => {
+  const names = bench => concoctionItemNames(analyseConcoction(bench));
+
+  it("asks for the SRD potion first when the brew is one", () => {
+    // A real item arrives with its activation and rolls already wired; a
+    // built one can only describe itself.
+    expect(names(["Elemental Water", "Scillia Beans"])[0]).toBe("Potion of Climbing");
+    expect(names(["Elemental Water", "Wisp Stalks"])[0]).toBe("Potion of Invisibility");
+  });
+
+  it("still offers the built name, so a world item can override", () => {
+    // Authoring "Elixir of Scillia Beans" in the world is the intended way
+    // to give a custom brew real mechanics.
+    expect(names(["Elemental Water", "Scillia Beans"])).toContain("Elixir of Scillia Beans");
+  });
+
+  it("drops the SRD substitution the moment a modifier is added", () => {
+    // A modifier makes it something the SRD has no item for; handing over the
+    // vanilla potion would throw away what the alchemist added.
+    //
+    // Built by hand rather than from a bench, because every ingredient
+    // currently mapped is enchantment-role and enchantments take no
+    // modifiers — so no real mixture can reach this branch today. The guard
+    // stays because a table registering its own data can map a potion-effect
+    // ingredient, and then it matters.
+    const mapped = Object.keys(ALCHEMY_SRD_ITEM)[0];
+    const spec = ALCHEMY_INGREDIENTS.find(i => i.name === mapped);
+    const withModifier = concoctionItemNames({
+      valid: true, kind: "potion", dc: 12,
+      effects: [spec], modifiers: [{ name: "Lavender Sprig", effect: "Steadies it." }]
+    });
+    expect(withModifier).not.toContain(ALCHEMY_SRD_ITEM[mapped]);
+    expect(withModifier).toHaveLength(1);
+  });
+
+  it("offers only the built name where no SRD item matches", () => {
+    expect(names(["Elemental Water", "Arrow Root"])).toEqual(["Arrow Root Liniment"]);
+  });
+
+  it("offers nothing for a mixture that will not hold", () => {
+    expect(names(["Milkweed Seeds"])).toEqual([]);
+  });
+});
+
+describe("ALCHEMY_SRD_ITEM", () => {
+  it("maps only real ingredients", () => {
+    const known = new Set(ALCHEMY_INGREDIENTS.map(i => i.name));
+    for (const name of Object.keys(ALCHEMY_SRD_ITEM)) {
+      expect(known.has(name), `"${name}" is mapped but is not an ingredient`).toBe(true);
+    }
+  });
+
+  it("maps only ingredients whose own text names that item", () => {
+    // Wild Sageroot heals 2d4 + Alchemy modifier, which is not a Potion of
+    // Healing. Mapping it would quietly swap the mechanics for something that
+    // merely looks similar.
+    for (const [ingredient, item] of Object.entries(ALCHEMY_SRD_ITEM)) {
+      const spec = ALCHEMY_INGREDIENTS.find(i => i.name === ingredient);
+      const subject = item.replace(/^(Potion|Oil) of /, "").toLowerCase();
+      expect(spec.effect.toLowerCase(), `"${ingredient}" does not describe "${item}"`)
+        .toContain(subject);
+    }
+  });
+});
+
+// ─── An authored item is a template ───────────────────────────────────────────
+
+describe("specialiseBrew", () => {
+  const authored = () => ({
+    name: "Sageroot Poultice",
+    type: "consumable",
+    system: {
+      damage: { parts: [["2d4", "healing"]] },
+      actionType: "heal",
+      description: { value: "<p>A mash of root.</p>" }
+    }
+  });
+
+  const brewed = (mods, mod) =>
+    specialiseBrew(authored(), composeEffect("Wild Sageroot", mods, mod));
+
+  it("bakes the BREWER's modifier into the dice", () => {
+    // The potion's quality belongs to whoever made it. Roll data like
+    // @abilities.int.mod would resolve against whoever drinks it instead.
+    expect(brewed([], 7).system.damage.parts).toEqual([["2d4 + 7", "healing"]]);
+    expect(brewed([], 2).system.damage.parts).toEqual([["2d4 + 2", "healing"]]);
+  });
+
+  it("writes the modifiers' transforms over the authored dice", () => {
+    // Without this, authoring an item made brews WORSE than building one —
+    // the authored base would silently replace the composed result.
+    expect(brewed(["Milkweed Seeds"], 7).system.damage.parts).toEqual([["4d4", "healing"]]);
+    expect(brewed(["Milkweed Seeds", "Dried Ephedra"], 7).system.damage.parts)
+      .toEqual([["4d6", "healing"]]);
+  });
+
+  it("keeps everything the author wrote that it has no opinion on", () => {
+    const out = brewed([], 7);
+    expect(out.name).toBe("Sageroot Poultice");
+    expect(out.system.description.value).toContain("A mash of root");
+  });
+
+  it("does not mutate the item it was handed", () => {
+    const original = authored();
+    specialiseBrew(original, composeEffect("Wild Sageroot", [], 7));
+    expect(original.system.damage.parts).toEqual([["2d4", "healing"]]);
+  });
+
+  it("scales a poison's save DC with the brewer", () => {
+    const dc = mod => specialiseBrew({ name: "x", type: "consumable", system: {} },
+      composeEffect("Basilisk Breath", [], mod)).system.save.dc;
+    expect(dc(2)).toBe(7);
+    expect(dc(7)).toBe(12);
+  });
+
+  it("leaves a dice-less remedy's formula alone", () => {
+    // Fennel Silk works through a duration. Inventing dice for it would be
+    // making up rules.
+    const out = specialiseBrew(
+      { name: "Fennel Silk Compress", type: "consumable", system: { damage: { parts: [] } } },
+      composeEffect("Fennel Silk", [], 7));
+    expect(out.system.damage.parts).toEqual([]);
+  });
+
+  it("carries a limited-use brew's charges", () => {
+    const out = specialiseBrew({ name: "x", type: "consumable", system: {} },
+      composeEffect("Silver Hibiscus", [], 7));
+    expect(out.system.uses.value).toBe(3);
+  });
+
+  it("survives nothing", () => {
+    expect(specialiseBrew(null, null)).toBeNull();
+    expect(specialiseBrew({ name: "x" }, null)).toEqual({ name: "x" });
+  });
+});
+
+// ─── Naming a granted brew ────────────────────────────────────────────────────
+
+describe("specialiseBrew — naming", () => {
+  const packItem = () => ({
+    name: "Sageroot Poultice", type: "consumable",
+    system: { damage: { parts: [["2d4", "healing"]] }, actionType: "heal" }
+  });
+  const grant = (mods, mod, brewer) =>
+    specialiseBrew(packItem(), composeEffect("Wild Sageroot", mods, mod), { brewer });
+
+  it("names the brewer, so two alchemists' work is tellable apart", () => {
+    expect(grant([], 7, "Ash").name).toMatch(/^Sageroot Poultice - Ash \(/);
+    expect(grant([], 1, "Bram").name).toMatch(/^Sageroot Poultice - Bram \(/);
+  });
+
+  it("gives the same brew the same name, so copies still stack", () => {
+    // A random id would have split three identical poultices into three
+    // stacks. Only a real difference should separate them.
+    expect(grant([], 7, "Ash").name).toBe(grant([], 7, "Ash").name);
+  });
+
+  it("gives a stronger brew a different name, so it cannot be merged away", () => {
+    // The reported bug: Foundry stacks by name, so a 4d6 brew merged into a
+    // 2d4 one and the better of the two was lost.
+    const weak = grant([], 7, "Ash");
+    const strong = grant(["Milkweed Seeds", "Dried Ephedra"], 7, "Ash");
+    expect(strong.name).not.toBe(weak.name);
+    expect(strong.system.damage.parts).toEqual([["4d6", "healing"]]);
+    expect(weak.system.damage.parts).toEqual([["2d4 + 7", "healing"]]);
+  });
+
+  it("leaves the pack item's own name alone", () => {
+    // The lookup finds the template by its base name; suffixing the pack
+    // entry would break every future brew.
+    const pack = packItem();
+    specialiseBrew(pack, composeEffect("Wild Sageroot", [], 7), { brewer: "Ash" });
+    expect(pack.name).toBe("Sageroot Poultice");
+  });
+
+  it("stays unsuffixed when no brewer is named", () => {
+    expect(specialiseBrew(packItem(), composeEffect("Wild Sageroot", [], 7)).name)
+      .toBe("Sageroot Poultice");
+  });
+});

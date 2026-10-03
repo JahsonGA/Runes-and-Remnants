@@ -1,0 +1,254 @@
+<!-- =========================================================
+     Crafting panel — Manufacturing (mundane) + Alchemy (potions/poisons)
+     Data comes from src/data/manufacturing.js and src/data/alchemy.js.
+     ========================================================= -->
+<section class="rnr-columns">
+
+  <!-- ================= MANUFACTURING ================= -->
+  <div class="rnr-card rnr-card-pinned">
+    <div class="rnr-loot-header">
+      <h3>{{modeLabel}}</h3>
+      <div class="rnr-loot-controls">
+        <button type="button" data-action="craft-mode" data-mode="manufacturing"
+                class="{{#if (eq craftMode "manufacturing")}}active{{/if}}">Gear</button>
+        <button type="button" data-action="craft-mode" data-mode="alchemy"
+                class="{{#if (eq craftMode "alchemy")}}active{{/if}}">Alchemy</button>
+      </div>
+    </div>
+
+    <input type="search" class="rnr-filter" data-action="filter"
+           placeholder="Filter {{filterNoun}}…" value="{{filter}}"
+           aria-label="Filter the catalogue">
+
+    <div class="rnr-catalogue">
+    {{#if (eq craftMode "manufacturing")}}
+      <p class="muted rnr-hint">
+        Materials, a tool, and time. Gold cost is a yardstick — swap in the
+        monster parts the build actually needs.
+      </p>
+
+      {{#each recipeGroups}}
+        <div class="rnr-tier">
+          <div class="rnr-tier-header">{{this.category}}</div>
+          <ul class="rnr-list rnr-pool">
+            {{#each this.recipes}}
+              <li>
+                <button type="button" class="rnr-add {{#if this.selected}}rnr-picked{{/if}}"
+                        data-action="pick-recipe" data-name="{{this.name}}"
+                        title="DC {{this.dc}} · {{this.hours}} hrs{{#if this.rarity}} · {{this.rarity}}{{/if}}{{#if this.source}} · from {{this.source}}{{/if}}">
+                  {{this.name}}
+                  {{#if this.source}}<span class="rnr-src-badge" title="Loaded from your own compendium">◈</span>{{/if}}
+                </button>
+              </li>
+            {{/each}}
+          </ul>
+        </div>
+      {{/each}}
+    {{else}}
+      <p class="muted rnr-hint">
+        One effect as the base, then up to three modifiers. Each ingredient
+        raises the DC — only Lavender Sprig lowers it.
+      </p>
+
+      {{#each ingredientGroups}}
+        <div class="rnr-tier {{#if this.isEnchant}}rnr-tier-essence{{/if}}">
+          <div class="rnr-tier-header">{{this.label}}</div>
+          <ul class="rnr-list rnr-pool">
+            {{#each this.items}}
+              <li>
+                <button type="button" class="rnr-add {{#if this.picked}}rnr-picked{{/if}}"
+                        data-action="pick-ingredient" data-name="{{this.name}}"
+                        title="{{this.effect}}">
+                  {{this.name}} <span class="rnr-dcmod">{{this.sign}}{{this.dc}}</span>
+                </button>
+              </li>
+            {{/each}}
+          </ul>
+        </div>
+      {{/each}}
+    {{/if}}
+
+    <p class="muted rnr-hint rnr-no-matches" hidden>Nothing matches that.</p>
+    </div>
+  </div>
+
+  <!-- ================= THE BENCH ================= -->
+  <div class="rnr-card rnr-card-pinned">
+    <div class="rnr-loot-header">
+      <h3>Workbench</h3>
+      {{#if hasBench}}
+        <div class="rnr-loot-controls">
+          <button type="button" data-action="clear-bench">Clear</button>
+        </div>
+      {{/if}}
+    </div>
+
+    <div class="rnr-bench-body">
+
+    {{> rnrCrafterPicker}}
+
+    {{#if (eq craftMode "manufacturing")}}
+      {{#if plan}}
+        <div class="rnr-tier">
+          <div class="rnr-tier-header">{{plan.item}}</div>
+          <table class="rnr-ref">
+            <tr><td>Check</td><td class="rnr-num rnr-dc">DC {{plan.dc}}</td></tr>
+            <tr><td>Ability</td><td class="rnr-num">{{plan.abilityLabel}} {{plan.bonusLabel}}</td></tr>
+            <tr><td>Tool</td><td class="rnr-num">{{plan.tool}}</td></tr>
+            <tr><td>Time</td><td class="rnr-num">{{plan.hours}} hrs</td></tr>
+            <tr><td>Materials</td><td class="rnr-num">{{plan.materialLabel}}</td></tr>
+          </table>
+        </div>
+
+        {{#if plan.disadvantage}}
+          <p class="warning">
+            ⚠️ Not proficient with {{plan.tool}} — the check is made at
+            disadvantage unless a book or a proficient companion guides you.
+          </p>
+        {{/if}}
+
+        <!-- ===== Reagents: the Harvest ➜ Craft join ===== -->
+        {{#if plan.reagents}}
+          <div class="rnr-tier rnr-reagents {{#unless plan.reagents.met}}rnr-tier-short{{/unless}}">
+            <div class="rnr-tier-header">
+              Reagents — {{plan.reagents.propertyLabel}}
+              {{#if plan.reagents.unknownStock}}
+                <span class="rnr-num muted">needs {{plan.reagents.needed}}</span>
+              {{else}}
+                <span class="rnr-num {{#if plan.reagents.met}}rnr-ok{{else}}rnr-danger{{/if}}">
+                  {{plan.reagents.potency}} / {{plan.reagents.needed}}
+                </span>
+              {{/if}}
+            </div>
+            <p class="muted rnr-hint">{{plan.reagents.hint}}</p>
+
+            {{#if plan.reagents.used.length}}
+              <ul class="rnr-list rnr-pool">
+                {{#each plan.reagents.used}}
+                  <li>
+                    <button type="button" data-action="toggle-reagent" data-value="{{this.id}}"
+                            class="rnr-add {{#if this.spending}}rnr-picked{{/if}}{{#if this.excluded}} rnr-add-off{{/if}}"
+                            title="{{#if this.excluded}}Set aside — click to put it back{{else if this.spending}}Will be spent — click to keep it{{else}}Held back for now; the build does not need it{{/if}}{{#if this.creatureType}} · from a {{this.creatureType}}{{/if}}">
+                      {{this.name}} <span class="rnr-num">{{this.potency}}</span>
+                      {{#if this.assumed}}<span class="rnr-src-badge" title="Unlabelled — valued at the least it could be worth">?</span>{{/if}}
+                    </button>
+                  </li>
+                {{/each}}
+              </ul>
+              <p class="muted rnr-hint">
+                {{#if plan.reagents.spendingCount}}
+                  Highlighted parts are the ones going in — cheapest first, so
+                  trophies survive. Click any to keep it back.
+                {{else}}
+                  Click a part to put it back in play.
+                {{/if}}
+              </p>
+            {{/if}}
+
+            {{#if plan.reagents.unknownStock}}
+              <p class="muted rnr-hint">
+                Choose who is at the bench to weigh what they are carrying.
+                Made from: {{#each plan.reagents.suggestions}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}…
+              </p>
+            {{else if plan.reagents.met}}
+              {{#if plan.reagents.themed}}
+                <p class="rnr-ok">
+                  Fitting quarry — a {{plan.reagents.themeLabel}} part suits this brew.
+                  DC {{plan.reagents.dcAdjust}} (was {{plan.baseDc}}).
+                </p>
+              {{/if}}
+            {{else}}
+              <p class="warning">
+                Short by <b>{{plan.reagents.shortfall}}</b> potency. Bring more
+                {{plan.reagents.propertyLabel}} parts, or one cut from a tougher creature —
+                deeper components on the harvest list are worth far more.
+              </p>
+              <p class="muted rnr-hint">
+                Counts toward this:
+                {{#each plan.reagents.suggestions}}{{#unless @first}}, {{/unless}}{{this}}{{/each}}…
+              </p>
+            {{/if}}
+
+            {{#if plan.reagents.themeLabel}}
+              {{#unless plan.reagents.themed}}
+                <p class="muted rnr-hint">
+                  A {{plan.reagents.themeLabel}} part would take 2 off the DC — helpful, never required.
+                </p>
+              {{/unless}}
+            {{/if}}
+          </div>
+        {{/if}}
+
+        <div class="rnr-formula {{#if plan.blocked}}rnr-blocked{{/if}}">
+          {{#if plan.blocked}}
+            No reagents on hand — nothing to brew from.
+          {{else}}
+            1d20 + {{plan.abilityLabel}}{{#if plan.proficient}} + proficiency{{/if}}
+            vs DC {{plan.dc}}
+          {{/if}}
+        </div>
+      {{else}}
+        <p class="muted">Pick an item on the left to see what it takes to build.</p>
+      {{/if}}
+    {{else}}
+      {{#if hasBench}}
+        <table class="rnr-harvest-list">
+          <thead>
+            <tr><th></th><th class="rnr-name">Ingredient</th><th>Role</th><th class="rnr-num">DC</th><th></th></tr>
+          </thead>
+          <tbody>
+            {{#each bench}}
+              <tr data-index="{{@index}}" class="{{#if this.unknown}}rnr-missing{{/if}}">
+                <td class="rnr-order">{{this.order}}</td>
+                <td class="rnr-name">{{this.name}}</td>
+                <td class="muted">{{this.roleLabel}}</td>
+                <td class="rnr-num">{{this.sign}}{{this.dc}}</td>
+                <td class="rnr-row-actions">
+                  <button type="button" data-action="remove-ingredient" title="Remove">✕</button>
+                </td>
+              </tr>
+            {{/each}}
+          </tbody>
+        </table>
+
+        <p class="rnr-final-dc">
+          <span>{{concoction.kindLabel}} — Alchemy Attempt</span>
+          <b>DC {{concoction.dc}}</b>
+        </p>
+
+        {{#if concoction.errors.length}}
+          <ul class="rnr-list rnr-errors">
+            {{#each concoction.errors}}<li class="rnr-danger">{{this}}</li>{{/each}}
+          </ul>
+        {{else}}
+          <div class="rnr-formula">
+            Tool: {{concoction.toolLabel}} · 10 minutes · yields one vial
+          </div>
+        {{/if}}
+      {{else}}
+        <p class="muted">
+          Add an effect ingredient to begin. Wild Sageroot heals, Wyrmtongue
+          Petals poison, Elemental Water carries an enchantment.
+        </p>
+      {{/if}}
+    {{/if}}
+
+    </div><!-- /rnr-bench-body -->
+
+    <div class="actions rnr-craft-actions">
+      {{#if canCraft}}
+        <button type="button" class="rnr-craft-go" data-action="do-craft"
+                {{#if craftBlocked}}disabled{{/if}}
+                title="{{craftHint}}">
+          {{craftLabel}}
+        </button>
+      {{/if}}
+      <button type="button" data-action="switch-tab" data-tab="harvest">← Harvest components</button>
+    </div>
+
+    {{#if craftHint}}
+      <p class="muted rnr-hint rnr-craft-hint">{{craftHint}}</p>
+    {{/if}}
+  </div>
+
+</section>

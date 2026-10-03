@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Runes &amp; Remnants — Decision Brief</title>
+<style>
+  :root {
+    --ink:      #16202B;
+    --paper:    #FBFAF7;
+    --rule:     #C9C4B8;
+    --muted:    #5C6570;
+    --go:       #1F5F45;
+    --nogo:     #8A2B22;
+    --goif:     #8A6314;
+    --accent:   var(--muted);
+  }
+  .go   { --accent: var(--go); }
+  .nogo { --accent: var(--nogo); }
+  .goif { --accent: var(--goif); }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: #EFEDE7;
+    color: var(--ink);
+    font: 400 14px/1.5 ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .sheet {
+    max-width: 46rem;
+    margin: 2rem auto;
+    padding: 2.25rem 2.5rem 2rem;
+    background: var(--paper);
+    box-shadow: 0 1px 3px rgba(0,0,0,.14);
+  }
+
+  /* --- Header ------------------------------------------------------- */
+  header { border-bottom: 3px solid var(--accent); padding-bottom: .9rem; }
+  .eyebrow {
+    font: 600 10px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1 {
+    margin: .5rem 0 .35rem;
+    font: 600 27px/1.18 "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    letter-spacing: -.01em;
+  }
+  .decision { margin: 0; color: var(--muted); font-size: 13.5px; }
+
+  /* --- Verdict stamp: the one loud element -------------------------- */
+  .verdict {
+    display: flex;
+    align-items: baseline;
+    gap: 1.15rem;
+    margin: 1.3rem 0 1.5rem;
+    padding: .95rem 1.15rem;
+    border: 2px solid var(--accent);
+  }
+  .stamp {
+    flex: none;
+    font: 700 21px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .verdict-line { margin: 0; font-size: 14.5px; }
+
+  /* --- Body --------------------------------------------------------- */
+  h2 {
+    margin: 1.4rem 0 .5rem;
+    font: 600 10px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  p { margin: 0 0 .6rem; }
+  ul { margin: 0; padding-left: 1.05rem; }
+  li { margin-bottom: .3rem; }
+
+  .seats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; }
+  .seat h3 {
+    margin: 0 0 .35rem;
+    font: 600 13px/1.3 "Iowan Old Style", Palatino, Georgia, serif;
+    padding-bottom: .25rem;
+    border-bottom: 1px solid var(--rule);
+  }
+  .seat ul { font-size: 12.5px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th {
+    text-align: left;
+    padding: .3rem .5rem .3rem 0;
+    border-bottom: 1.5px solid var(--ink);
+    font: 600 10px/1 ui-monospace, Menlo, Consolas, monospace;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  td { padding: .45rem .5rem .45rem 0; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  td.num { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: nowrap; }
+
+  .assumptions { font-size: 12.5px; color: var(--muted); }
+  footer {
+    margin-top: 1.5rem;
+    padding-top: .6rem;
+    border-top: 1px solid var(--rule);
+    font: 400 11px/1.4 ui-monospace, Menlo, Consolas, monospace;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  @media (max-width: 40rem) {
+    .sheet { margin: 0; padding: 1.5rem 1.25rem; }
+    .seats { grid-template-columns: 1fr; }
+    .verdict { flex-direction: column; gap: .5rem; }
+  }
+  @media print {
+    body { background: #fff; }
+    .sheet { max-width: none; margin: 0; padding: 0; box-shadow: none; }
+    .seat, tr, .verdict { break-inside: avoid; }
+  }
+</style>
+</head>
+
+<body class="goif">
+<div class="sheet">
+
+  <header>
+    <div class="eyebrow">Investment Committee · Decision Brief</div>
+    <h1>Runes &amp; Remnants</h1>
+    <p class="decision">Finish the 6-phase roadmap, or ship the Harvest System as v1.0 and stop? Solo developer, ~2–5 hrs/week, donation-supported, Foundry VTT module for D&amp;D 5e.</p>
+  </header>
+
+  <div class="verdict">
+    <span class="stamp">GO-IF</span>
+    <p class="verdict-line">Ship v1.0 and submit to the Foundry package directory by <strong>19 Sep 2026</strong> — this is not the thing you were choosing between, and it is worth more than the entire remaining roadmap. Then continue <em>only</em> if Phase 2 lands inside 8 logged hours by 3 Oct 2026. Verified by the developer against the git log.</p>
+  </div>
+
+  <h2>The trade-off</h2>
+  <p>You framed this as build-vs-stop, but both options skip the step that actually serves your stated goals. Two of your three success criteria are <strong>already met</strong> — the module works at your table for the first time (harvest crashed on every run until this session), and the portfolio artifact exists (103 tests, 6 CI workflows, pure-logic architecture). The third, real user adoption, is blocked by <em>distribution</em>, not features: the module is not listed on Foundry's package directory, so ~4 hours of listing work moves it further than the ~95 hours in Phases 4–6, which move it by zero. What you give up by continuing to Phase 6 is roughly 133 hours against a ~15% completion probability. <strong>The strongest case against this verdict</strong> is the Bull's: the 9-month gap was caused by a build that crashed on every harvest, not by lack of capacity — and that cause was just removed, so judging future velocity by that period judges the wrong thing. It doesn't carry the day because it is an untested hypothesis, not because it's implausible — and the verdict costs it nothing, since tripwire 3 gives it 60 days to prove itself before the roadmap is re-underwritten.</p>
+
+  <h2>What the committee found</h2>
+  <div class="seats">
+    <div class="seat">
+      <h3>Bull</h3>
+      <ul>
+        <li>Build-vs-stop is a false binary — auto-release means shipping costs one version bump, and was never the alternative to continuing.</li>
+        <li>The 9-month gap has a mechanical cause (every harvest crashed), not a motivational one — and that blocker is now gone.</li>
+        <li>Differentiation lives in Phases 5–6 (runes, evolution); stopping at v1.0 ships only the part that is a weaker clone of Heliana's.</li>
+      </ul>
+    </div>
+    <div class="seat">
+      <h3>Bear</h3>
+      <ul>
+        <li>Demonstrated velocity is ~1/25th of what the roadmap needs: 6 commits in 9 months vs 18/week during the initial burst.</li>
+        <li>Zero discovery channel — adoption is blocked by an unfinished submission form, not by missing features.</li>
+        <li>Deferred double-grant bug lets any client duplicate loot: a defeated premise in a scarcity-themed module.</li>
+      </ul>
+    </div>
+    <div class="seat">
+      <h3>Allocator</h3>
+      <ul>
+        <li>~133 hrs to finish; at the revealed 1.8 hrs/wk that is ~14 months base case, ~15% chance of reaching Phase 6.</li>
+        <li>Criteria 1 and 3 are already paid at 0 further hours; criterion 2 needs ~4 hrs of listing, not 95 hrs of features.</li>
+        <li>Same hours spent on a second shipped module or on actually running the campaign beat the roadmap on all three criteria.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Kill criteria — reverse this decision if</h2>
+  <table>
+    <thead>
+      <tr><th>Tripwire</th><th>Threshold</th><th>Check by</th><th>Owner</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>v1.0 shipped and submitted to the Foundry package directory</td>
+        <td class="num">Not done → stop all feature work</td>
+        <td class="num">2026-09-19</td>
+        <td>J. Gonzalez-Allie</td>
+      </tr>
+      <tr>
+        <td>Phase 2 (item metadata) complete, tests green</td>
+        <td class="num">&gt; 8 logged hrs or past date → truncate roadmap</td>
+        <td class="num">2026-10-03</td>
+        <td>J. Gonzalez-Allie</td>
+      </tr>
+      <tr>
+        <td>Sustained commit velocity since Phase 1 fix</td>
+        <td class="num">&lt; 12 commits in 60 days → capacity is the constraint</td>
+        <td class="num">2026-10-18</td>
+        <td>J. Gonzalez-Allie</td>
+      </tr>
+      <tr>
+        <td>Installs after directory listing</td>
+        <td class="num">&lt; 250 in 60 days → adoption goal unreachable; drop it</td>
+        <td class="num">2026-11-18</td>
+        <td>J. Gonzalez-Allie</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>What this verdict rests on</h2>
+  <ul class="assumptions">
+    <li><strong>[FACT]</strong> Git log: 133 commits, 95% in the first 7 weeks, 6 commits in the last 9 months, gaps of 7 and 2 months. This is the hardest evidence in the case and all three seats leaned on it.</li>
+    <li><strong>[FACT]</strong> Not listed on the Foundry package directory; distribution is a raw GitHub manifest. Verified against <code>module.json</code>.</li>
+    <li><strong>[CORRECTED]</strong> The Bear's most lethal finding — that NeDB <code>.db</code> packs no longer load on Foundry v12+, making the module dead on arrival — is <em>wrong</em>. Foundry auto-migrates NeDB packs to LevelDB on first load and states modules need no change. No emergency migration is required. <code>verified: "12"</code> being stale and the ApplicationV1→V2 deprecation remain real but far smaller.</li>
+    <li><strong>[ESTIMATE, Medium]</strong> ~133 hrs to complete Phases 2–6. Anchored on Phase 1 ≈ 7 hrs AI-assisted, scaled for the larger phases. If the AI throughput multiplier is nearer 6× than 2.5×, the roadmap costs ~35 hrs and this verdict flips — which is exactly what tripwire 2 measures.</li>
+  </ul>
+
+  <footer>
+    <span>Investment Committee — Bull / Bear / Allocator run as isolated parallel agents</span>
+    <span>2026-08-19</span>
+  </footer>
+
+</div>
+</body>
+</html>

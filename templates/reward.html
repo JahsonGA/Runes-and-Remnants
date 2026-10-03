@@ -1,0 +1,63 @@
+{{!--
+  Reward panel — what a kill, a craft or a binding actually yielded.
+
+  Harvest hands back five things at once and said so only in chat, where it
+  scrolls away. This is the moment made visible: what you got, how good it
+  was, and what it cost.
+
+  Rarity drives the frame colour, which is the one glance that matters when
+  six icons land at once.
+--}}
+<div class="rnr-reward">
+
+  <header class="rnr-reward-head">
+    <div class="rnr-reward-crest" aria-hidden="true">{{crest}}</div>
+    <h1>{{title}}</h1>
+    {{#if subtitle}}<p class="rnr-reward-sub">{{subtitle}}</p>{{/if}}
+  </header>
+
+  {{#if flavour}}
+    <p class="rnr-reward-flavour">{{flavour}}</p>
+  {{/if}}
+
+  {{#if items.length}}
+    <h2 class="rnr-reward-heading"><span>{{itemsHeading}}</span></h2>
+
+    <ul class="rnr-reward-grid">
+      {{#each items}}
+        <li class="rnr-reward-slot rnr-rarity-{{this.rarityKey}}{{#if this.flawed}} rnr-reward-flawed{{/if}}{{#if this.lost}} rnr-reward-lost{{/if}}"
+            title="{{this.tooltip}}">
+          <div class="rnr-reward-tile">
+            <img src="{{this.img}}" alt="">
+            {{#if this.quantity}}<span class="rnr-reward-qty">{{this.quantity}}</span>{{/if}}
+            {{!-- A badge, not just the border color — so which tile is
+                  flawed or lost survives grayscale and colorblind palettes,
+                  not only a hover a touch user can't reach. --}}
+            {{#if this.flawed}}<span class="rnr-reward-flaw-badge" aria-hidden="true">!</span>{{/if}}
+            {{#if this.lost}}<span class="rnr-reward-lost-badge" aria-hidden="true">✕</span>{{/if}}
+          </div>
+          {{!-- The name is shown, not left to a tooltip. Six unlabelled
+                icons is a guessing game, and a tooltip is unreachable by
+                keyboard. --}}
+          <span class="rnr-reward-name">{{this.name}}{{#if this.flawed}}<span class="rnr-sr-only"> (flawed)</span>{{/if}}{{#if this.lost}}<span class="rnr-sr-only"> (lost)</span>{{/if}}</span>
+          {{#if this.detail}}<span class="rnr-reward-detail">{{this.detail}}</span>{{/if}}
+        </li>
+      {{/each}}
+    </ul>
+  {{else}}
+    <p class="rnr-reward-empty">{{emptyLabel}}</p>
+  {{/if}}
+
+  {{#if notes.length}}
+    <ul class="rnr-reward-notes" role="list">
+      {{#each notes}}<li>{{this}}</li>{{/each}}
+    </ul>
+  {{/if}}
+
+  <div class="rnr-reward-actions">
+    <button type="button" data-action="reward-accept" class="rnr-reward-accept">
+      {{acceptLabel}}
+    </button>
+  </div>
+
+</div>

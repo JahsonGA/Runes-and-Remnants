@@ -1,111 +1,131 @@
 # Runes and Remnants  
-*A Foundry VTT module inspired by Heliana’s Guide to Monster Hunting and the legacy of Ancestral Weapons*
+*A Foundry VTT module inspired by Heliana’s Guide to Monster Hunting and the legacy of Ancestral Weapons.*
 
 ![FoundryVTT](https://img.shields.io/badge/FoundryVTT-Compatible-success?style=flat-square)
 ![License: MPL-2.0](https://img.shields.io/badge/License-MPL--2.0-green.svg?style=flat-square)
 ![Auto Release](https://img.shields.io/github/actions/workflow/status/JahsonGA/Runes-and-Remnants/release-on-version-bump.yml?label=Auto%20Release&style=flat-square)
-![Static Badge](https://img.shields.io/badge/Development_Stage-In_Progress-red?style=flat-square)
+![Static Badge](https://img.shields.io/badge/Development_Stage-Beta_(v1.0.8a39)--Active-orange?style=flat-square)
 
 ---
 
 ## Overview
-**Runes and Remnants** introduces a full **monster harvesting** and **upgradable weapon** system for FoundryVTT.  
-Game Masters and players can harvest slain creatures for materials using a **streamlined, grim-dark Harvest Menu** that automatically detects CR, type, and available loot from your compendium.
+**Runes and Remnants** introduces a modular **monster harvesting** and **upgradable weapon** system for Foundry VTT.  
+Game Masters and players can harvest slain creatures using a **streamlined, grimdark Harvest Menu** that automates rolls, helper bonuses, and loot generation.
 
-Inspired by *Heliana’s Guide to Monster Hunting and Ancestral Weapons*, this module lays the foundation for a complete Rynok-style monster hunting and weapon-forging experience.
-
----
-
-## Features
-### Harvest Menu
-- Right-click a token and select the **cleaver icon** to open the Harvest Menu.
-- The slain creature becomes the **target creature**, with its **token art**, **Type**, and **CR** shown automatically.
-- Add harvesters from a **custom dropdown panel** listing all player and NPC actors.
-  - Uses **token portraits** beside each name for clarity.
-  - The **first harvester** is treated as the **leader**.
-- Reorder or remove harvesters using **inline control buttons** `[↑] [↓] [✕]`.
-- Select materials to harvest from your compendium.
-- Automatic **skill checks** and **DC calculation** based on creature type, rarity, and CR.
-- Results are broadcast in **chat**, and (optionally) dropped via **Item Piles**.
-
-### GM Controls
-- GMs can choose whether **players** can open the Harvest Menu themselves.
-- When opened, the menu automatically appears for **all active users**.
-- Harvesters list respects GM visibility:
-  1. Active PCs (owned by connected players)
-  2. Inactive PCs
-  3. NPCs on the current scene
-  4. Other world actors
+Inspired by *Heliana’s Guide to Monster Hunting* and *Ancestral Weapons*, this module forms the foundation of a complete **Rynok-style monster hunting and forging system**, designed for flexibility and future expansions.
 
 ---
 
-## Installation
-You can always find the latest stable and beta releases here:  
-**[Runes and Remnants — GitHub Releases](https://github.com/JahsonGA/Runes-and-Remnants/releases)**
+## Harvest Menu
+### Core Features
+- Right-click a slain creature’s **token** → select the **cleaver icon** to open the **Harvest Menu**.
+- Automatically detects:
+  - Target creature’s **name**, **CR**, **Type**, and **token portrait**.
+  - Corresponding **loot and materials** from the `runes-and-remnants.harvest-items` compendium.
+- Assign actor roles dynamically:
+  - **Assessor** — evaluates the creature (Int-based check).
+  - **Harvester** — extracts components (Dex-based check).
+  - **Helpers** — assist with harvesting (bonus based on proficiency).
+- Helpers have a **size-based limit** (e.g., 2 for Medium, 4 for Large, etc.).
+- Results broadcast to **chat** with rolls, bonuses, and total outcomes.
+- Optional **Item Piles integration**: drop harvested items directly onto the map.
 
-Each release includes a ready-to-install `.zip` package and manifest URL for FoundryVTT.
+### Role Rules & Conditions
+- The same actor **can** be both Assessor and Harvester.  
+  → Doing so incurs **disadvantage** on both rolls, automatically applied.
+- A warning appears in the UI and chat log if this occurs.
+- An actor assigned as either Assessor or Harvester **cannot also be a Helper**.
+- Each role includes **inline portrait icons** and **remove buttons** for clarity.
 
 ---
 
-## Usage
-1. **Right-click** a creature’s token on the canvas.  
-2. Click the **cleaver icon** to open the **Harvest Menu**.  
-3. Review the target’s info and available materials.  
-4. Select harvesters from the dropdown and arrange their order.  
-5. Choose desired loot, then click **Start Harvest**.  
-6. Results and rolls are displayed in chat — with optional loot drops via Item Piles.
+## Automation Logic
+### Behind the Scenes
+- Rolls use the appropriate 5e skill based on **creature type**:
+  - e.g., `Survival` for Beasts, `Arcana` for Aberrations, `Medicine` for Undead, etc.
+- The Assessor and Harvester each roll, and their **combined total** (plus helper
+  bonus) determines how much of the creature's material table is unlocked:
+
+  ```
+  assessment (1d20 + INT + prof) + carving (1d20 + DEX + prof) + helper bonus
+  ```
+
+- Materials are gated by **flat DCs — 20 / 30 / 40** — defined per creature type
+  in `src/data/harvest-table.js`. Tiers are additive: meeting DC 30 also grants
+  the DC 20 materials.
+- **Essence** is gated separately by a **CR-scaled DC** (25 → 50) from
+  `ESSENCE_TABLE`. This is where creature difficulty is expressed; the material
+  tiers themselves are deliberately flat.
+- Each helper adds a **partial or full proficiency** bonus (capped by creature size).
+- Outcome is derived from how many tiers were unlocked:
+  - **Critical Success** → every tier unlocked
+  - **Success** → most tiers unlocked
+  - **Partial** → first tier only
+  - **Failure** → nothing unlocked
+
+> Only materials the target creature can actually yield are listed in the menu,
+> grouped by the DC required to reach them. Leave everything unticked to take
+> whatever the roll unlocks, or tick specific materials to take only those.
 
 ---
 
-## Permissions
-The module includes a world setting:
-
+## Developer Controls
+### GM Settings
 > **Allow Players to Open Harvest Menu**
 
-- If enabled → both GMs and players can initiate harvesting.  
-- If disabled → only the GM can open the Harvest Menu.  
-- Regardless, the menu is synchronized to **all active users** for visibility.
+- Enabled — Players and GMs can open the Harvest Menu.  
+- Disabled — Only GMs can initiate harvests.  
+- Regardless, the menu updates **in real-time** for all connected users.
+
+### Roll Integration
+- Uses Foundry’s built-in 5e skill system (no custom roll formulas required).
+- Rolls automatically post results via `ChatMessage.create()`.
+- Optional API hooks:
+  ```js
+  game.modules.get("runes-and-remnants").api.rollAssessment(actor, type);
+  game.modules.get("runes-and-remnants").api.rollCarving(actor, type, { disadvantage: true });
+  ```
 
 ---
 
-## Development Roadmap
-| Stage | Feature | Status |
-|--------|----------|--------|
-| Core Framework | Module setup, version automation, CI/CD | ✅ Done |
-| Harvest System | UI, dropdown logic, loot + rolls | 🟢 Current |
-| Data Packs | Material compendium, rarity, and DC tables | 🔜 Next |
-| Ancestral Weapons | Weapon evolution, socketing, crafting UI | ⏳ Planned |
-| Integrations | Item Piles, Token HUD enhancements | ⏳ Planned |
+## Documentation Map
 
-## Reloading Development
-1. **Keep your dev module active** in Foundry:
-   - Open **Configuration → Manage Modules**
-   - Ensure **“Runes & Remnants”** is checked ON.
+Detailed per-folder documentation. Each `*Details.md` covers every file in its
+folder; `*Breakdown.md` files are deep dives into intricate logic.
 
-2. **When you edit JS or HTML:**
-   - Save the file.
-   - Then in Foundry’s dev console (press **F12 → Console tab**), run:
-     ```js
-     game.modules.get("runes-and-remnants").api?.reload?.() ?? window.location.reload();
-     ```
-     or simply press **F5** to refresh Foundry.
-   - Foundry will reload the module fresh with your latest files.
+| Area | Document | Covers |
+|---|---|---|
+| **Source root** | [`src/SrcDetails.md`](src/SrcDetails.md) | Module structure, logic/Foundry split, data flow |
+| **Harvest system** | [`src/harvest/HarvestDetails.md`](src/harvest/HarvestDetails.md) | Full export reference for `logic.js` and `menu.js` |
+| ↳ *deep dive* | [`src/harvest/LogicBreakdown.md`](src/harvest/LogicBreakdown.md) | The DC model, unlock resolution, essence gating |
+| ↳ *deep dive* | [`src/harvest/MenuBreakdown.md`](src/harvest/MenuBreakdown.md) | `_startHarvest()` step by step, render behaviour |
+| **Crafting** | [`src/craft/CraftDetails.md`](src/craft/CraftDetails.md) | Manufacturing, Alchemy, reagents, graded failure |
+| **Enchanting** | [`src/enchant/EnchantDetails.md`](src/enchant/EnchantDetails.md) | Binding remnants, flaws, ancestral weapons |
+| **Hub** | [`src/hub/HubDetails.md`](src/hub/HubDetails.md) | The tab shell and who is at the bench |
+| **Shared UI** | [`src/ui/UiDetails.md`](src/ui/UiDetails.md) | The confirmation dialog, version-shimmed |
+| **Game data** | [`src/data/DataDetails.md`](src/data/DataDetails.md) | `HARVEST_TABLE` contract and how to extend it |
+| **Compendium** | [`packs/PacksDetails.md`](packs/PacksDetails.md) | Pack invariants and the Foundry→repo authoring workflow |
+| **Templates** | [`templates/TemplatesDetails.md`](templates/TemplatesDetails.md) | Handlebars context and `data-action` conventions |
+| ↳ *panels* | [`templates/panels/PanelsDetails.md`](templates/panels/PanelsDetails.md) | One per tab; layout and control conventions |
+| ↳ *partials* | [`templates/partials/PartialsDetails.md`](templates/partials/PartialsDetails.md) | The shared crafter picker |
+| **Styles** | [`styles/StylesDetails.md`](styles/StylesDetails.md) | Theme tokens, class conventions, animations |
+| **Tests** | [`tests/TestDetails.md`](tests/TestDetails.md) | What each suite protects and what isn't covered |
+| ↳ *browser* | [`tests/ui/UiDetails.md`](tests/ui/UiDetails.md) | Playwright: layout, reachability, contrast |
+| **CI/CD** | [`.github/workflows/WorkflowsDetails.md`](.github/workflows/WorkflowsDetails.md) | Branch model and version-triggered releases |
+| **Planning** | [`docs/DocsDetails.md`](docs/DocsDetails.md) → [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phased plan and design rationale |
 
-3. **To re-open the Harvest Menu instantly after reload:**
-   ```js
-   new game.modules.get("runes-and-remnants").api?.HarvestMenu?.();
+### Root files
 
+| File | Purpose |
+|---|---|
+| `index.js` | Foundry entry point — registers settings, the `eq` helper, every panel and partial, the socket listener (harvest, craft, enchant), the Token HUD cleaver button and the scene control |
+| `module.json` | Manifest — id `runes-and-remnants`, dnd5e, Foundry v11–v12, declares the `harvest-items` pack. **Bumping `version` here triggers a release** |
+| `package.json` | Dev tooling only (`vitest`, `glob`); `npm test` and `npm run check:assets` |
 
----
+### Where to start
 
-## License
-Licensed under the **Mozilla Public License 2.0 (MPL-2.0)**.
-
-You may use, modify, and distribute this module under the same license.  
-If you wish to incorporate *Runes and Remnants* into your own project, live stream, or commercial work, please credit the author and reach out for collaboration or attribution approval.
-
----
-
-### Author
-**JahsonGA**  
-[GitHub Repository →](https://github.com/JahsonGA/Runes-and-Remnants)
+- **Changing harvest difficulty?** Read [ROADMAP § 1.2](docs/ROADMAP.md) first —
+  the flat-DC design is deliberate and easy to break by "fixing".
+- **Adding materials?** [`src/data/DataDetails.md`](src/data/DataDetails.md) and
+  [`packs/PacksDetails.md`](packs/PacksDetails.md) — item *names* are the join key.
+- **Touching the harvest flow?** [`MenuBreakdown.md`](src/harvest/MenuBreakdown.md).

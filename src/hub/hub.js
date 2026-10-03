@@ -1,0 +1,484 @@
+// =========================================================
+// Runes & Remnants — Hub
+// =========================================================
+//
+// The single window for the whole module: Harvest, Crafting, Enchanting.
+//
+// It extends HarvestMenu rather than wrapping it. Harvest is the only
+// implemented system, all of its state and listeners already live there, and
+// inheriting means the working (and tested) harvest path is untouched — the
+// hub only adds tab state and swaps which panel the template renders.
+//
+// When crafting gains real state of its own, that is the point to split this
+// into a shell plus per-panel controllers.
+
+import { HarvestMenu } from "../harvest/menu.js";
+import { HUB_TABS, HUB_TAB_IDS, resolveTab, SCROLL_REGIONS } from "../data/hub-tabs.js";
+import { CraftPanel } from "../craft/panel.js";
+import { partsFromActor, getRecipe, planManufacture, selectReagents, alchemyModifier, hasAnyTool } from "../craft/logic.js";
+import { craftSummary, alchemySummary, enchantSummary, summaryToHtml } from "../craft/summary.js";
+import { confirmSpend } from "../ui/confirm.js";
+import { requestCraft } from "../craft/execute.js";
+import { EnchantPanel } from "../enchant/panel.js";
+import { requestEnchant, casterFrom } from "../enchant/execute.js";
+import { showRewardToOwner } from "../ui/reward-panel.js";
+import { enchantPlan } from "../enchant/logic.js";
+import {
+  unlockPatch, canUnlock, earnPatch, spendRemnantPatch, remnantValue,
+  relockPatch, canRelock, resetPatch
+} from "../enchant/spirit.js";
+
+export { HUB_TABS };
+
+/** The same tool check `execute.js` makes before it rolls. */
+const toolProficient = (crafter, tools) => hasAnyTool(crafter?.tools, tools);
+
+export class RunesHub extends HarvestMenu {
+  constructor(initialTokenDoc = null, options = {}) {
+    super(initialTokenDoc, options);
+    this.activeTab = resolveTab(options.tab);
+
+    // Crafting keeps its own state in its own controller. Harvest still lives
+    // in the base class; it moves here too once it is worth the churn.
+    this.craft = new CraftPanel();
+    this.enchant = new EnchantPanel();
+
+    // Who is at the workbench. Null means "whoever is harvesting" — the old
+    // behaviour — but it can now be set independently, because the person who
+    // guts the corpse is not always the one who works the forge.
+    this.crafter = null;
+  }
+
+  static get defaultOptions() {
+    return foundry.utils.mergeObject(super.defaultOptions, {
+      id: "rnr-hub",
+      title: "Runes & Remnants",
+      template: "modules/runes-and-remnants/templates/hub.html",
+      width: 760,
+      // Not "auto". The crafting catalogue runs to a hundred entries, and an
+      // auto-height window grows to fit all of them — off the bottom of the
+      // screen. A fixed frame with the catalogue scrolling inside it keeps
+      // the workbench visible while you browse.
+      height: 720,
+      resizable: true,
+      // Foundry rebuilds the DOM on every render, which drops scroll position.
+      // Without this, adding the fourth component to a harvest list throws you
+      // back to the top before you can pick the fifth.
+      scrollY: SCROLL_REGIONS,
+      classes: ["rnr-harvest", "grimdark", "rnr-hub-app"]
+    });
+  }
+
+  /**
+   * Opens the hub, reusing the window if it is already up.
+   * Foundry keys applications by id, so a second `new RunesHub()` would
+   * otherwise fight the first over the same DOM node.
+   */
+  static open({ tokenDoc = null, tab = "harvest" } = {}) {
+    const existing = Object.values(ui.windows ?? {}).find(a => a instanceof RunesHub);
+
+    if (existing) {
+      if (tokenDoc) {
+        existing.targetToken = tokenDoc;
+        existing.targetActor = tokenDoc.actor ?? null;
+        // A new corpse invalidates a list built against the old one.
+        existing.harvestList = [];
+      }
+      existing.activeTab = resolveTab(tab, existing.activeTab);
+      existing.render(true);
+      existing.bringToTop?.();
+      return existing;
+    }
+
+    return new RunesHub(tokenDoc, { tab }).render(true);
+  }
+
+  async getData() {
+    const data = await super.getData();
+
+    return {
+      ...data,
+      ...this.craft.getData(this._crafter()),
+      ...this.enchant.getData(this._caster()),
+      ...this._crafterRole(
+        this.activeTab === "enchanting" ? "Enchanter" : "Crafter",
+        this.activeTab === "enchanting"
+          ? "icons/skills/trades/academics-book-study-purple.webp"
+          : "icons/skills/trades/academics-merchant-scribe.webp",
+        this.activeTab === "enchanting"),
+      activeTab: this.activeTab,
+      tabs: HUB_TABS.map(t => ({ ...t, active: t.id === this.activeTab }))
+    };
+  }
+
+  /**
+   * The actor at the workbench.
+   *
+   * An explicit choice wins; otherwise it falls back to the harvester, so a
+   * party that just carved a corpse can cost out a build without picking
+   * anyone twice. The panel says which of the two it is.
+   */
+  _crafterActor() {
+    return game.actors?.get(this.crafter?.actorId)
+        ?? game.actors?.get(this.harvester?.actorId)
+        ?? null;
+  }
+
+  /**
+   * What the crafter picker renders.
+   *
+   * @param {boolean} [castersOnly] Enchanting is spellcasters only, so the
+   *   picker offers only spellcasters rather than letting someone choose a
+   *   fighter and then be told no by a blocker further down the panel.
+   */
+  _crafterRole(label, icon, castersOnly = false) {
+    const actor = this._crafterActor();
+    const taken = this.crafter?.actorId ?? null;
+
+    let available = this._getAvailableActors();
+    if (castersOnly) {
+      available = available.filter(a => {
+        const doc = game.actors?.get(a.id);
+        return doc ? casterFrom(doc).isCaster : false;
+      });
+    }
+
+    return {
+      crafterLabel: label,
+      crafterIcon: icon,
+      crafterActor: actor && {
+        id: actor.id,
+        name: actor.name,
+        img: this._getPortrait(actor),
+        // Flagged so a player can tell an inherited choice from a made one.
+        inherited: !taken,
+        // An inherited harvester may well not be a caster. Saying so on the
+        // picker beats leaving them to wonder why nothing will bind.
+        wrongForRole: castersOnly && !casterFrom(actor).isCaster
+      },
+      castersOnly,
+      availableForCrafter: available
+    };
+  }
+
+  _crafter() {
+    const actor = this._crafterActor();
+    if (!actor) return null;
+
+    const abilities = {};
+    for (const [key, data] of Object.entries(actor.system?.abilities ?? {})) {
+      abilities[key] = data?.mod ?? 0;
+    }
+
+    // dnd5e stores tool proficiencies as keys; the labels are what the
+    // manufacturing table names, so match loosely on the label text.
+    const toolProf = actor.system?.traits?.toolProf?.value ?? new Set();
+    const tools = Array.from(toolProf).map(String);
+
+    return {
+      abilities,
+      tools,
+      proficiency: actor.system?.attributes?.prof ?? 2,
+      // What they are carrying that a brew could use. Read fresh each render
+      // so a harvest made a moment ago shows up on the bench immediately.
+      parts: partsFromActor(actor)
+    };
+  }
+
+  /**
+   * Who is at the enchanting bench.
+   *
+   * The same actor as the crafter, plus their spellcasting and the mundane
+   * items they could bind something into. Enchanting needs more of the sheet
+   * than crafting does — "only a spellcaster can bind a remnant".
+   */
+  _caster() {
+    const actor = this._crafterActor();
+    if (!actor) return null;
+
+    return {
+      ...casterFrom(actor),
+      parts: partsFromActor(actor),
+      isGM: game.user?.isGM ?? false,
+      // Only mundane gear can be bound; something already enchanted is done,
+      // and harvested parts are ingredients rather than targets.
+      items: actor.items.filter(i =>
+        ["weapon", "equipment"].includes(i.type)
+        && !i.flags?.["runes-and-remnants"]?.enchanted
+        && !partsFromActor({ items: [i] }).length
+      ),
+      // Evolve works on a different list: an ancestral weapon may well have
+      // been enchanted already, so it must not be filtered out here.
+      weapons: actor.items.filter(i =>
+        i.type === "weapon" && !partsFromActor({ items: [i] }).length
+      )
+    };
+  }
+
+  /**
+   * Show what a craft will cost and wait for a yes.
+   *
+   * The summary is built from the same functions the execution uses, so the
+   * numbers a player agrees to are the numbers that get applied.
+   */
+  async _confirmCraft() {
+    const crafter = this._crafter();
+
+    const summary = this.craft.mode === "alchemy"
+      ? (() => {
+          const concoction = this.craft._concoction();
+          return alchemySummary({
+            concoction,
+            bench: this.craft.bench,
+            bonus: alchemyModifier({
+              int: crafter?.abilities?.int ?? 0,
+              wis: crafter?.abilities?.wis ?? 0,
+              // Whichever tool THIS brew calls for, matching what execute.js
+              // rolls with. Hardcoding Alchemist's supplies meant a poisoner
+              // with a Poisoner's kit was shown a bonus lower than the one
+              // they then rolled — the exact mismatch this dialog exists to
+              // prevent.
+              proficient: toolProficient(crafter, concoction?.tools),
+              proficiency: crafter?.proficiency ?? 2
+            })
+          });
+        })()
+      : (() => {
+          const recipe = getRecipe(this.craft.recipe);
+          if (!recipe || !crafter) return null;
+          // The same set the panel weighed, so the dialog cannot promise a
+          // part the player has set aside.
+          const parts = this.craft.includedParts(crafter.parts);
+          return craftSummary({
+            recipe,
+            plan: planManufacture(recipe, crafter, parts),
+            selection: selectReagents(recipe, parts)
+          });
+        })();
+
+    if (!summary) return true;   // nothing to warn about; let it through
+    return confirmSpend({
+      title: summary.title,
+      content: summaryToHtml(summary),
+      confirmLabel: this.craft.mode === "alchemy" ? "Brew it" : "Craft it"
+    });
+  }
+
+  /** Show what a binding will cost and wait for a yes. */
+  async _confirmEnchant() {
+    const caster = this._caster();
+    if (!caster) return true;
+
+    const parts = caster.parts ?? [];
+    const plan = enchantPlan({
+      enchantment: this.enchant.enchantment,
+      item: (caster.items ?? []).find(i => i.id === this.enchant.itemId) ?? null,
+      remnant: parts.find(p => p.id === this.enchant.remnantId) ?? null,
+      component: parts.find(p => p.id === this.enchant.componentId) ?? null,
+      caster,
+      attunement: this.enchant.attunement,
+      consumable: this.enchant.consumable
+    });
+
+    const summary = enchantSummary({ plan });
+    if (!summary) return true;
+    return confirmSpend({
+      title: summary.title,
+      content: summaryToHtml(summary),
+      confirmLabel: "Bind it"
+    });
+  }
+
+  /** The ancestral weapon selected on the Evolve side, as a document. */
+  _spiritWeapon() {
+    const item = this._crafterActor()?.items?.get(this.enchant.spiritItemId);
+    if (!item) ui.notifications?.warn("Choose a weapon first.");
+    return item ?? null;
+  }
+
+  activateListeners(html) {
+    super.activateListeners(html);
+    this.craft.activateListeners(html, () => this.render(true));
+    this.enchant.activateListeners(html, () => this.render(true));
+
+    // Crafting needs the actor, which the panel deliberately does not know
+    // about — it is handed shaped data, not documents. So the hub owns this.
+    html.on("click", "[data-action='do-craft']", async () => {
+      const actorId = this._crafterActor()?.id;
+      if (!actorId) return ui.notifications?.warn("Choose who is at the bench first.");
+
+      // Nothing is spent until the player has seen what it costs.
+      if (!await this._confirmCraft()) return;
+
+      const outcome = await requestCraft(this.craft.mode === "alchemy"
+        ? { actorId, bench: [...this.craft.bench] }
+        : { actorId, recipe: this.craft.recipe, exclude: this.craft.excludedIds() });
+
+      this.render(true);   // inventory changed; the bench must catch up
+
+      // The panel is shown only now, after the hub above has already
+      // refreshed — not before. Showing it first and refreshing after used
+      // to work most of the time and then not: Foundry brings a window to
+      // the front on every render, not just its first, so this render was
+      // intermittently landing after the panel opened and burying it. There
+      // is nothing left to race once the order is fixed instead of patched.
+      if (outcome?.reward) {
+        const actor = game.actors?.get(actorId);
+        if (actor) showRewardToOwner(actor, outcome.reward);
+      }
+    });
+
+    html.on("click", "[data-action='do-enchant']", async () => {
+      const actorId = this._crafterActor()?.id;
+      if (!actorId) return ui.notifications?.warn("Choose who is at the bench first.");
+
+      // Binding is the least reversible thing in the module — the remnant and
+      // component go whatever the roll, and a bad enough miss takes the item.
+      if (!await this._confirmEnchant()) return;
+
+      const outcome = await requestEnchant({
+        actorId,
+        itemId: this.enchant.itemId,
+        enchantment: this.enchant.enchantment,
+        remnantId: this.enchant.remnantId,
+        componentId: this.enchant.componentId,
+        attunement: this.enchant.attunement,
+        consumable: this.enchant.consumable
+      });
+
+      // The item was renamed and its materials spent; every selection is stale.
+      this.enchant.itemId = null;
+      this.enchant.remnantId = null;
+      this.enchant.componentId = null;
+      this.render(true);
+
+      // Shown only after the refresh above — see the matching comment in
+      // do-craft for why the order, not a timing patch, is the actual fix.
+      if (outcome?.reward) {
+        const actor = game.actors?.get(actorId);
+        if (actor) showRewardToOwner(actor, outcome.reward);
+      }
+    });
+
+    html.on("click", "[data-action='set-crafter']", ev => {
+      const el = ev.currentTarget;
+      this.crafter = {
+        actorId: el.dataset.actorId,
+        name: el.dataset.actorName,
+        img: el.dataset.actorImg
+      };
+      this.render(true);
+    });
+
+    html.on("click", "[data-action='remove-crafter']", () => {
+      // Clearing an explicit choice falls back to the harvester rather than
+      // to nobody, which is the more useful of the two.
+      this.crafter = null;
+      this.render(true);
+    });
+
+    // ---- Ancestral weapons ----
+
+    html.on("click", "[data-action='unlock-ability']", async ev => {
+      const item = this._spiritWeapon();
+      if (!item) return;
+
+      const name = ev.currentTarget.dataset.value;
+      const patch = unlockPatch(name, item);
+      if (!patch) {
+        // canUnlock already knows why; say the first reason rather than
+        // failing silently on a button the template should have disabled.
+        return ui.notifications?.warn(canUnlock(name, item).reasons[0]);
+      }
+
+      await item.update(patch);
+      ui.notifications?.info(`${item.name} awakens ${name}.`);
+      this.render(true);
+    });
+
+    html.on("click", "[data-action='earn-spirit']", async ev => {
+      if (!game.user.isGM) return ui.notifications?.warn("Only a GM awards spirit points.");
+      const item = this._spiritWeapon();
+      if (!item) return;
+
+      const points = Number(ev.currentTarget.dataset.value) || 1;
+      await item.update(earnPatch(item, points));
+      this.render(true);
+    });
+
+    html.on("click", "[data-action='relock-ability']", async ev => {
+      if (!game.user.isGM) return ui.notifications?.warn("Only a GM can take an ability back.");
+      const item = this._spiritWeapon();
+      if (!item) return;
+
+      const name = ev.currentTarget.dataset.value;
+      const patch = relockPatch(name, item);
+      // The template disables a blocked one, but say why rather than doing
+      // nothing if it is reached some other way.
+      if (!patch) return ui.notifications?.warn(canRelock(name, item).reasons[0]);
+
+      await item.update(patch);
+      this.render(true);
+    });
+
+    html.on("click", "[data-action='reset-spirit']", async () => {
+      if (!game.user.isGM) return ui.notifications?.warn("Only a GM can reset a weapon.");
+      const item = this._spiritWeapon();
+      if (!item) return;
+
+      const agreed = await confirmSpend({
+        title: `Reset ${item.name}?`,
+        confirmLabel: "Reset it",
+        content: '<div class="rnr-confirm"><p class="warning">Clears every spirit point '
+               + 'and every awakened ability, and reopens enchanting if a remnant closed '
+               + 'it. The weapon becomes ordinary again.</p></div>'
+      });
+      if (!agreed) return;
+
+      await item.update(resetPatch());
+      this.render(true);
+    });
+
+    html.on("click", "[data-action='spend-remnant']", async ev => {
+      const item = this._spiritWeapon();
+      if (!item) return;
+
+      const remnantId = ev.currentTarget.dataset.value;
+      const remnant = this._crafterActor()?.items?.get(remnantId);
+      if (!remnant) return;
+
+      const points = remnantValue(remnant.name);
+      // The one-way door in the module. Nothing else forecloses a whole
+      // system permanently, so nothing else is worded this strongly.
+      const agreed = await confirmSpend({
+        title: `Feed ${remnant.name} to ${item.name}?`,
+        confirmLabel: "Do it, and close the door",
+        content: `<div class="rnr-confirm">
+          <table class="rnr-ref">
+            <tr><td>Gains</td><td class="rnr-num">${points} spirit points</td></tr>
+            <tr><td>Costs</td><td class="rnr-num">${remnant.name}</td></tr>
+          </table>
+          <p class="warning">This weapon can never be enchanted again. There is no
+          way back from this — not a failed roll, not a GM ruling, not another
+          remnant.</p>
+        </div>`
+      });
+      if (!agreed) return;
+
+      const patch = spendRemnantPatch(item, remnant.name);
+      if (!patch) return;
+
+      await item.update(patch);
+      await remnant.delete();
+      this.render(true);
+    });
+
+    // Delegated, so the in-panel "go harvest" shortcuts work too.
+    html.on("click", "[data-action='switch-tab']", ev => {
+      const tab = ev.currentTarget.dataset.tab;
+      if (!HUB_TAB_IDS.has(tab) || tab === this.activeTab) return;
+      this.activeTab = tab;
+      this.render(true);
+    });
+  }
+}
